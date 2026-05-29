@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Match App</title>
+    <style>
+        body {
+            margin: 0; padding: 0; background-color: #121212; color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; overflow: hidden;
+        }
+        .header { position: absolute; top: 20px; font-size: 24px; font-weight: bold; color: #ff4b4b; }
+        .card-container { position: relative; width: 90%; max-width: 400px; height: 60vh; margin-top: 40px; }
+        .card {
+            position: absolute; width: 100%; height: 100%;
+            background-size: cover; background-position: center;
+            border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; justify-content: flex-end;
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+        .card-info {
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+            padding: 30px 20px 20px; border-radius: 0 0 20px 20px;
+        }
+        .card-title { font-size: 28px; font-weight: bold; margin: 0 0 5px 0; }
+        .card-desc { font-size: 16px; color: #ccc; margin: 0; }
+        .buttons {
+            display: flex; justify-content: center; gap: 40px; margin-top: 30px; z-index: 10;
+        }
+        .btn {
+            width: 70px; height: 70px; border-radius: 50%; border: none;
+            font-size: 30px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: transform 0.1s;
+        }
+        .btn:active { transform: scale(0.9); }
+        .btn-nope { background-color: #333; color: #ff4b4b; border: 2px solid #ff4b4b; }
+        .btn-like { background-color: #333; color: #4caf50; border: 2px solid #4caf50; }
+        
+        .match-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 75, 75, 0.95); z-index: 100;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .match-title { font-size: 48px; font-weight: bold; font-style: italic; text-transform: uppercase; margin-bottom: 20px; }
+        .match-btn { background: white; color: #ff4b4b; padding: 15px 30px; border-radius: 30px; font-size: 18px; font-weight: bold; border: none; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">Договоримся?</div>
+
+    <div class="card-container" id="card-container">
+        </div>
+
+    <div class="buttons">
+        <button class="btn btn-nope" onclick="swipe('left')">❌</button>
+        <button class="btn btn-like" onclick="swipe('right')">💚</button>
+    </div>
+
+    <div class="match-screen" id="match-screen">
+        <div class="match-title">IT'S A MATCH!</div>
+        <p style="font-size: 20px; text-align: center; padding: 0 20px;">Вы оба выбрали этот вариант. Споры окончены!</p>
+        <button class="match-btn" onclick="location.reload()">Начать заново</button>
+    </div>
+
+<script>
+    // Тестовая база данных
+    const items = [
+        { id: 1, title: "Пицца Маргарита", desc: "Классика, которую любят все", img: "https://images.unsplash.com/photo-1604381536171-460d626359bb?auto=format&fit=crop&w=600&q=80" },
+        { id: 2, title: "Суши и Роллы", desc: "Сет на двоих с лососем", img: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=600&q=80" },
+        { id: 3, title: "Бургеры", desc: "Сочная котлета и много сыра", img: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80" }
+    ];
+
+    let currentIndex = 0;
+    const container = document.getElementById('card-container');
+
+    function renderCard() {
+        if (currentIndex >= items.length) {
+            container.innerHTML = "<h2 style='text-align:center; margin-top:50%;'>Варианты закончились 😢</h2>";
+            return;
+        }
+        
+        const item = items[currentIndex];
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.id = 'current-card';
+        card.style.backgroundImage = `url('${item.img}')`;
+        card.innerHTML = `
+            <div class="card-info">
+                <h2 class="card-title">${item.title}</h2>
+                <p class="card-desc">${item.desc}</p>
+            </div>
+        `;
+        container.innerHTML = '';
+        container.appendChild(card);
+    }
+
+    function swipe(direction) {
+        const card = document.getElementById('current-card');
+        if (!card) return;
+
+        // Анимация свайпа
+        if (direction === 'left') {
+            card.style.transform = 'translateX(-150%) rotate(-20deg)';
+            card.style.opacity = '0';
+        } else {
+            card.style.transform = 'translateX(150%) rotate(20deg)';
+            card.style.opacity = '0';
+            
+            // Если мы лайкнули Суши (элемент с индексом 1), симулируем MATCH
+            if (currentIndex === 1) {
+                setTimeout(() => {
+                    document.getElementById('match-screen').style.display = 'flex';
+                }, 300);
+                return;
+            }
+        }
+
+        setTimeout(() => {
+            currentIndex++;
+            renderCard();
+        }, 300);
+    }
+
+    // Инициализация первой карточки
+    renderCard();
+</script>
+</body>
+</html>
