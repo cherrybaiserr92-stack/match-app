@@ -1,1 +1,1 @@
-web: java -jar build/libs/matchapp-0.0.1-SNAPSHOT.jar
+web: sh -c "java -jar \$(ls build/libs/*.jar | grep -v plain | head -n 1)"
