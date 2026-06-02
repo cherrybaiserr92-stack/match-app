@@ -3,26 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Match App</title>
+    <title>Match App: Global Shift</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
     <style>
         :root {
-            --bg-color: #0B0F19; /* Глубокий темно-синий, как у Railway */
-            --card-bg: rgba(255, 255, 255, 0.04);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --accent-color: #3B82F6; /* Приятный неоновый синий */
+            /* Уютный ретро-футуризм: Лесной + Янтарный */
+            --bg-color: #0c120c; 
+            --card-bg: rgba(20, 30, 20, 0.5);
+            --border-color: rgba(245, 158, 11, 0.2); 
+            --accent-color: #F59E0B; /* Янтарный неон */
             --danger-color: #EF4444;
             --success-color: #10B981;
-            --text-main: #F3F4F6;
-            --text-muted: #9CA3AF;
+            --text-main: #FDF6E3; 
+            --text-muted: #8E9F85;
         }
 
         body {
             margin: 0; padding: 0; 
             background-color: var(--bg-color); 
+            background-image: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.05) 0%, transparent 70%);
             color: var(--text-main);
             font-family: 'Inter', sans-serif;
             display: flex; flex-direction: column; align-items: center;
@@ -30,172 +35,134 @@
             -webkit-user-select: none; user-select: none;
         }
 
-        /* Шапка с размытием (Glassmorphism) */
+        /* Шапка */
         .header {
             position: fixed; top: 0; width: 100%; height: 60px;
-            background: rgba(11, 15, 25, 0.7);
+            background: rgba(12, 18, 12, 0.7);
             backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border-color);
             display: flex; align-items: center; justify-content: space-between;
             padding: 0 20px; box-sizing: border-box; z-index: 50;
         }
-        .header-logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(45deg, #3B82F6, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .room-badge { background: rgba(59, 130, 246, 0.15); color: #60A5FA; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .header-logo { font-size: 18px; font-weight: 700; color: var(--accent-color); letter-spacing: 1px; text-transform: uppercase; }
+        .room-badge { background: rgba(245, 158, 11, 0.1); color: var(--accent-color); padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid rgba(245, 158, 11, 0.3); }
 
-        /* Контейнер для экранов */
         .screen-content {
             width: 100%; max-width: 450px; height: calc(100vh - 140px);
             margin-top: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            position: relative;
         }
 
-        /* Красивые объемные карточки */
-        .card-container {
-            position: relative; width: 90%; height: 75%;
-            perspective: 1000px;
-        }
+        /* Карточки */
+        .card-container { position: relative; width: 90%; height: 75%; perspective: 1000px; }
         .card {
             position: absolute; width: 100%; height: 100%;
             background-size: cover; background-position: center;
-            border-radius: 24px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(245, 158, 11, 0.2);
             display: flex; flex-direction: column; justify-content: flex-end;
             transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
-            border: 1px solid var(--border-color);
             overflow: hidden;
         }
         .card-info {
-            background: linear-gradient(to top, rgba(11, 15, 25, 0.95) 0%, rgba(11, 15, 25, 0.4) 60%, rgba(0,0,0,0) 100%);
-            padding: 25px 20px; box-sizing: border-box;
+            background: linear-gradient(to top, rgba(12, 18, 12, 0.95) 0%, rgba(12, 18, 12, 0.6) 50%, transparent 100%);
+            padding: 30px 20px 25px; box-sizing: border-box;
         }
-        .card-title { font-size: 24px; font-weight: 700; margin: 0 0 6px 0; letter-spacing: -0.3px; }
-        .card-desc { font-size: 14px; color: var(--text-muted); margin: 0; line-height: 1.4; }
+        .card-title { font-size: 26px; font-weight: 700; margin: 0 0 8px 0; color: var(--text-main); text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        .card-desc { font-size: 14px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+
+        /* Элемент голосового аргумента на карточке */
+        .voice-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(245, 158, 11, 0.2); border: 1px solid var(--accent-color);
+            color: var(--accent-color); padding: 4px 10px; border-radius: 20px;
+            font-size: 12px; font-weight: 600; margin-bottom: 10px;
+        }
 
         /* Кнопки управления */
-        .buttons {
-            display: flex; justify-content: center; gap: 25px; margin-top: 20px; z-index: 10;
-        }
+        .buttons { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 25px; z-index: 10; }
         .btn {
-            width: 64px; height: 64px; border-radius: 50%; border: none;
-            font-size: 24px; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all 0.2s ease;
-            position: relative; background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s ease; position: relative;
+            background: rgba(20, 30, 20, 0.8); border: 1px solid var(--border-color);
+            backdrop-filter: blur(8px);
         }
         .btn:active { transform: scale(0.9); }
+        .btn-side { width: 60px; height: 60px; font-size: 20px; }
+        .btn-center { width: 75px; height: 75px; font-size: 28px; background: rgba(245, 158, 11, 0.1); border-color: var(--accent-color); color: var(--accent-color); box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+        
         .btn-nope { color: var(--danger-color); }
-        .btn-nope:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--danger-color); }
         .btn-like { color: var(--success-color); }
-        .btn-like:hover { background: rgba(16, 185, 129, 0.1); border-color: var(--success-color); }
 
-        /* Нижнее меню в стиле Railway */
-        .nav-bar {
-            position: fixed; bottom: 0; width: 100%; height: 75px;
-            background: rgba(11, 15, 25, 0.8);
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border-top: 1px solid var(--border-color);
-            display: flex; justify-content: space-around; align-items: center;
-            z-index: 50; padding-bottom: 10px; box-sizing: border-box;
-        }
-        .nav-item {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: var(--text-muted); font-size: 11px; font-weight: 500; text-decoration: none;
-            width: 60px; height: 100%; cursor: pointer; transition: color 0.2s; gap: 4px;
-        }
-        .nav-item svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; transition: transform 0.2s; }
-        .nav-item.active { color: var(--accent-color); font-weight: 600; }
-        .nav-item.active svg { transform: translateY(-2px); }
-
-        /* Экран Мэтча (Wow-эффект) */
-        .match-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(11, 15, 25, 0.95); z-index: 100;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            backdrop-filter: blur(20px);
-        }
-        .match-box {
-            text-align: center; width: 85%; max-width: 350px;
-            padding: 40px 20px; border-radius: 32px;
-            background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(236,72,153,0.1));
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 30px 60px rgba(0,0,0,0.6);
-        }
-        .match-title { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; background: linear-gradient(to right, #3B82F6, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .match-btn { background: var(--text-main); color: var(--bg-color); padding: 14px 28px; border-radius: 16px; font-size: 15px; font-weight: 600; border: none; margin-top: 25px; width: 100%; cursor: pointer; transition: transform 0.1s; }
-        .match-btn:active { transform: scale(0.98); }
-
-        /* Вспомогательные экраны */
-        .sub-screen { display: none; padding: 20px; text-align: center; color: var(--text-muted); font-size: 15px; }
-        .sub-screen h2 { color: var(--text-main); font-size: 22px; margin-bottom: 10px; }
+        /* Статус подключения (индикатор сверху) */
+        #connection-status { position: fixed; top: 65px; font-size: 10px; color: var(--text-muted); }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="header-logo">MatchApp</div>
-        <div class="room-badge" id="category-badge">Выбор Еды</div>
+        <div class="header-logo">СДВИГ</div>
+        <div class="room-badge" id="room-id-display">Бункер #42</div>
     </div>
+    
+    <div id="connection-status">Подключение к серверу...</div>
 
-    <div class="screen-content" id="main-swipe-screen">
-        <div class="card-container" id="card-container">
-            </div>
+    <div class="screen-content">
+        <div class="card-container" id="card-container"></div>
 
         <div class="buttons">
-            <button class="btn btn-nope" onclick="swipe('left')">✕</button>
-            <button class="btn btn-like" onclick="swipe('right')">✦</button>
-        </div>
-    </div>
-
-    <div class="screen-content sub-screen" id="matches-screen">
-        <h2>Твои совпадения</h2>
-        <p>Как только вы свайпнете одинаково, здесь появится карточка для быстрого заказа или просмотра.</p>
-    </div>
-
-    <div class="screen-content sub-screen" id="profile-screen">
-        <h2>Комната #4912</h2>
-        <p>Поделись ссылкой с другом, чтобы начать совместный выбор.</p>
-        <button class="match-btn" style="background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--border-color)">Скопировать ссылку</button>
-    </div>
-
-    <div class="match-screen" id="match-screen">
-        <div class="match-box">
-            <div class="match-title">IT'S A MATCH!</div>
-            <p style="color: var(--text-muted); font-size: 15px; margin: 0;" id="match-text">Вы оба выбрали этот вариант!</p>
-            <button class="match-btn" onclick="closeMatch()">Отлично</button>
-        </div>
-    </div>
-
-    <div class="nav-bar">
-        <div class="nav-item active" onclick="switchTab('swipe', this)">
-            <svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2.5 3.19-2.5 5.5h20c0-2.31-1-4.24-2.5-5.5M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/></svg>
-            <span>Свайп</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('matches', this)">
-            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-            <span>Мэтчи</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('profile', this)">
-            <svg viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 16v-4M12 8h.01"/></svg>
-            <span>Комната</span>
+            <button class="btn btn-side btn-nope" onclick="sendSwipe('left')">✕</button>
+            <button class="btn btn-center" id="voice-btn" onmousedown="startVoice()" onmouseup="stopVoice()" ontouchstart="startVoice()" ontouchend="stopVoice()">🎤</button>
+            <button class="btn btn-side btn-like" onclick="sendSwipe('right')">✦</button>
         </div>
     </div>
 
 <script>
-    // Наша обновленная сочная база данных с категориями
     const items = [
-        { id: 1, title: "Пицца Маргарита", desc: "Свежая моцарелла, томаты, базилик. Идеально под кино.", img: "https://images.unsplash.com/photo-1604381536171-460d626359bb?auto=format&fit=crop&w=600&q=80" },
-        { id: 2, title: "Суши Сет Premium", desc: "Роллы с лососем, тунцом и креветкой для эстетов.", img: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=600&q=80" },
-        { id: 3, title: "Сочные Бургеры", desc: "Мраморная говядина, плавленый чеддер и хрустящий бекон.", img: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80" }
+        { id: 1, title: "Убежище 11", desc: "Консервированные бобы и сушеное мясо. Идеально для выживания.", img: "https://images.unsplash.com/photo-1584345229649-62e542cc4e96?auto=format&fit=crop&w=600&q=80", hasVoice: true, voiceText: "Я больше не могу есть лапшу, давай мясо!" },
+        { id: 2, title: "Точка сбора", desc: "Острые крылышки барбекю с костра.", img: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?auto=format&fit=crop&w=600&q=80", hasVoice: false },
+        { id: 3, title: "Пайки Синдиката", desc: "Суши, спасенные из криокамеры.", img: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=600&q=80", hasVoice: false }
     ];
 
     let currentIndex = 0;
     const container = document.getElementById('card-container');
+    
+    // WebSockets логика
+    let stompClient = null;
+    const userId = "User_" + Math.floor(Math.random() * 1000); // Случайный ID для теста
+    const roomId = "42"; 
+
+    function connect() {
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.debug = null; // Отключаем лишний спам в консоль
+        
+        stompClient.connect({}, function (frame) {
+            document.getElementById('connection-status').innerText = 'Связь установлена (ID: ' + userId + ')';
+            document.getElementById('connection-status').style.color = 'var(--success-color)';
+            
+            // Подписываемся на события комнаты
+            stompClient.subscribe('/topic/room', function (message) {
+                const data = JSON.parse(message.body);
+                console.log("Входящий сигнал:", data);
+                // Если кто-то другой свайпнул
+                if(data.userId !== userId) {
+                    // Покажем уведомление (позже заменим на сложную логику)
+                    let status = document.getElementById('connection-status');
+                    status.innerText = 'Партнер ' + (data.direction === 'right' ? 'лайкнул' : 'скипнул') + ' карточку ' + data.itemId;
+                    status.style.color = 'var(--accent-color)';
+                }
+            });
+        }, function(error) {
+            document.getElementById('connection-status').innerText = 'Ошибка связи. Реконнект...';
+            document.getElementById('connection-status').style.color = 'var(--danger-color)';
+            setTimeout(connect, 5000);
+        });
+    }
 
     function renderCard() {
         if (currentIndex >= items.length) {
-            container.innerHTML = `<div style='text-align:center; color:var(--text-muted); font-size:15px; margin-top:40%;'>
-                <span style='font-size:32px;'>🍿</span><br><br>Варианты закончились.<br>Ждем выбора партнера...</div>`;
+            container.innerHTML = `<div style='text-align:center; color:var(--accent-color); font-size:15px; margin-top:50%;'>
+                <span style='font-size:40px;'>⚠️</span><br><br>Инициация Глобального Сдвига...<br>Ожидание решения системы.</div>`;
             return;
         }
         
@@ -204,8 +171,12 @@
         card.className = 'card';
         card.id = 'current-card';
         card.style.backgroundImage = `url('${item.img}')`;
+        
+        let voiceHtml = item.hasVoice ? `<div class="voice-badge">▶ Аудио: "${item.voiceText}"</div>` : '';
+        
         card.innerHTML = `
             <div class="card-info">
+                ${voiceHtml}
                 <h2 class="card-title">${item.title}</h2>
                 <p class="card-desc">${item.desc}</p>
             </div>
@@ -214,25 +185,23 @@
         container.appendChild(card);
     }
 
-    function swipe(direction) {
+    function sendSwipe(direction) {
         const card = document.getElementById('current-card');
         if (!card) return;
 
-        if (direction === 'left') {
-            card.style.transform = 'translateX(-150%) rotate(-15deg)';
-            card.style.opacity = '0';
-        } else {
-            card.style.transform = 'translateX(150%) rotate(15deg)';
-            card.style.opacity = '0';
-            
-            // Искусственная симуляция совпадения на 2-й карточке (Суши)
-            if (currentIndex === 1) {
-                setTimeout(() => {
-                    document.getElementById('match-text').innerText = `Вы оба выбрали: "${items[currentIndex-1].title}"`;
-                    document.getElementById('match-screen').style.display = 'flex';
-                }, 300);
-                return;
-            }
+        // Анимация
+        card.style.transform = direction === 'right' ? 'translateX(150%) rotate(15deg)' : 'translateX(-150%) rotate(-15deg)';
+        card.style.opacity = '0';
+
+        // Отправка по WebSockets
+        if (stompClient && stompClient.connected) {
+            const payload = {
+                roomId: roomId,
+                userId: userId,
+                itemId: items[currentIndex].id,
+                direction: direction
+            };
+            stompClient.send("/app/swipe", {}, JSON.stringify(payload));
         }
 
         setTimeout(() => {
@@ -241,37 +210,14 @@
         }, 300);
     }
 
-    function closeMatch() {
-        document.getElementById('match-screen').style.display = 'none';
-        currentIndex++;
-        renderCard();
-    }
+    // Имитация записи голоса
+    const voiceBtn = document.getElementById('voice-btn');
+    function startVoice() { voiceBtn.style.transform = 'scale(1.2)'; voiceBtn.style.background = 'var(--accent-color)'; voiceBtn.style.color = 'var(--bg-color)'; }
+    function stopVoice() { voiceBtn.style.transform = 'scale(1)'; voiceBtn.style.background = 'rgba(245, 158, 11, 0.1)'; voiceBtn.style.color = 'var(--accent-color)'; }
 
-    // Логика переключения табов нижней панели (Railway style)
-    function switchTab(tabName, element) {
-        // Снимаем активный класс со всех кнопок
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        // Скрываем все экраны
-        document.getElementById('main-swipe-screen').style.display = 'none';
-        document.getElementById('matches-screen').style.display = 'none';
-        document.getElementById('profile-screen').style.display = 'none';
-
-        // Активируем нужный
-        element.classList.add('active');
-        if (tabName === 'swipe') {
-            document.getElementById('main-swipe-screen').style.display = 'flex';
-            document.getElementById('category-badge').innerText = 'Выбор Еды';
-        } else if (tabName === 'matches') {
-            document.getElementById('matches-screen').style.display = 'flex';
-            document.getElementById('category-badge').innerText = 'Мэтчи';
-        } else if (tabName === 'profile') {
-            document.getElementById('profile-screen').style.display = 'flex';
-            document.getElementById('category-badge').innerText = 'Настройки';
-        }
-    }
-
-    // Стартуем
+    // Инициализация
     renderCard();
+    connect();
 </script>
 </body>
 </html>
