@@ -14,201 +14,184 @@
 
     <style>
         :root {
-            --bg-base: #070908; --surface: #121A14;
+            --bg-base: #050706; --surface: #0F1611;
             --neon-amber: #F59E0B; --neon-green: #10B981; --neon-red: #EF4444; --neon-blue: #3B82F6;
-            --text-main: #E2E8F0; --text-dim: #64748B;
-            --border: rgba(245, 158, 11, 0.15);
+            --text-main: #E2E8F0; --text-dim: #475569;
+            --border: rgba(245, 158, 11, 0.12);
         }
 
         body {
             margin: 0; padding: 0; background-color: var(--bg-base); color: var(--text-main);
             font-family: 'Inter', sans-serif; display: flex; flex-direction: column;
             height: 100vh; overflow: hidden; -webkit-user-select: none; user-select: none;
+            touch-action: none; /* Отключаем системные свайпы браузера */
         }
 
+        /* Сканирующие линии ЭЛТ */
         body::after {
             content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
-            z-index: 999; background-size: 100% 4px; pointer-events: none; opacity: 0.3;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%);
+            z-index: 999; background-size: 100% 4px; pointer-events: none; opacity: 0.25;
         }
 
         .header {
             height: 60px; display: flex; align-items: center; justify-content: space-between;
             padding: 0 20px; border-bottom: 1px solid var(--border);
-            background: rgba(7, 9, 8, 0.8); backdrop-filter: blur(10px); z-index: 50;
+            background: rgba(5, 7, 6, 0.8); backdrop-filter: blur(12px); z-index: 50;
         }
-        .logo { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: var(--neon-amber); font-weight: bold; }
+        .logo { font-family: 'JetBrains Mono', monospace; font-size: 16px; color: var(--neon-amber); letter-spacing: 1px; }
         
-        /* Контейнеры экранов */
         .view-container {
-            flex-grow: 1; position: relative; overflow-y: auto; overflow-x: hidden;
-            display: none; flex-direction: column; align-items: center; padding-bottom: 80px;
+            flex-grow: 1; position: relative; display: none; flex-direction: column; 
+            align-items: center; justify-content: center; padding-bottom: 80px; box-sizing: border-box;
         }
         .view-active { display: flex; }
 
-        /* --- ЭКРАН 1: АРЕНА (Карточки) --- */
+        /* --- СВАЙП КАРТОЧКИ (АРЕНА) --- */
+        .card-deck {
+            position: relative; width: 90%; height: 70%; max-height: 480px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
         .card {
-            width: 90%; height: 70%; max-height: 500px; margin-top: 20px;
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 12px; position: relative; display: flex; flex-direction: column;
-            transition: transform 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            width: 100%; height: 100%; background: var(--surface); 
+            border: 1px solid var(--border); border-radius: 16px; 
+            position: absolute; display: flex; flex-direction: column;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.9);
+            will-change: transform, opacity; /* Оптимизация для плавной мобильной графики */
+            overflow: hidden;
         }
-        .card-type-banner { background: rgba(245, 158, 11, 0.1); color: var(--neon-amber); font-family: 'JetBrains Mono'; font-size: 11px; text-align: center; padding: 8px 0; border-bottom: 1px solid var(--border); letter-spacing: 2px;}
-        .card-content { padding: 30px 20px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
-        .card-text { font-size: 18px; line-height: 1.6; font-weight: 600; text-align: center; }
         
-        .controls { width: 90%; display: flex; justify-content: space-between; margin-top: 20px; }
-        .action-btn { width: 45%; padding: 15px 0; border-radius: 8px; font-weight: 800; border: none; cursor: pointer; text-transform: uppercase; }
-        .btn-left { background: #2A1515; color: var(--neon-red); border: 1px solid rgba(239, 68, 68, 0.3); }
-        .btn-right { background: #13231B; color: var(--neon-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+        /* Состояние перетаскивания (убираем transition чтобы не лагало) */
+        .card.dragging { transition: none !important; }
 
-        /* Результаты */
-        .results-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(18, 26, 20, 0.98); display: none; flex-direction: column; padding: 30px; box-sizing: border-box; justify-content: center; border-radius: 12px;}
+        .card-type-banner { background: rgba(245, 158, 11, 0.05); color: var(--text-dim); font-family: 'JetBrains Mono'; font-size: 10px; text-align: center; padding: 10px 0; border-bottom: 1px solid var(--border); letter-spacing: 3px;}
+        .card-content { padding: 35px 25px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; pointer-events: none; }
+        .card-text { font-size: 19px; line-height: 1.6; font-weight: 600; text-align: center; letter-spacing: -0.5px; }
+        
+        /* Маркеры направления прямо на карточке при свайпе */
+        .swipe-indicator {
+            position: absolute; top: 30px; padding: 8px 16px; font-family: 'JetBrains Mono';
+            font-size: 14px; font-weight: bold; border-radius: 6px; opacity: 0; transform: rotate(-10deg);
+        }
+        .swipe-indicator.left { left: 30px; border: 2px solid var(--neon-red); color: var(--neon-red); }
+        .swipe-indicator.right { right: 30px; border: 2px solid var(--neon-green); color: var(--neon-green); transform: rotate(10deg); }
+
+        /* Живые результаты поверх карточки */
+        .results-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 16, 12, 0.98); display: none; flex-direction: column; padding: 35px 25px; box-sizing: border-box; justify-content: center; z-index: 10; }
         .bar-container { margin-bottom: 25px; }
-        .bar-label { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; margin-bottom: 8px; }
-        .bar-track { width: 100%; height: 12px; background: rgba(0,0,0,0.5); border-radius: 6px; overflow: hidden; }
-        .bar-fill-left { height: 100%; background: var(--neon-red); width: 50%; transition: width 0.5s; }
-        .bar-fill-right { height: 100%; background: var(--neon-green); width: 50%; transition: width 0.5s; }
-        .next-btn { background: transparent; border: 1px solid var(--neon-amber); color: var(--neon-amber); padding: 12px; border-radius: 8px; font-family: 'JetBrains Mono'; margin-top: 20px; width: 100%; cursor: pointer;}
+        .bar-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-bottom: 8px; font-family: 'JetBrains Mono'; }
+        .bar-track { width: 100%; height: 8px; background: rgba(0,0,0,0.6); border-radius: 4px; overflow: hidden; }
+        .bar-fill-left { height: 100%; background: var(--neon-red); width: 0%; transition: width 0.6s cubic-bezier(0.1, 0.8, 0.3, 1); }
+        .bar-fill-right { height: 100%; background: var(--neon-green); width: 0%; transition: width 0.6s cubic-bezier(0.1, 0.8, 0.3, 1); }
+        .next-btn { background: transparent; border: 1px solid var(--neon-amber); color: var(--neon-amber); padding: 15px; border-radius: 8px; font-family: 'JetBrains Mono'; font-size: 13px; width: 100%; cursor: pointer; text-transform: uppercase; margin-top: 15px; letter-spacing: 1px;}
 
-        /* --- ЭКРАН 2: СОЗДАНИЕ (Upload) --- */
-        .form-container { width: 90%; margin-top: 30px; }
-        .form-label { font-family: 'JetBrains Mono'; color: var(--neon-amber); font-size: 12px; margin-bottom: 8px; display: block; }
-        .cyber-select, .cyber-input { width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); color: var(--text-main); padding: 15px; border-radius: 8px; margin-bottom: 25px; font-family: 'Inter'; font-size: 16px; box-sizing: border-box; }
-        .cyber-input { height: 150px; resize: none; }
-        .cyber-select:focus, .cyber-input:focus { outline: none; border-color: var(--neon-amber); }
-        .submit-btn { width: 100%; background: rgba(245, 158, 11, 0.2); color: var(--neon-amber); border: 1px solid var(--neon-amber); padding: 15px; border-radius: 8px; font-family: 'JetBrains Mono'; font-weight: bold; cursor: pointer; text-transform: uppercase;}
-
-        /* --- ЭКРАН 3: ПРОФИЛЬ --- */
-        .profile-header { text-align: center; margin-top: 30px; width: 100%; }
-        .avatar { width: 80px; height: 80px; background: #2A363B; border-radius: 50%; margin: 0 auto 15px; border: 2px dashed var(--neon-amber); display: flex; align-items: center; justify-content: center; font-size: 30px; }
-        .rank { font-family: 'JetBrains Mono'; color: var(--neon-green); font-size: 14px; margin-bottom: 5px; }
-        
-        .stats-box { display: flex; justify-content: space-around; width: 90%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px 0; margin-top: 20px; }
-        .stat-item { text-align: center; }
-        .stat-val { font-size: 24px; font-weight: bold; font-family: 'JetBrains Mono'; color: var(--text-main); }
-        .stat-lbl { font-size: 11px; color: var(--text-dim); text-transform: uppercase; margin-top: 5px; }
-
-        .auth-section { width: 90%; margin-top: 40px; }
-        .auth-title { font-family: 'JetBrains Mono'; font-size: 12px; color: var(--text-dim); text-align: center; margin-bottom: 15px; }
-        .auth-btn { width: 100%; padding: 14px; border-radius: 8px; border: none; font-weight: 600; font-size: 15px; margin-bottom: 12px; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
-        .btn-tg { background: rgba(59, 130, 246, 0.15); color: var(--neon-blue); border: 1px solid rgba(59, 130, 246, 0.3); }
-        .btn-vk { background: rgba(59, 130, 246, 0.1); color: #818CF8; border: 1px solid rgba(59, 130, 246, 0.2); }
-        .btn-google { background: rgba(255, 255, 255, 0.05); color: var(--text-main); border: 1px solid rgba(255, 255, 255, 0.1); }
-
-        /* --- НИЖНЯЯ НАВИГАЦИЯ --- */
-        .bottom-nav {
-            position: fixed; bottom: 0; width: 100%; height: 70px;
-            background: rgba(7, 9, 8, 0.95); border-top: 1px solid var(--border);
-            display: flex; justify-content: space-around; align-items: center; z-index: 100;
-            padding-bottom: env(safe-area-inset-bottom);
+        /* --- БИОМЕТРИЯ В ПРОФИЛЕ --- */
+        .scanner-zone {
+            width: 120px; height: 120px; border: 1px solid var(--border);
+            border-radius: 50%; margin: 30px auto; display: flex; align-items: center;
+            justify-content: center; position: relative; cursor: pointer;
+            background: rgba(245, 158, 11, 0.02);
         }
-        .nav-item { color: var(--text-dim); font-family: 'JetBrains Mono'; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: color 0.2s; width: 33%; }
-        .nav-item svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; }
+        .scanner-line {
+            position: absolute; width: 90%; height: 2px; background: var(--neon-amber);
+            box-shadow: 0 0 10px var(--neon-amber); top: 0;
+            animation: scan 2s infinite ease-in-out; display: none;
+        }
+        @keyframes scan { 0% { top: 10%; } 50% { top: 90%; } 100% { top: 10%; } }
+
+        /* --- ФОРМА СОЗДАНИЯ --- */
+        .form-container { width: 90%; }
+        .cyber-select, .cyber-input { width: 100%; background: #0A0F0B; border: 1px solid var(--border); color: var(--text-main); padding: 16px; border-radius: 10px; margin-bottom: 25px; font-family: 'Inter'; font-size: 15px; box-sizing: border-box; }
+        .cyber-input { height: 140px; resize: none; }
+        .submit-btn { width: 100%; background: transparent; color: var(--neon-green); border: 1px solid var(--neon-green); padding: 16px; border-radius: 10px; font-family: 'JetBrains Mono'; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;}
+
+        /* --- НАВИГАЦИЯ --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; width: 100%; height: 65px;
+            background: rgba(5, 7, 6, 0.95); border-top: 1px solid var(--border);
+            display: flex; justify-content: space-around; align-items: center; z-index: 100;
+        }
+        .nav-item { color: #334155; font-family: 'JetBrains Mono'; font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; width: 33%; }
+        .nav-item svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; }
         .nav-item.active { color: var(--neon-amber); }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="logo">TRIBUNAL_OS</div>
-        <div style="font-family: 'JetBrains Mono'; color: var(--neon-green); font-size: 12px;" id="sys-status">SYS_ONLINE</div>
+        <div class="logo">TRIBUNAL_OS // v2.0</div>
+        <div style="font-family: 'JetBrains Mono'; color: var(--neon-amber); font-size: 11px;" id="sys-status">SYS_CONNECTING</div>
     </div>
 
-    <!-- ЭКРАН 1: АРЕНА (По умолчанию активен) -->
     <div class="view-container view-active" id="view-arena">
-        <div class="card" id="current-card">
-            <!-- Контент карточки подставляется через JS -->
-            <div class="results-overlay" id="results-overlay">
-                <div style="text-align:center; color:var(--neon-amber); font-family:'JetBrains Mono'; margin-bottom:20px;">ВЕРДИКТ</div>
-                <div class="bar-container">
-                    <div class="bar-label"><span style="color:var(--neon-red)" id="lbl-btn-left">ОСУДИТЬ</span><span id="lbl-left" style="font-family:'JetBrains Mono'">50%</span></div>
-                    <div class="bar-track"><div class="bar-fill-left" id="bar-left"></div></div>
+        <div class="card-deck" id="card-deck">
+            <div class="card" id="current-card">
+                <div class="swipe-indicator left" id="ind-left">ОСУДИТЬ</div>
+                <div class="swipe-indicator right" id="ind-right">ОПРАВДАТЬ</div>
+                
+                <div class="card-type-banner" id="card-banner">[ ЗАГРУЗКА ]</div>
+                <div class="card-content">
+                    <div class="card-text" id="card-text">Подключение к узлу сети...</div>
                 </div>
-                <div class="bar-container">
-                    <div class="bar-label"><span style="color:var(--neon-green)" id="lbl-btn-right">ОПРАВДАТЬ</span><span id="lbl-right" style="font-family:'JetBrains Mono'">50%</span></div>
-                    <div class="bar-track"><div class="bar-fill-right" id="bar-right"></div></div>
+                
+                <div class="results-overlay" id="results-overlay">
+                    <div style="text-align:center; color:var(--neon-amber); font-family:'JetBrains Mono'; font-size:12px; margin-bottom:25px; letter-spacing:2px;">РАСПРЕДЕЛЕНИЕ ГОЛОСОВ</div>
+                    <div class="bar-container">
+                        <div class="bar-label"><span id="lbl-res-left" style="color:var(--neon-red)">-</span><span id="lbl-left">0%</span></div>
+                        <div class="bar-track"><div class="bar-fill-left" id="bar-left"></div></div>
+                    </div>
+                    <div class="bar-container">
+                        <div class="bar-label"><span id="lbl-res-right" style="color:var(--neon-green)">-</span><span id="lbl-right">0%</span></div>
+                        <div class="bar-track"><div class="bar-fill-right" id="bar-right"></div></div>
+                    </div>
+                    <button class="next-btn" onclick="nextCase()">СЛЕДУЮЩЕЕ ДЕЛО</button>
                 </div>
-                <button class="next-btn" onclick="nextCase()">СЛЕДУЮЩЕЕ >>></button>
             </div>
         </div>
-        
-        <div class="controls" id="controls">
-            <button class="action-btn btn-left" id="btn-left" onclick="makeVote('left')">ОСУДИТЬ</button>
-            <button class="action-btn btn-right" id="btn-right" onclick="makeVote('right')">ОПРАВДАТЬ</button>
-        </div>
     </div>
 
-    <!-- ЭКРАН 2: СОЗДАНИЕ ДЕЛА -->
     <div class="view-container" id="view-create">
         <div class="form-container">
-            <label class="form-label">> ТИП ИНЦИДЕНТА</label>
-            <select class="cyber-select" id="new-case-type">
+            <select class="cyber-select" id="new-case-type" onchange="triggerSound('click')">
                 <option value="CONFESSION">ИСПОВЕДЬ (Мой грех)</option>
-                <option value="RED_FLAG">КРАСНЫЙ ФЛАГ (Оцените ситуацию)</option>
-                <option value="HOT_TAKE">БАЗА/БРЕД (Мое мнение)</option>
+                <option value="RED_FLAG">КРАСНЫЙ ФЛАГ (Оценка ситуации)</option>
+                <option value="HOT_TAKE">БАЗА / БРЕД (Мнение)</option>
             </select>
-
-            <label class="form-label">> МАТЕРИАЛЫ ДЕЛА</label>
-            <textarea class="cyber-input" id="new-case-text" placeholder="Опишите ситуацию. Сохраняйте анонимность..."></textarea>
-
-            <button class="submit-btn" onclick="submitCase()">ОТПРАВИТЬ В ТРИБУНАЛ</button>
+            <textarea class="cyber-input" id="new-case-text" placeholder="Опишите ситуацию анонимно..."></textarea>
+            <button class="submit-btn" onclick="submitCase()">ПЕРЕДАТЬ В ТРИБУНАЛ</button>
         </div>
     </div>
 
-    <!-- ЭКРАН 3: ПРОФИЛЬ И АВТОРИЗАЦИЯ -->
     <div class="view-container" id="view-profile">
-        <div class="profile-header">
-            <div class="avatar">👤</div>
-            <div class="rank">СУДЬЯ-МАРГИНАЛ</div>
-            <div style="font-size: 20px; font-weight: bold;">User_A94B</div>
-        </div>
-
-        <div class="stats-box">
-            <div class="stat-item">
-                <div class="stat-val" style="color: var(--neon-amber)">24</div>
-                <div class="stat-lbl">Дел решено</div>
+        <div style="text-align: center; width: 100%;">
+            <div class="scanner-zone" id="scanner" onmousedown="startScan()" onmouseup="stopScan()" ontouchstart="startScan()" ontouchend="stopScan()">
+                <div class="scanner-line" id="scan-line"></div>
+                <span id="scan-finger" style="font-size:36px; filter: grayscale(1) sepia(1) saturate(5);">🖕</span>
             </div>
-            <div class="stat-item">
-                <div class="stat-val" style="color: var(--neon-green)">120</div>
-                <div class="stat-lbl">Карма</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-val" style="color: var(--neon-blue)">50</div>
-                <div class="stat-lbl">Токены</div>
-            </div>
-        </div>
-
-        <div class="auth-section">
-            <div class="auth-title">ПРИВЯЗКА ЛИЧНОСТИ (СКОРО)</div>
-            <button class="auth-btn btn-tg" onclick="alert('Для работы Telegram Auth нужно добавить Bot Token в переменные Railway')">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.11.03-1.9 1.21-5.36 3.55-.5.35-1 .51-1.46.5-.49-.01-1.42-.27-2.11-.5-.83-.27-1.49-.41-1.43-.88.03-.23.36-.47.99-.72 3.86-1.68 6.43-2.79 7.7-3.32 3.66-1.52 4.42-1.78 4.91-1.79.11 0 .35.03.48.14.11.09.14.22.15.34-.01.07-.01.21-.02.26z"/></svg>
-                Войти через Telegram
-            </button>
-            <button class="auth-btn btn-google" onclick="alert('Требуется Google Client ID')">Войти через Google</button>
+            <div style="font-family:'JetBrains Mono'; color:var(--neon-amber); font-size:13px; margin-top:-10px;" id="scan-status">ТРЕБУЕТСЯ ИДЕНТИФИКАЦИЯ</div>
+            
+            <div style="margin-top: 30px; font-size: 22px; font-weight: bold;" id="prof-name">USER_ANONYMOUS</div>
         </div>
     </div>
 
-    <!-- НИЖНЕЕ МЕНЮ -->
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('arena', this)">
-            <svg viewBox="0 0 24 24"><path d="M12 2L2 22l10-4 10 4L12 2z"/></svg>
-            АРЕНА
+            <svg viewBox="0 0 24 24"><path d="M12 2L2 22l10-4 10 4L12 2z"/></svg>АРЕНА
         </div>
         <div class="nav-item" onclick="switchTab('create', this)">
-            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-            ДОНЕСТИ
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>ДОНЕСТИ
         </div>
         <div class="nav-item" onclick="switchTab('profile', this)">
-            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
-            ПРОФИЛЬ
+            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>ПРОФИЛЬ
         </div>
     </div>
 
 <script>
     let cases = [
-        { id: "1", type: "CONFESSION", title: "ИСПОВЕДЬ", text: "Я работаю баристой и тайно наливаю обычный кофе клиентам..." },
-        { id: "2", type: "RED_FLAG", title: "КРАСНЫЙ ФЛАГ", text: "На первом свидании парень попросил разделить счет пополам..." }
+        { id: "1", type: "CONFESSION", title: "ИСПОВЕДЬ", text: "Я работаю баристой и тайно наливаю обычный кофе клиентам, которые просят декаф и при этом хамят мне." },
+        { id: "2", type: "RED_FLAG", title: "КРАСНЫЙ ФЛАГ", text: "На первом свидании парень попросил разделить счет пополам, хотя сам позвал меня в дорогой ресторан. Это красный флаг?" },
+        { id: "3", type: "HOT_TAKE", title: "БАЗА ИЛИ БРЕД", text: "Люди, которые отправляют голосовые сообщения длиннее минуты, не уважают чужое время." }
     ];
     let currentIndex = 0;
     let stompClient = null;
@@ -219,74 +202,168 @@
         "HOT_TAKE": { l: "БРЕД", r: "БАЗА" }
     };
 
+    // --- СИНТЕЗАТОР ЗВУКОВ (Web Audio API) ---
+    let audioCtx = null;
+    function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    
+    function triggerSound(type) {
+        initAudio();
+        if(!audioCtx) return;
+        
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+
+        if (type === 'click') {
+            osc.type = 'sine'; osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.04);
+        } else if (type === 'zap') {
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+        }
+    }
+
+    function triggerHaptic() {
+        if (navigator.vibrate) navigator.vibrate(30);
+    }
+
+    // --- ПОДКЛЮЧЕНИЕ WEBSOCKET ---
     function connect() {
         const socket = new SockJS('/ws');
         stompClient = Stomp.over(socket);
         stompClient.debug = null;
         stompClient.connect({}, function () {
-            document.getElementById('sys-status').innerText = 'LINK_ESTABLISHED';
-            
+            document.getElementById('sys-status').innerText = 'SYS_ONLINE';
             stompClient.subscribe('/topic/live-results', (msg) => updateCharts(JSON.parse(msg.body)));
-            
-            // Слушаем новые дела от других пользователей
             stompClient.subscribe('/topic/new-cases', (msg) => {
-                const newCase = JSON.parse(msg.body);
-                // Добавляем красивый заголовок в зависимости от типа
+                const c = JSON.parse(msg.body);
                 const titles = {"CONFESSION": "ИСПОВЕДЬ", "RED_FLAG": "КРАСНЫЙ ФЛАГ", "HOT_TAKE": "БАЗА ИЛИ БРЕД"};
-                newCase.title = titles[newCase.type];
-                cases.push(newCase);
-                
-                // Если лента была пуста, рендерим новую карточку
-                if(document.getElementById('main-text').innerText === "ОЖИДАНИЕ НОВЫХ ДЕЛ...") {
-                    renderCard();
-                }
+                c.title = titles[c.type]; cases.push(c);
+                if(currentIndex >= cases.length - 1) renderCard();
             });
         });
     }
 
     function switchTab(tab, el) {
+        triggerSound('click'); triggerHaptic();
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         document.querySelectorAll('.view-container').forEach(v => v.classList.remove('view-active'));
-        
         el.classList.add('active');
         document.getElementById('view-' + tab).classList.add('view-active');
     }
 
     function renderCard() {
         const card = document.getElementById('current-card');
-        const overlay = document.getElementById('results-overlay');
-        const controls = document.getElementById('controls');
+        document.getElementById('results-overlay').style.display = 'none';
         
-        overlay.style.display = 'none';
+        // Сброс стилей после свайпа
+        card.style.transform = 'translate(0px, 0px) rotate(0deg)';
+        card.style.opacity = '1';
+        card.style.borderColor = 'var(--border)';
+        document.getElementById('ind-left').style.opacity = 0;
+        document.getElementById('ind-right').style.opacity = 0;
 
         if (currentIndex >= cases.length) {
-            card.innerHTML = `<div class="card-content"><div class="card-text" id="main-text" style="color:var(--neon-amber)">ОЖИДАНИЕ НОВЫХ ДЕЛ...</div></div>`;
-            controls.style.display = 'none';
+            document.getElementById('card-banner').innerText = "[ КОНЕЦ СЕССИИ ]";
+            document.getElementById('card-text').innerHTML = "<span style='color:var(--neon-amber)'>ВСЕ ДЕЛА РАССМОТРЕНЫ.<br>ОЖИДАЙТЕ НОВЫХ ПРЕЦЕДЕНТОВ.</span>";
             return;
         }
 
         const item = cases[currentIndex];
-        document.getElementById('btn-left').innerText = labels[item.type].l;
-        document.getElementById('btn-right').innerText = labels[item.type].r;
-        controls.style.display = 'flex';
-
-        card.innerHTML = `
-            <div class="card-type-banner">[ ${item.title} ]</div>
-            <div class="card-content"><div class="card-text" id="main-text">"${item.text}"</div></div>
-        `;
-        card.appendChild(overlay); // Возвращаем overlay обратно в карточку
+        document.getElementById('card-banner').innerText = `[ ${item.title} ]`;
+        document.getElementById('card-text').innerText = `"${item.text}"`;
+        
+        document.getElementById('ind-left').innerText = labels[item.type].l;
+        document.getElementById('ind-right').innerText = labels[item.type].r;
     }
 
-    function makeVote(dir) {
-        const item = cases[currentIndex];
-        document.getElementById('controls').style.display = 'none';
+    // --- СВАЙП-ДВИЖОК (TOUCH ENGINE) ---
+    const card = document.getElementById('current-card');
+    let startX = 0, currentX = 0, distanceX = 0;
+    let isDragging = false;
+
+    card.addEventListener('touchstart', (e) => {
+        if(document.getElementById('results-overlay').style.display === 'flex') return;
+        isDragging = true;
+        card.classList.add('dragging');
+        startX = e.touches[0].clientX;
+        initAudio();
+    });
+
+    card.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        currentX = e.touches[0].clientX;
+        distanceX = currentX - startX;
         
-        // Настраиваем надписи в результатах
-        document.getElementById('lbl-btn-left').innerText = labels[item.type].l;
-        document.getElementById('lbl-btn-right').innerText = labels[item.type].r;
+        // Вычисляем угол наклона карточки при перетаскивании
+        let rotation = distanceX / 15;
+        card.style.transform = `translate(${distanceX}px, ${Math.abs(distanceX)/6}px) rotate(${rotation}deg)`;
+        
+        // Индикаторы выбора
+        if(distanceX > 40) {
+            document.getElementById('ind-right').style.opacity = Math.min(distanceX / 100, 1);
+            document.getElementById('ind-left').style.opacity = 0;
+            card.style.borderColor = 'var(--neon-green)';
+        } else if (distanceX < -40) {
+            document.getElementById('ind-left').style.opacity = Math.min(Math.abs(distanceX) / 100, 1);
+            document.getElementById('ind-right').style.opacity = 0;
+            card.style.borderColor = 'var(--neon-red)';
+        } else {
+            document.getElementById('ind-left').style.opacity = 0;
+            document.getElementById('ind-right').style.opacity = 0;
+            card.style.borderColor = 'var(--border)';
+        }
+    });
+
+    card.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        card.classList.remove('dragging');
+        
+        const threshold = window.innerWidth * 0.35; // Порог свайпа - 35% экрана
+        
+        if (distanceX > threshold) {
+            executeVote('right');
+        } else if (distanceX < -threshold) {
+            executeVote('left');
+        } else {
+            // Возврат карточки на место, если свайп слабый
+            card.style.transition = 'transform 0.3s ease, border-color 0.3s';
+            card.style.transform = 'translate(0px, 0px) rotate(0deg)';
+            card.style.borderColor = 'var(--border)';
+            document.getElementById('ind-left').style.opacity = 0;
+            document.getElementById('ind-right').style.opacity = 0;
+            setTimeout(() => card.style.transition = '', 300);
+        }
+        distanceX = 0;
+    });
+
+    function executeVote(dir) {
+        triggerSound('zap'); triggerHaptic();
+        const item = cases[currentIndex];
+        
+        document.getElementById('lbl-res-left').innerText = labels[item.type].l;
+        document.getElementById('lbl-res-right').innerText = labels[item.type].r;
+
+        // Эвакуация карточки со сцены в бок
+        card.style.transition = 'transform 0.2s ease, opacity 0.2s';
+        card.style.transform = `translate(${dir === 'right' ? 150 : -150}%, 20px) rotate(${dir === 'right' ? 25 : -25}deg)`;
+        card.style.opacity = '0';
 
         if (stompClient) stompClient.send("/app/vote", {}, JSON.stringify({ caseId: item.id, direction: dir }));
-        document.getElementById('results-overlay').style.display = 'flex';
+        
+        // Плавный возврат в центр, но уже с открытым экраном результатов
+        setTimeout(() => {
+            card.style.transition = '';
+            card.style.transform = 'translate(0px, 0px) rotate(0deg)';
+            card.style.opacity = '1';
+            document.getElementById('results-overlay').style.display = 'flex';
+        }, 250);
     }
 
     function updateCharts(res) {
@@ -299,22 +376,46 @@
     }
 
     function nextCase() {
+        triggerSound('click'); triggerHaptic();
         currentIndex++;
         renderCard();
     }
 
-    // Отправка нового дела на сервер
     function submitCase() {
         const type = document.getElementById('new-case-type').value;
         const text = document.getElementById('new-case-text').value;
-        
-        if(text.length < 10) { alert('Слишком короткое описание!'); return; }
-
+        if(text.length < 5) return;
         if (stompClient) {
             stompClient.send("/app/create", {}, JSON.stringify({ type: type, content: text }));
             document.getElementById('new-case-text').value = '';
-            alert('Дело передано в Трибунал!');
-            switchTab('arena', document.querySelector('.nav-item')); // Возвращаемся на арену
+            triggerSound('zap');
+            switchTab('arena', document.querySelector('.nav-item'));
+        }
+    }
+
+    // --- ИНТЕРАКТИВНАЯ БИОМЕТРИЯ ---
+    let scanTimeout;
+    function startScan() {
+        initAudio(); triggerHaptic();
+        document.getElementById('scan-line').style.display = 'block';
+        document.getElementById('scan-status').innerText = 'СКАНИРОВАНИЕ...';
+        document.getElementById('scan-status').style.color = 'var(--neon-amber)';
+        
+        scanTimeout = setTimeout(() => {
+            triggerSound('zap'); triggerHaptic();
+            document.getElementById('scan-line').style.display = 'none';
+            document.getElementById('scan-status').innerText = 'ЛИЧНОСТЬ ПОДТВЕРЖДЕНА';
+            document.getElementById('scan-status').style.color = 'var(--neon-green)';
+            document.getElementById('prof-name').innerText = 'ВЕРХОВНЫЙ_СУДЬЯ_77';
+            document.getElementById('scan-finger').innerText = '👁️';
+        }, 1500);
+    }
+    function stopScan() {
+        clearTimeout(scanTimeout);
+        if(document.getElementById('scan-status').innerText === 'СКАНИРОВАНИЕ...') {
+            document.getElementById('scan-line').style.display = 'none';
+            document.getElementById('scan-status').innerText = 'СКАНИРОВАНИЕ ПРЕРВАНО';
+            document.getElementById('scan-status').style.color = 'var(--neon-red)';
         }
     }
 
