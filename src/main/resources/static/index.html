@@ -2,11 +2,17 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#050507">
+    
     <title>Сдвиг</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
     <div class="header">
         <div class="header-left">
             <div class="back-btn" id="btn-back" onclick="closeArena()">‹ Назад</div>
@@ -15,10 +21,8 @@
         <div class="spark-balance-badge" id="spark-badge">💎 <span id="user-sparks">42</span></div>
     </div>
 
-    <!-- ВКЛАДКА 1: ЛЕНТА -->
     <div class="view-container view-active" id="view-feed"></div>
 
-    <!-- ВКЛАДКА 2: АРЕНА -->
     <div class="view-container" id="view-arena">
         <div class="card-deck">
             <div class="card" id="current-card">
@@ -29,9 +33,8 @@
                     <div id="card-author">🎭 Аноним</div>
                     <div id="card-banner">Исповедь</div>
                 </div>
-                <div class="card-content"><div class="card-text" id="card-text">Загрузка...</div></div>
+                <div class="card-content"><div class="card-text" id="card-text">Выберите прецедент в Ленте</div></div>
                 
-                <!-- Результаты + ИГРА + Комментарии -->
                 <div class="results-scroll-area" id="results-area">
                     <div class="results-header-block">
                         <div class="bar-container">
@@ -43,17 +46,13 @@
                             <div class="bar-track"><div class="bar-fill-right" id="bar-right"></div></div>
                         </div>
                     </div>
-                    
-                    <!-- Блок для мини-игры -->
                     <div id="minigame-wrapper"></div>
-
                     <div class="comments-section" id="card-comments-block"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ВКЛАДКА 3: НАПИСАТЬ -->
     <div class="view-container" id="view-create">
         <div class="form-container">
             <div class="form-title">Запустить сдвиг</div>
@@ -62,7 +61,7 @@
                 <option value="RED_FLAG">🚩 Красный флаг (Это норма?)</option>
                 <option value="HOT_TAKE">⚡ Спорное мнение (База или Бред)</option>
             </select>
-            <textarea class="modern-input" id="new-case-text" placeholder="Расскажи свою историю честно. Никто не узнает твоего имени..."></textarea>
+            <textarea class="modern-input" id="new-case-text" placeholder="Расскажи свою историю честно..."></textarea>
             <div class="boost-checkbox-container">
                 <div class="boost-label-block">
                     <h4>⚡ Вывести в «Сверхрезонанс»</h4>
@@ -74,7 +73,6 @@
         </div>
     </div>
 
-    <!-- ВКЛАДКА 4: ПРОФИЛЬ -->
     <div class="view-container" id="view-profile">
         <div class="profile-container">
             <div class="profile-header">
@@ -84,15 +82,12 @@
                     <p>Ранг: Детектив Базы</p>
                 </div>
             </div>
-            
-            <!-- Добавлен стат Интуиции (Распознано ИИ) -->
             <div class="stats-grid">
                 <div class="stat-card"><div class="stat-value" style="color: var(--accent-blue)">48</div><div class="stat-label">Сдвигов</div></div>
                 <div class="stat-card"><div class="stat-value" style="color: var(--accent-green)">84%</div><div class="stat-label">Солидарность</div></div>
                 <div class="stat-card"><div class="stat-value" style="color: var(--accent-red)">8</div><div class="stat-label">Бунтарство</div></div>
                 <div class="stat-card"><div class="stat-value" id="stat-ai" style="color: var(--accent-purple)">0</div><div class="stat-label">Распознано ИИ</div></div>
             </div>
-
             <div class="donation-banner">
                 <div>
                     <div style="font-weight:700; font-size:16px; margin-bottom:4px;">Пополнить Искры</div>
@@ -100,16 +95,13 @@
                 </div>
                 <button class="action-btn" style="width:auto; margin:0; padding:10px 16px; background:var(--accent-purple);" onclick="buySparks()">+ Купить</button>
             </div>
-
             <div class="auth-section">
-                <h3>Защитить аккаунт и баланс</h3>
-                <button class="auth-btn btn-tg" onclick="alert('Интеграция Telegram Bot API')">Войти через Telegram</button>
-                <button class="auth-btn btn-google" onclick="alert('Интеграция Google Auth API')">Войти через Google</button>
+                <h3>Защитить аккаунт</h3>
+                <button class="auth-btn btn-tg">Войти через Telegram</button>
             </div>
         </div>
     </div>
 
-    <!-- НАВИГАЦИЯ -->
     <div class="bottom-nav" id="bottom-nav">
         <div class="nav-item active" id="nav-feed" onclick="switchTab('feed')"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Лента</span></div>
         <div class="nav-item" id="nav-arena" onclick="switchTab('arena'); openArenaFromNav();"><svg viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m12 14-4-4h8z"/></svg><span>Арена</span></div>
