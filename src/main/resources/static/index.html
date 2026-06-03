@@ -20,8 +20,7 @@
             <h2>Личное дело</h2>
             <p>Выберите специализацию вашей личности для анализа архивов</p>
         </div>
-        <div class="class-grid" id="class-cards-container">
-            </div>
+        <div class="class-grid" id="class-cards-container"></div>
     </div>
 
     <div class="game-header">
@@ -43,12 +42,11 @@
                 </div>
                 <div class="case-body">
                     <div class="case-text" id="active-case-text">Свидетель утверждает, что находился в главном офисе во время инцидента, однако в журнале посещений его подпись продублирована чужим почерком.</div>
-                    <div class="clue-reveal-box" id="active-case-clue">
-                        </div>
+                    <div class="clue-reveal-box" id="active-case-clue"></div>
                 </div>
                 <div class="action-footer" id="game-trigger-footer">
-                    <button class="premium-btn" onclick="startClassMinigame()">
-                        🔎 Запустить экспертизу (Уровень <span id="minigame-lv-indicator">1</span>/3)
+                    <button class="premium-btn" id="start-game-btn">
+                        🔎 Запустить экспертизу (Уровень <span id="minigame-lv-indicator">1</span>/100)
                     </button>
                 </div>
             </div>
@@ -69,7 +67,7 @@
                         <div class="skill-lv">Уровень <span id="skill-lv-1">1</span></div>
                     </div>
                 </div>
-                <button class="buy-skill-btn" onclick="upgradeSkill(1)">40 🪙</button>
+                <button class="buy-skill-btn" id="upgrade-s1-btn">40 🪙</button>
             </div>
             <div class="skill-card">
                 <div class="skill-details">
@@ -79,7 +77,7 @@
                         <div class="skill-lv">Уровень <span id="skill-lv-2">1</span></div>
                     </div>
                 </div>
-                <button class="buy-skill-btn" onclick="upgradeSkill(2)">90 🪙</button>
+                <button class="buy-skill-btn" id="upgrade-s2-btn">90 🪙</button>
             </div>
         </div>
     </div>
@@ -113,20 +111,20 @@
     <div class="minigame-overlay" id="minigame-overlay-layer">
         <div class="minigame-box">
             <div class="minigame-title" id="mg-title-lbl">Экспертиза</div>
-            <div class="minigame-subtitle" id="mg-subtitle-lbl">Уровень 1 из 3</div>
+            <div class="minigame-subtitle" id="mg-subtitle-lbl">Уровень 1 из 100</div>
             <div class="game-viewport" id="mg-render-viewport">
                 <div class="success-screen" id="mg-success-screen">АНАЛИЗ ЗАВЕРШЕН</div>
             </div>
-            <button class="premium-btn" style="border-color:var(--accent-crimson); color:var(--accent-crimson);" onclick="exitMinigame(false)">Прервать экспертизу</button>
+            <button class="premium-btn" style="border-color:var(--accent-crimson); color:var(--accent-crimson);" id="close-mg-btn">Прервать экспертизу</button>
         </div>
     </div>
 
     <div class="navigation-bar">
-        <div class="nav-tab" id="tab-hq" onclick="switchView('hq')"><div class="nav-tab-icon">⬡</div><span>Штаб</span></div>
-        <div class="nav-tab active" id="tab-arena" onclick="switchView('arena')"><div class="nav-tab-icon">⎔</div><span>Арена</span></div>
-        <div class="nav-tab" id="tab-profile" onclick="switchView('profile')"><div class="nav-tab-icon">👤</div><span>Досье</span></div>
+        <div class="nav-tab" id="tab-hq"><div class="nav-tab-icon">⬡</div><span>Штаб</span></div>
+        <div class="nav-tab active" id="tab-arena"><div class="nav-tab-icon">⎔</div><span>Арена</span></div>
+        <div class="nav-tab" id="tab-profile"><div class="nav-tab-icon">👤</div><span>Досье</span></div>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
