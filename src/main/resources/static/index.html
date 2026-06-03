@@ -4,104 +4,116 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#050507">
-    <title>Нейро-Детектив</title>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>СДВИГ // ОС</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="header">
-        <div class="logo">СДВИГ <span>// ОС</span></div>
-        <div class="spark-balance-badge">⚡ <span id="energy-count">100</span></div>
+        <div class="logo">Сдвиг <span>// ОС</span></div>
+        <div class="energy-badge">⚡ <span id="energy-count">100</span>%</div>
     </div>
 
-    <!-- ЭКРАН 1: ШТАБ (ВЫБОР РОЛИ) -->
     <div class="view-container view-active" id="view-hq">
-        <div class="role-selection">
-            <h2 style="text-align:center; color: var(--text-primary);">Выберите профиль</h2>
-            
-            <div class="role-card" onclick="selectRole('detective')">
-                <div class="role-icon">🕵️‍♂️</div>
-                <div class="role-info">
-                    <h3>Следователь</h3>
-                    <p>Анализ человеческих пороков и улик.</p>
-                </div>
+        <div class="section-title">Инициализация профиля</div>
+        
+        <div class="role-card" onclick="selectRole('detective')">
+            <div class="role-icon" style="color: #00E5FF; border-color: #00E5FF;">👁️</div>
+            <div class="role-info">
+                <h3 style="color: #00E5FF;">Следователь</h3>
+                <p>Анализ поведенческих паттернов и человеческих пороков.</p>
             </div>
-            
-            <div class="role-card" onclick="selectRole('hacker')">
-                <div class="role-icon">🧑‍💻</div>
-                <div class="role-info">
-                    <h3>Кибер-Взломщик</h3>
-                    <p>Поиск уязвимостей в коде ИИ и сетях.</p>
-                </div>
+        </div>
+        
+        <div class="role-card" onclick="selectRole('hacker')">
+            <div class="role-icon" style="color: #00FF66; border-color: #00FF66;">💻</div>
+            <div class="role-info">
+                <h3 style="color: #00FF66;">Кибер-Взломщик</h3>
+                <p>Поиск бэкдоров, расшифровка логов и мини-игры.</p>
             </div>
-            
-            <div class="role-card" onclick="selectRole('psycho')">
-                <div class="role-icon">👁️</div>
-                <div class="role-info">
-                    <h3>Нейро-Психолог</h3>
-                    <p>Выявление когнитивных искажений.</p>
-                </div>
+        </div>
+        
+        <div class="role-card" onclick="selectRole('psycho')">
+            <div class="role-icon" style="color: #FF007A; border-color: #FF007A;">🧠</div>
+            <div class="role-info">
+                <h3 style="color: #FF007A;">Нейро-Психолог</h3>
+                <p>Выявление когнитивных искажений и токсичности.</p>
             </div>
         </div>
     </div>
 
-    <!-- ЭКРАН 2: РАССЛЕДОВАНИЕ (СВАЙПЫ) -->
     <div class="view-container" id="view-investigation">
         <div class="card-deck">
             <div class="card" id="current-case">
                 <div class="swipe-indicator left" id="ind-left">ЛОЖЬ</div>
                 <div class="swipe-indicator right" id="ind-right">ИСТИНА</div>
+                
                 <div class="card-type-banner">
-                    <div id="case-id">Дело #404</div>
-                    <div id="case-role">Кибер-Взломщик</div>
+                    <div id="case-id">Дело #089</div>
+                    <div id="case-role">Ожидание...</div>
                 </div>
+                
                 <div class="card-content">
-                    <div class="card-text">В логах сервера обнаружен аномальный скачок трафика в 03:00. ИИ утверждает, что это плановое обновление.</div>
+                    <div class="card-text" id="card-text">В логах сервера обнаружен аномальный скачок трафика в 03:00. Система утверждает, что это плановое резервное копирование.</div>
+                    
+                    <div class="clue-box" id="clue-box">
+                        <span>Расшифрованные данные</span>
+                        <div id="clue-text">IP-адрес резервного копирования находится в неизвестной подсети. Вероятность обмана 94%.</div>
+                    </div>
                 </div>
-                <!-- Кнопка вызова мини-игры для подсказки -->
-                <div class="clue-action">
-                    <button class="action-btn hack-btn" onclick="triggerMinigameVortex()">Взломать систему (Мини-игра)</button>
+                
+                <div class="clue-action" id="action-area">
+                    <button class="hack-btn" onclick="triggerMinigameVortex()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                        Взломать узел
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ЭКРАН: МИНИ-ИГРА (ПОЯВЛЯЕТСЯ ИЗ ВОРОНКИ) -->
-    <div class="view-container minigame-overlay" id="view-minigame">
-        <div class="minigame-board">
-            <h2>Три-в-ряд: Взлом</h2>
-            <div class="grid-placeholder">
-                <div class="grid-cell">💎</div><div class="grid-cell">🔥</div><div class="grid-cell">👁️</div>
-                <div class="grid-cell">🔥</div><div class="grid-cell">💎</div><div class="grid-cell">🔥</div>
-                <div class="grid-cell">👁️</div><div class="grid-cell">🔥</div><div class="grid-cell">💎</div>
+    <div class="minigame-overlay" id="view-minigame">
+        <div class="minigame-wrapper">
+            <div class="minigame-header">
+                <h2>Протокол обхода</h2>
+                <p>Свяжите два смежных узла для дешифровки</p>
             </div>
-            <p>Соберите комбинацию, чтобы расшифровать лог.</p>
-            <button class="action-btn" onclick="exitMinigame()">Завершить взлом</button>
+            <div class="cyber-board" id="cyber-board">
+                <div class="mg-success-msg" id="mg-success">ДОСТУП ОТКРЫТ</div>
+            </div>
+            <button class="hack-btn" style="margin-top: 30px; background: rgba(255,0,122,0.1); border-color: #FF007A; color: #FF007A;" onclick="cancelMinigame()">Прервать взлом</button>
         </div>
     </div>
 
-    <!-- ЭКРАН 3: ПРОФИЛЬ -->
     <div class="view-container" id="view-profile">
         <div class="profile-container">
+            <div class="section-title">Личное дело</div>
             <div class="profile-header">
-                <div class="avatar">🦊</div>
+                <div class="avatar"><span>🦊</span></div>
                 <div class="profile-info">
-                    <h2>Агент_8</h2>
-                    <p>Ранг: Элитный Оперативник</p>
+                    <h2 style="margin: 0 0 4px 0; font-size: 24px;">Агент_8</h2>
+                    <p style="color: var(--accent-cyan); font-weight: 600;">Элитный Оперативник</p>
                 </div>
             </div>
             <div class="stats-grid">
-                <div class="stat-card"><div class="stat-value" style="color: var(--accent-blue)">142</div><div class="stat-label">Дел закрыто</div></div>
+                <div class="stat-card"><div class="stat-value" style="color: var(--accent-cyan)">142</div><div class="stat-label">Дел закрыто</div></div>
                 <div class="stat-card"><div class="stat-value" style="color: var(--accent-green)">88%</div><div class="stat-label">Точность</div></div>
+                <div class="stat-card"><div class="stat-value" style="color: var(--accent-pink)">12</div><div class="stat-label">Взломов</div></div>
+                <div class="stat-card"><div class="stat-value" style="color: #E4A0FF">Топ 5%</div><div class="stat-label">Рейтинг</div></div>
             </div>
         </div>
     </div>
 
-    <!-- НАВИГАЦИЯ -->
     <div class="bottom-nav" id="bottom-nav">
-        <div class="nav-item active" id="nav-hq" onclick="switchTab('hq')"><span>Штаб</span></div>
-        <div class="nav-item" id="nav-investigation" onclick="switchTab('investigation')"><span>Дело</span></div>
-        <div class="nav-item" id="nav-profile" onclick="switchTab('profile')"><span>Досье</span></div>
+        <div class="nav-item active" id="nav-hq" onclick="switchTab('hq')">
+            <div class="nav-icon">⬡</div><span>Штаб</span>
+        </div>
+        <div class="nav-item" id="nav-investigation" onclick="switchTab('investigation')">
+            <div class="nav-icon">⎔</div><span>Арена</span>
+        </div>
+        <div class="nav-item" id="nav-profile" onclick="switchTab('profile')">
+            <div class="nav-icon">👤</div><span>Досье</span>
+        </div>
     </div>
 
     <script src="app.js"></script>
