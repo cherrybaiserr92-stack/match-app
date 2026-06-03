@@ -9,111 +9,129 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="header">
-        <div class="logo">Сдвиг <span>// ОС</span></div>
-        <div class="energy-badge">⚡ <span id="energy-count">100</span>%</div>
+
+    <div class="splash-screen" id="splash-screen">
+        <div class="splash-logo">СДВИГ<span>//ОС</span></div>
+        <div class="splash-loader"></div>
     </div>
 
-    <div class="view-container view-active" id="view-hq">
-        <div class="section-title">Инициализация профиля</div>
-        
-        <div class="role-card" onclick="selectRole('detective')">
-            <div class="role-icon" style="color: #00E5FF; border-color: #00E5FF;">👁️</div>
-            <div class="role-info">
-                <h3 style="color: #00E5FF;">Следователь</h3>
-                <p>Анализ поведенческих паттернов и человеческих пороков.</p>
-            </div>
+    <div class="onboarding-screen" id="onboarding-screen">
+        <div style="text-align: center; margin-bottom: 10px;">
+            <h2 style="margin: 0; font-size: 24px; font-weight: 900;">Инициализация сущности</h2>
+            <p style="color: var(--text-muted); font-size: 13px; margin: 6px 0 0 0;">Выберите стартовую матрицу восприятия</p>
         </div>
-        
-        <div class="role-card" onclick="selectRole('hacker')">
-            <div class="role-icon" style="color: #00FF66; border-color: #00FF66;">💻</div>
-            <div class="role-info">
-                <h3 style="color: #00FF66;">Кибер-Взломщик</h3>
-                <p>Поиск бэкдоров, расшифровка логов и мини-игры.</p>
+        <div class="roles-list" id="roles-anchor">
             </div>
-        </div>
-        
-        <div class="role-card" onclick="selectRole('psycho')">
-            <div class="role-icon" style="color: #FF007A; border-color: #FF007A;">🧠</div>
-            <div class="role-info">
-                <h3 style="color: #FF007A;">Нейро-Психолог</h3>
-                <p>Выявление когнитивных искажений и токсичности.</p>
-            </div>
+    </div>
+
+    <div class="app-header">
+        <div class="app-logo">Сдвиг<span>//ОС</span></div>
+        <div class="hud-metrics">
+            <div class="hud-badge">🔋 <span id="hud-energy">100</span>%</div>
+            <div class="hud-badge" style="color: var(--accent-amber);">✨ <span id="hud-sparks">350</span></div>
         </div>
     </div>
 
-    <div class="view-container" id="view-investigation">
+    <div class="view-container view-active" id="view-arena">
         <div class="card-deck">
-            <div class="card" id="current-case">
+            <div class="card" id="case-card">
                 <div class="swipe-indicator left" id="ind-left">ЛОЖЬ</div>
                 <div class="swipe-indicator right" id="ind-right">ИСТИНА</div>
-                
-                <div class="card-type-banner">
-                    <div id="case-id">Дело #089</div>
-                    <div id="case-role">Ожидание...</div>
+                <div class="card-header-line">
+                    <div id="case-num">Кейс #712</div>
+                    <div id="case-role-tag" style="color: var(--accent-cyan);">Загрузка...</div>
                 </div>
-                
-                <div class="card-content">
-                    <div class="card-text" id="card-text">В логах сервера обнаружен аномальный скачок трафика в 03:00. Система утверждает, что это плановое резервное копирование.</div>
-                    
-                    <div class="clue-box" id="clue-box">
-                        <span>Расшифрованные данные</span>
-                        <div id="clue-text">IP-адрес резервного копирования находится в неизвестной подсети. Вероятность обмана 94%.</div>
+                <div class="card-main-body">
+                    <div class="card-main-text" id="case-text">Синтетический интеллект запрашивает доступ к биометрическим данным сотрудников под предлогом обновления систем безопасности.</div>
+                    <div class="clue-box" id="case-clue">
+                        <span style="font-size: 9px; text-transform: uppercase; color: var(--text-muted); display:block; margin-bottom: 2px;">Анализ узла</span>
+                        Логи запроса указывают на скрытую отправку данных на внешний сервер. Вероятность вредоносного ИИ: 96%.
                     </div>
                 </div>
-                
-                <div class="clue-action" id="action-area">
-                    <button class="hack-btn" onclick="triggerMinigameVortex()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
-                        Взломать узел
+                <div class="hack-trigger-zone" id="hack-zone">
+                    <button class="action-cyber-btn" onclick="openMinigame()">
+                        🤖 Взломать узел для подсказки
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="minigame-overlay" id="view-minigame">
-        <div class="minigame-wrapper">
-            <div class="minigame-header">
-                <h2>Протокол обхода</h2>
-                <p>Свяжите два смежных узла для дешифровки</p>
+    <div class="view-container" id="view-hq">
+        <div class="hq-hero">
+            <div class="hq-current-role" id="hq-role-display">Профиль: Не выбран</div>
+            <h2>Оперативный Штаб</h2>
+            <p style="margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.4;">Улучшайте характеристики имплантов, чтобы повысить точность калибровки ИИ.</p>
+        </div>
+        
+        <h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; color: var(--text-muted);">Импланты и Модификаторы</h3>
+        <div class="upgrade-grid">
+            <div class="upgrade-item">
+                <div class="upgrade-info">
+                    <div class="upgrade-icon">👁️</div>
+                    <div>
+                        <div class="up-title">Нейро-Сенсор</div>
+                        <div class="up-level">Ур. <span id="up-lvl-1">1</span></div>
+                    </div>
+                </div>
+                <button class="upgrade-cost-btn" onclick="buyUpgrade(1)">50 ✨</button>
             </div>
-            <div class="cyber-board" id="cyber-board">
-                <div class="mg-success-msg" id="mg-success">ДОСТУП ОТКРЫТ</div>
+            <div class="upgrade-item">
+                <div class="upgrade-info">
+                    <div class="upgrade-icon">🧠</div>
+                    <div>
+                        <div class="up-title">Дешифратор Сигналов</div>
+                        <div class="up-level">Ур. <span id="up-lvl-2">1</span></div>
+                    </div>
+                </div>
+                <button class="upgrade-cost-btn" onclick="buyUpgrade(2)">120 ✨</button>
             </div>
-            <button class="hack-btn" style="margin-top: 30px; background: rgba(255,0,122,0.1); border-color: #FF007A; color: #FF007A;" onclick="cancelMinigame()">Прервать взлом</button>
         </div>
     </div>
 
     <div class="view-container" id="view-profile">
-        <div class="profile-container">
-            <div class="section-title">Личное дело</div>
-            <div class="profile-header">
-                <div class="avatar"><span>🦊</span></div>
-                <div class="profile-info">
-                    <h2 style="margin: 0 0 4px 0; font-size: 24px;">Агент_8</h2>
-                    <p style="color: var(--accent-cyan); font-weight: 600;">Элитный Оперативник</p>
-                </div>
+        <div class="profile-card">
+            <div class="profile-avatar-frame"><span id="profile-avatar-icon">👤</span></div>
+            <div class="profile-meta">
+                <h3 id="profile-name-display">Оперативник</h3>
+                <p id="profile-role-display">Специалист</p>
             </div>
-            <div class="stats-grid">
-                <div class="stat-card"><div class="stat-value" style="color: var(--accent-cyan)">142</div><div class="stat-label">Дел закрыто</div></div>
-                <div class="stat-card"><div class="stat-value" style="color: var(--accent-green)">88%</div><div class="stat-label">Точность</div></div>
-                <div class="stat-card"><div class="stat-value" style="color: var(--accent-pink)">12</div><div class="stat-label">Взломов</div></div>
-                <div class="stat-card"><div class="stat-value" style="color: #E4A0FF">Топ 5%</div><div class="stat-label">Рейтинг</div></div>
+        </div>
+
+        <div class="progression-section">
+            <div class="level-badge">
+                <span>Уровень Синхронизации</span>
+                <span style="color: var(--accent-magenta);" id="profile-level">4 Ур.</span>
             </div>
+            <div class="xp-track"><div class="xp-fill" id="profile-xp-fill"></div></div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 6px; color: var(--text-muted);">
+                <span id="profile-xp-text">140 / 400 XP</span>
+                <span>До следующего ранга</span>
+            </div>
+        </div>
+
+        <div class="tg-sync-panel">
+            <h4 style="margin: 0 0 6px 0; font-size: 15px;">Безопасность данных</h4>
+            <p style="margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.4;">Синхронизируйте прогресс с аккаунтом Telegram для сохранения матрицы.</p>
+            <button class="tg-btn" onclick="alert('Интеграция с Telegram Bot API...')">Подключить Telegram</button>
         </div>
     </div>
 
-    <div class="bottom-nav" id="bottom-nav">
-        <div class="nav-item active" id="nav-hq" onclick="switchTab('hq')">
-            <div class="nav-icon">⬡</div><span>Штаб</span>
+    <div class="minigame-overlay" id="view-minigame">
+        <div class="board-container">
+            <h3 style="margin: 0; font-size: 22px; color: var(--accent-cyan); text-transform: uppercase; letter-spacing: 1px;">Обход Протокола</h3>
+            <p style="margin: 6px 0 0 0; font-size: 13px; color: var(--text-muted);">Замкните два соседних ядра</p>
+            <div class="board-matrix" id="minigame-board-matrix">
+                <div class="success-banner" id="mg-success-banner">УЗЕЛ ВЗЛОМАН</div>
+            </div>
+            <button class="action-cyber-btn" style="border-color: var(--accent-magenta); color: var(--accent-magenta);" onclick="closeMinigame(false)">Прервать соединение</button>
         </div>
-        <div class="nav-item" id="nav-investigation" onclick="switchTab('investigation')">
-            <div class="nav-icon">⎔</div><span>Арена</span>
-        </div>
-        <div class="nav-item" id="nav-profile" onclick="switchTab('profile')">
-            <div class="nav-icon">👤</div><span>Досье</span>
-        </div>
+    </div>
+
+    <div class="dock-nav">
+        <div class="dock-item" id="dock-hq" onclick="tabTo('hq')"><div class="dock-icon">⬡</div><span>Штаб</span></div>
+        <div class="dock-item active" id="dock-arena" onclick="tabTo('arena')"><div class="dock-icon">⎔</div><span>Арена</span></div>
+        <div class="dock-item" id="dock-profile" onclick="tabTo('profile')"><div class="dock-icon">👤</div><span>Досье</span></div>
     </div>
 
     <script src="app.js"></script>
