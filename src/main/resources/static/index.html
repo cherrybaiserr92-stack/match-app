@@ -3,110 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#050507">
-    
-    <title>Сдвиг</title>
+    <title>Нейро-Детектив</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <div class="header">
-        <div class="header-left">
-            <div class="back-btn" id="btn-back" onclick="closeArena()">‹ Назад</div>
-            <div class="logo" id="header-title">Сдвиг</div>
-        </div>
-        <div class="spark-balance-badge" id="spark-badge">💎 <span id="user-sparks">42</span></div>
+        <div class="logo">СДВИГ <span>// ОС</span></div>
+        <div class="spark-balance-badge">⚡ <span id="energy-count">100</span></div>
     </div>
 
-    <div class="view-container view-active" id="view-feed"></div>
+    <!-- ЭКРАН 1: ШТАБ (ВЫБОР РОЛИ) -->
+    <div class="view-container view-active" id="view-hq">
+        <div class="role-selection">
+            <h2 style="text-align:center; color: var(--text-primary);">Выберите профиль</h2>
+            
+            <div class="role-card" onclick="selectRole('detective')">
+                <div class="role-icon">🕵️‍♂️</div>
+                <div class="role-info">
+                    <h3>Следователь</h3>
+                    <p>Анализ человеческих пороков и улик.</p>
+                </div>
+            </div>
+            
+            <div class="role-card" onclick="selectRole('hacker')">
+                <div class="role-icon">🧑‍💻</div>
+                <div class="role-info">
+                    <h3>Кибер-Взломщик</h3>
+                    <p>Поиск уязвимостей в коде ИИ и сетях.</p>
+                </div>
+            </div>
+            
+            <div class="role-card" onclick="selectRole('psycho')">
+                <div class="role-icon">👁️</div>
+                <div class="role-info">
+                    <h3>Нейро-Психолог</h3>
+                    <p>Выявление когнитивных искажений.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <div class="view-container" id="view-arena">
+    <!-- ЭКРАН 2: РАССЛЕДОВАНИЕ (СВАЙПЫ) -->
+    <div class="view-container" id="view-investigation">
         <div class="card-deck">
-            <div class="card" id="current-card">
-                <div class="swipe-indicator left" id="ind-left">ОСУДИТЬ</div>
-                <div class="swipe-indicator right" id="ind-right">ОПРАВДАТЬ</div>
-                
+            <div class="card" id="current-case">
+                <div class="swipe-indicator left" id="ind-left">ЛОЖЬ</div>
+                <div class="swipe-indicator right" id="ind-right">ИСТИНА</div>
                 <div class="card-type-banner">
-                    <div id="card-author">🎭 Аноним</div>
-                    <div id="card-banner">Исповедь</div>
+                    <div id="case-id">Дело #404</div>
+                    <div id="case-role">Кибер-Взломщик</div>
                 </div>
-                <div class="card-content"><div class="card-text" id="card-text">Выберите прецедент в Ленте</div></div>
-                
-                <div class="results-scroll-area" id="results-area">
-                    <div class="results-header-block">
-                        <div class="bar-container">
-                            <div class="bar-label"><span id="lbl-res-left" style="color:var(--accent-red)">Осудить</span><span id="lbl-left">0%</span></div>
-                            <div class="bar-track"><div class="bar-fill-left" id="bar-left"></div></div>
-                        </div>
-                        <div class="bar-container">
-                            <div class="bar-label"><span id="lbl-res-right" style="color:var(--accent-green)">Оправдать</span><span id="lbl-right">0%</span></div>
-                            <div class="bar-track"><div class="bar-fill-right" id="bar-right"></div></div>
-                        </div>
-                    </div>
-                    <div id="minigame-wrapper"></div>
-                    <div class="comments-section" id="card-comments-block"></div>
+                <div class="card-content">
+                    <div class="card-text">В логах сервера обнаружен аномальный скачок трафика в 03:00. ИИ утверждает, что это плановое обновление.</div>
+                </div>
+                <!-- Кнопка вызова мини-игры для подсказки -->
+                <div class="clue-action">
+                    <button class="action-btn hack-btn" onclick="triggerMinigameVortex()">Взломать систему (Мини-игра)</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="view-container" id="view-create">
-        <div class="form-container">
-            <div class="form-title">Запустить сдвиг</div>
-            <select class="modern-select" id="new-case-type">
-                <option value="CONFESSION">🎭 Исповедь (Оцени поступок)</option>
-                <option value="RED_FLAG">🚩 Красный флаг (Это норма?)</option>
-                <option value="HOT_TAKE">⚡ Спорное мнение (База или Бред)</option>
-            </select>
-            <textarea class="modern-input" id="new-case-text" placeholder="Расскажи свою историю честно..."></textarea>
-            <div class="boost-checkbox-container">
-                <div class="boost-label-block">
-                    <h4>⚡ Вывести в «Сверхрезонанс»</h4>
-                    <p>Закрепить на вершине ленты для всех</p>
-                </div>
-                <input type="checkbox" id="boost-check" style="width:20px; height:20px; accent-color:var(--accent-purple);">
+    <!-- ЭКРАН: МИНИ-ИГРА (ПОЯВЛЯЕТСЯ ИЗ ВОРОНКИ) -->
+    <div class="view-container minigame-overlay" id="view-minigame">
+        <div class="minigame-board">
+            <h2>Три-в-ряд: Взлом</h2>
+            <div class="grid-placeholder">
+                <div class="grid-cell">💎</div><div class="grid-cell">🔥</div><div class="grid-cell">👁️</div>
+                <div class="grid-cell">🔥</div><div class="grid-cell">💎</div><div class="grid-cell">🔥</div>
+                <div class="grid-cell">👁️</div><div class="grid-cell">🔥</div><div class="grid-cell">💎</div>
             </div>
-            <button class="action-btn" style="background:var(--text-primary); color:var(--bg-main);" onclick="submitCase()">Опубликовать анонимно</button>
+            <p>Соберите комбинацию, чтобы расшифровать лог.</p>
+            <button class="action-btn" onclick="exitMinigame()">Завершить взлом</button>
         </div>
     </div>
 
+    <!-- ЭКРАН 3: ПРОФИЛЬ -->
     <div class="view-container" id="view-profile">
         <div class="profile-container">
             <div class="profile-header">
                 <div class="avatar">🦊</div>
                 <div class="profile-info">
-                    <h2>Лиса_8</h2>
-                    <p>Ранг: Детектив Базы</p>
+                    <h2>Агент_8</h2>
+                    <p>Ранг: Элитный Оперативник</p>
                 </div>
             </div>
             <div class="stats-grid">
-                <div class="stat-card"><div class="stat-value" style="color: var(--accent-blue)">48</div><div class="stat-label">Сдвигов</div></div>
-                <div class="stat-card"><div class="stat-value" style="color: var(--accent-green)">84%</div><div class="stat-label">Солидарность</div></div>
-                <div class="stat-card"><div class="stat-value" style="color: var(--accent-red)">8</div><div class="stat-label">Бунтарство</div></div>
-                <div class="stat-card"><div class="stat-value" id="stat-ai" style="color: var(--accent-purple)">0</div><div class="stat-label">Распознано ИИ</div></div>
-            </div>
-            <div class="donation-banner">
-                <div>
-                    <div style="font-weight:700; font-size:16px; margin-bottom:4px;">Пополнить Искры</div>
-                    <div style="font-size:12px; color:var(--text-secondary);">Поддержи авторов и продвигай посты</div>
-                </div>
-                <button class="action-btn" style="width:auto; margin:0; padding:10px 16px; background:var(--accent-purple);" onclick="buySparks()">+ Купить</button>
-            </div>
-            <div class="auth-section">
-                <h3>Защитить аккаунт</h3>
-                <button class="auth-btn btn-tg">Войти через Telegram</button>
+                <div class="stat-card"><div class="stat-value" style="color: var(--accent-blue)">142</div><div class="stat-label">Дел закрыто</div></div>
+                <div class="stat-card"><div class="stat-value" style="color: var(--accent-green)">88%</div><div class="stat-label">Точность</div></div>
             </div>
         </div>
     </div>
 
+    <!-- НАВИГАЦИЯ -->
     <div class="bottom-nav" id="bottom-nav">
-        <div class="nav-item active" id="nav-feed" onclick="switchTab('feed')"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Лента</span></div>
-        <div class="nav-item" id="nav-arena" onclick="switchTab('arena'); openArenaFromNav();"><svg viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m12 14-4-4h8z"/></svg><span>Арена</span></div>
-        <div class="nav-item" id="nav-create" onclick="switchTab('create')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Написать</span></div>
-        <div class="nav-item" id="nav-profile" onclick="switchTab('profile')"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg><span>Аккаунт</span></div>
+        <div class="nav-item active" id="nav-hq" onclick="switchTab('hq')"><span>Штаб</span></div>
+        <div class="nav-item" id="nav-investigation" onclick="switchTab('investigation')"><span>Дело</span></div>
+        <div class="nav-item" id="nav-profile" onclick="switchTab('profile')"><span>Досье</span></div>
     </div>
 
     <script src="app.js"></script>
