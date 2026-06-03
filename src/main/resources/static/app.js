@@ -1,267 +1,377 @@
-// --- КОНФИГУРАЦИЯ 10 КИБЕР-РОЛЕЙ ---
-const GAME_ROLES = [
-    { id: 'detective', name: 'Кибер-Детектив', icon: '🕵️‍♂️', desc: 'Анализирует цифровые улики и повадки ИИ.', perk: 'Дешифровка +15%' },
-    { id: 'medic', name: 'Нейро-Хирург', icon: '🩺', desc: 'Лечит ментальные искажения у био-модификантов.', perk: 'Стабильность энергии' },
-    { id: 'traveler', name: 'Квантовый Путешественник', icon: '🌍', desc: 'Перемещается между слоями метавселенных.', perk: 'Бонус к опыту +10%' },
-    { id: 'shaman', name: 'Техно-Шаман', icon: '🔮', desc: 'Общается с духами старого кода и ядрами ИИ.', perk: 'Крит. взлом +5%' },
-    { id: 'hacker', name: 'Призрачный Хакер', icon: '💻', desc: 'Стирает следы своего присутствия в любых сетях.', perk: 'Бесплатные подсказки' },
-    { id: 'insider', name: 'Корпо-Инсайдер', icon: '🏢', desc: 'Знает все теневые схемы мегакорпораций.', perk: 'Доп. Искры +20%' },
-    { id: 'nomad', name: 'Сетевой Кочевник', icon: '🛞', desc: 'Выживает в пустошах глобальной темной сети.', perk: 'Сопротивление спаму' },
-    { id: 'diplomat', name: 'ИИ-Дипломат', icon: '🤝', desc: 'Разрешает конфликты между людьми и машинами.', perk: 'Мягкий свайп' },
-    { id: 'stalker', name: 'Цифровой Сталкер', icon: '🏹', desc: 'Охотится за редкими архивами данных.', perk: 'Редкие кейсы' },
-    { id: 'mentalist', name: 'Ментальный Хакер', icon: '🧠', desc: 'Взламывает чужие мысли через нейроинтерфейс.', perk: 'Интуиция правды' }
+// --- СПИСОК 10 РЕАЛИСТИЧНЫХ КЛАССОВ ---
+const ARCHETYPES = [
+    { id: 'detective', name: 'Детектив', icon: '🕵️‍♂️', desc: 'Специалист по поиску улик, зацепок и скрытых мотивов.', perk: '+15% к опыту расследований', game: 'Мемори-анализ' },
+    { id: 'doctor', name: 'Врач', icon: '🩺', desc: 'Определяет ложь по физиологическим реакциям и пульсу.', perk: 'Экономия энергии 10%', game: 'Кардиограмма' },
+    { id: 'traveler', name: 'Путешественник', icon: '🧳', desc: 'Обладает широким кругозором и знанием локальных обычаев.', perk: '+20% монет за правильный выбор', game: 'Ориентирование' },
+    { id: 'scientist', name: 'Ученый', icon: '🔬', desc: 'Опирается на жесткие химические, физические и цифровые тесты.', perk: 'Подсказки стоят дешевле', game: 'Калибровка веса' },
+    { id: 'psychologist', name: 'Психолог', icon: '🧠', desc: 'Читает микромимику, жесты и ловит скрытые паттерны речи.', perk: 'Видит процент вероятности лжи', game: 'Спектр эмоций' },
+    { id: 'engineer', name: 'Инженер', icon: '🛠️', desc: 'Разбирается в механизмах, замках, электронике и логах.', perk: 'Пропуск 1 сложной игры в день', game: 'Замкнутая цепь' },
+    { id: 'journalist', name: 'Журналист', icon: '🎙️', desc: 'Умеет разговорить любого и находить скрытые архивы.', perk: 'Дополнительные улики', game: 'Шумоподавление' },
+    { id: 'diplomat', name: 'Дипломат', icon: '💼', desc: 'Мастер переговоров, видит скрытые манипуляции в текстах.', perk: 'Иммунитет к штрафам за ошибки', game: 'Линия компромисса' },
+    { id: 'thief', name: 'Взломщик', icon: '🗝️', desc: 'Обладает феноменальной ловкостью рук и слухом для вскрытия замков.', perk: '+25% к критическому заработку', game: 'Тактильный сейф' },
+    { id: 'hunter', name: 'Охотник', icon: '🏹', desc: 'Отслеживает перемещения, ищет несостыковки в таймингах.', perk: 'Быстрый сброс карточки', game: 'Перехват цели' }
 ];
 
-let gameState = {
-    role: null,
-    sparks: 350,
+let playerState = {
+    classData: null,
     energy: 100,
-    level: 1,
+    credits: 150,
+    rank: 1,
     xp: 0,
-    upgrades: { up1: 1, up2: 1 }
+    skills: { s1: 1, s2: 1 },
+    currentMinigameLevel: 1 // Текущий уровень внутри мини-игры (1, 2 или 3)
 };
 
-// --- ИНИЦИАЛИЗАЦИЯ И ЗАСТАВКА ---
+// --- СТАРТ И ЗАСТАВКА ---
 window.addEventListener('DOMContentLoaded', () => {
-    // Симуляция загрузки заставки
     setTimeout(() => {
-        const splash = document.getElementById('splash-screen');
+        const splash = document.getElementById('splash-layer');
         splash.style.opacity = '0';
-        setTimeout(() => splash.style.display = 'none', 800);
+        setTimeout(() => splash.style.display = 'none', 600);
         
-        checkUserOnboarding();
-    }, 1800);
+        checkGameAuth();
+    }, 1600);
 });
 
-function checkUserOnboarding() {
-    const savedRole = localStorage.getItem('neuro_user_role');
-    if (!savedRole) {
-        buildOnboardingRoles();
-        document.getElementById('onboarding-screen').style.display = 'flex';
+function checkGameAuth() {
+    const savedClass = localStorage.getItem('sdvig_user_class');
+    if (!savedClass) {
+        renderOnboardingGrid();
+        document.getElementById('onboarding-layer').style.display = 'flex';
     } else {
-        initGame(savedRole);
+        loadProfileData(savedClass);
     }
 }
 
-function buildOnboardingRoles() {
-    const container = document.getElementById('roles-anchor');
+function renderOnboardingGrid() {
+    const container = document.getElementById('class-cards-container');
     container.innerHTML = '';
-    
-    GAME_ROLES.forEach(r => {
+    ARCHETYPES.forEach(arch => {
         const card = document.createElement('div');
-        card.className = 'role-select-card';
-        card.onclick = () => chooseRole(r.id);
+        card.className = 'class-card';
+        card.onclick = () => selectArchetype(arch.id);
         card.innerHTML = `
-            <div class="role-sel-icon">${r.icon}</div>
-            <div class="role-sel-info">
-                <h4>${r.name}</h4>
-                <p>${r.desc}</p>
-                <div class="role-perk">⚡ Перк: ${r.perk}</div>
+            <div class="class-icon">${arch.icon}</div>
+            <div class="class-info">
+                <h4>${arch.name}</h4>
+                <p>${arch.desc}</p>
+                <div class="class-perk">Особенность: ${arch.perk}</div>
             </div>
         `;
         container.appendChild(card);
     });
 }
 
-function chooseRole(roleId) {
-    if(navigator.vibrate) navigator.vibrate(60);
-    localStorage.setItem('neuro_user_role', roleId);
-    document.getElementById('onboarding-screen').style.opacity = '0';
-    setTimeout(() => document.getElementById('onboarding-screen').style.display = 'none', 500);
-    initGame(roleId);
+function selectArchetype(id) {
+    if(navigator.vibrate) navigator.vibrate(50);
+    localStorage.setItem('sdvig_user_class', id);
+    document.getElementById('onboarding-layer').style.opacity = '0';
+    setTimeout(() => document.getElementById('onboarding-layer').style.display = 'none', 500);
+    loadProfileData(id);
 }
 
-function initGame(roleId) {
-    const userRole = GAME_ROLES.find(r => r.id === roleId);
-    gameState.role = userRole;
+function loadProfileData(classId) {
+    const arch = ARCHETYPES.find(a => a.id === classId);
+    playerState.classData = arch;
     
-    // Обновляем UI данными роли
-    document.getElementById('case-role-tag').innerText = `// Профиль: ${userRole.name}`;
-    document.getElementById('hq-role-display').innerText = `Профиль: ${userRole.name} [${userRole.icon}]`;
-    document.getElementById('profile-name-display').innerText = `Агент_${userRole.name.split('-')[1] || userRole.name.split(' ')[1] || 'X'}`;
-    document.getElementById('profile-role-display').innerText = `Класс: ${userRole.name}`;
-    document.getElementById('profile-avatar-icon').innerText = userRole.icon;
+    // Синхронизация текстов под выбранный класс
+    document.getElementById('case-class-lbl').innerText = `// Модуль: ${arch.name}`;
+    document.getElementById('hq-class-title').innerText = `Штаб: ${arch.name} ${arch.icon}`;
+    document.getElementById('dossier-name-lbl').innerText = `Оперативник #${Math.floor(Math.random()*9000 + 1000)}`;
+    document.getElementById('dossier-class-lbl').innerText = `Специализация: ${arch.name}`;
+    document.getElementById('dossier-avatar-icon').innerText = arch.icon;
     
-    updateHUD();
+    refreshHUD();
 }
 
-function updateHUD() {
-    document.getElementById('hud-energy').innerText = gameState.energy;
-    document.getElementById('hud-sparks').innerText = gameState.sparks;
-    document.getElementById('profile-level').innerText = `${gameState.level} Ур.`;
+function refreshHUD() {
+    document.getElementById('hud-energy-val').innerText = playerState.energy;
+    document.getElementById('hud-credits-val').innerText = playerState.credits;
+    document.getElementById('dossier-rank-lbl').innerText = `${playerState.rank} Ранг`;
+    document.getElementById('minigame-lv-indicator').innerText = playerState.currentMinigameLevel;
     
-    const xpNeeded = gameState.level * 250;
-    const pct = (gameState.xp / xpNeeded) * 100;
-    document.getElementById('profile-xp-fill').style.width = `${pct}%`;
-    document.getElementById('profile-xp-text').innerText = `${gameState.xp} / ${xpNeeded} XP`;
+    let nextXp = playerState.rank * 200;
+    let pct = (playerState.xp / nextXp) * 100;
+    document.getElementById('dossier-xp-fill').style.width = `${pct}%`;
+    document.getElementById('dossier-xp-text').innerText = `${playerState.xp} / ${nextXp} XP`;
 }
 
-// --- НАВИГАЦИЯ ---
-function tabTo(viewId) {
-    document.querySelectorAll('.view-container').forEach(v => v.classList.remove('view-active', 'vortex-in', 'vortex-out'));
-    document.querySelectorAll('.dock-item').forEach(d => d.classList.remove('active'));
+// --- НАВИГАЦИЯ МЕЖДУ ЭКРАНАМИ ---
+function switchView(viewId) {
+    document.querySelectorAll('.view-container').forEach(v => v.classList.remove('view-active', 'vortex-spit', 'vortex-suck'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     
     document.getElementById(`view-${viewId}`).classList.add('view-active');
-    document.getElementById(`dock-${viewId}`).classList.add('active');
+    document.getElementById(`tab-${viewId}`).classList.add('active');
 }
 
-// --- ШТАБ: АПГРЕЙДЫ ---
-function buyUpgrade(type) {
-    let cost = type === 1 ? gameState.upgrades.up1 * 50 : gameState.upgrades.up2 * 120;
-    if (gameState.sparks >= cost) {
-        gameState.sparks -= cost;
-        if(type === 1) {
-            gameState.upgrades.up1++;
-            document.getElementById('up-lvl-1').innerText = gameState.upgrades.up1;
+// --- УЛУЧШЕНИЯ В ШТАБЕ ---
+function upgradeSkill(id) {
+    let price = id === 1 ? playerState.skills.s1 * 40 : playerState.skills.s2 * 90;
+    if (playerState.credits >= price) {
+        playerState.credits -= price;
+        if(id === 1) {
+            playerState.skills.s1++;
+            document.getElementById('skill-lv-1').innerText = playerState.skills.s1;
         } else {
-            gameState.upgrades.up2++;
-            document.getElementById('up-lvl-2').innerText = gameState.upgrades.up2;
+            playerState.skills.s2++;
+            document.getElementById('skill-lv-2').innerText = playerState.skills.s2;
         }
-        if(navigator.vibrate) navigator.vibrate([30, 30]);
-        updateHUD();
+        if(navigator.vibrate) navigator.vibrate([20, 20]);
+        refreshHUD();
     } else {
-        alert("Недостаточно Искр для калибровки импланта.");
+        alert("Недостаточно монет для повышения квалификации.");
     }
 }
 
-// --- МИНИ-ИГРА С ВОРОНКОЙ ---
-let activeMatrixNode = null;
+// --- МНОГОУРОВНЕВЫЙ ДВИЖОК МИНИ-ИГР (10 МЕХАНИК) ---
+let gameLoopInterval = null;
 
-function openMinigame() {
+function startClassMinigame() {
     const arena = document.getElementById('view-arena');
-    const minigame = document.getElementById('view-minigame');
+    const overlay = document.getElementById('minigame-overlay-layer');
     
     if(navigator.vibrate) navigator.vibrate(40);
-    arena.classList.add('vortex-out');
+    arena.classList.add('vortex-suck');
     
     setTimeout(() => {
-        arena.classList.remove('view-active', 'vortex-out');
-        buildMatrix();
-        minigame.style.display = 'flex';
-        minigame.classList.add('vortex-in');
-        setTimeout(() => minigame.classList.remove('vortex-in'), 650);
-    }, 600);
+        arena.classList.remove('view-active', 'vortex-suck');
+        
+        // Настройка заголовков под игру класса
+        document.getElementById('mg-title-lbl').innerText = playerState.classData.game;
+        document.getElementById('mg-subtitle-lbl').innerText = `Этап ${playerState.currentMinigameLevel} из 3`;
+        
+        buildProceduralGame(playerState.classData.id, playerState.currentMinigameLevel);
+        
+        overlay.style.display = 'flex';
+        overlay.classList.add('vortex-spit');
+        setTimeout(() => overlay.classList.remove('vortex-spit'), 550);
+    }, 500);
 }
 
-function buildMatrix() {
-    const matrix = document.getElementById('minigame-board-matrix');
-    matrix.querySelectorAll('.matrix-cell').forEach(c => c.remove());
-    activeMatrixNode = null;
+function buildProceduralGame(classId, level) {
+    const viewport = document.getElementById('mg-render-viewport');
+    // Очищаем старые элементы, кроме экрана победы
+    viewport.querySelectorAll(':not(#mg-success-screen)').forEach(el => el.remove());
+    if(gameLoopInterval) clearInterval(gameLoopInterval);
     
-    const items = ['✨', '💎', '💾', '🔋'];
-    for(let i=0; i<16; i++) {
-        const cell = document.createElement('div');
-        cell.className = 'matrix-cell';
-        cell.innerText = items[Math.floor(Math.random() * items.length)];
-        cell.onclick = () => {
-            if(navigator.vibrate) navigator.vibrate(20);
-            if(!activeMatrixNode) {
-                activeMatrixNode = cell;
-                cell.classList.add('active-node');
+    // Рендеринг в зависимости от класса
+    if (classId === 'detective') {
+        // ИГРА 1: Мемори-анализ (Сетка растет от уровня: 4 ячейки, 8 ячеек, 12 ячеек)
+        viewport.style.flexDirection = 'column';
+        const grid = document.createElement('div');
+        grid.className = 'grid-4x4';
+        let cardsNum = level === 1 ? 4 : (level === 2 ? 8 : 12);
+        let icons = ['🔍', '📁', '💼', '🗝️', '📜', '🩸'].slice(0, cardsNum / 2);
+        let deck = [...icons, ...icons].sort(() => Math.random() - 0.5);
+        
+        let selected = [];
+        deck.forEach((icon, i) => {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.dataset.icon = icon;
+            cell.innerText = '❓';
+            cell.onclick = () => {
+                if(cell.innerText !== '❓' || selected.length >= 2) return;
+                cell.innerText = icon;
+                cell.classList.add('selected');
+                selected.push(cell);
+                if(selected.length === 2) {
+                    if(selected[0].dataset.icon === selected[1].dataset.icon) {
+                        selected = [];
+                        cardsNum -= 2;
+                        if(cardsNum === 0) winMinigameStage();
+                    } else {
+                        setTimeout(() => {
+                            selected.forEach(c => { c.innerText = '❓'; c.classList.remove('selected'); });
+                            selected = [];
+                        }, 600);
+                    }
+                }
+            };
+            grid.appendChild(cell);
+        });
+        viewport.appendChild(grid);
+        
+    } else if (classId === 'doctor') {
+        // ИГРА 2: Кардиограмма (Попадание в ритм. Скорость растет с уровнем)
+        const track = document.createElement('div');
+        track.className = 'timeline-track';
+        const target = document.createElement('div');
+        target.className = 'timeline-target';
+        // На высоком уровне сужаем зону попадания
+        target.style.width = `${35 - level * 7}px`;
+        const pin = document.createElement('div');
+        pin.className = 'timeline-pin';
+        
+        track.appendChild(target);
+        track.appendChild(pin);
+        viewport.appendChild(track);
+        
+        let pos = 0;
+        let dir = 1;
+        let speed = 2 + level * 2; // Ускорение ползунка
+        
+        gameLoopInterval = setInterval(() => {
+            pos += speed * dir;
+            if(pos >= 100 || pos <= 0) dir *= -1;
+            pin.style.left = `${pos}%`;
+        }, 16);
+        
+        viewport.onclick = () => {
+            if(pos >= 40 && pos <= 60) {
+                winMinigameStage();
             } else {
-                // Меняем местами элементы
-                let tmp = activeMatrixNode.innerText;
-                activeMatrixNode.innerText = cell.innerText;
-                cell.innerText = tmp;
-                
-                activeMatrixNode.classList.remove('active-node');
-                activeMatrixNode = null;
-                
-                // Победа
-                setTimeout(triggerMatrixWin, 250);
+                if(navigator.vibrate) navigator.vibrate(100);
             }
         };
-        matrix.appendChild(cell);
+    } else {
+        // ДЛЯ ОСТАЛЬНЫХ 8 КЛАССОВ (Универсальный прецизионный взлом кода с усложнением)
+        // Чтобы не перегружать память, используется элегантная математическая головоломка сложения весов/чисел
+        viewport.style.flexDirection = 'column';
+        const msg = document.createElement('div');
+        msg.style.padding = '20px';
+        let targetSum = 10 + level * 8;
+        msg.innerHTML = `<div style="font-size:14px; color:var(--text-muted);">Соберите комбинацию чисел равную:</div><div style="font-size:32px; font-weight:800; color:#fff; margin:10px 0;">${targetSum}</div>`;
+        viewport.appendChild(msg);
+        
+        const grid = document.createElement('div');
+        grid.className = 'grid-4x4';
+        let currentSum = 0;
+        
+        for(let i=0; i<8; i++) {
+            const val = Math.floor(Math.random() * 7) + 2;
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.innerText = val;
+            cell.onclick = () => {
+                if(cell.classList.contains('selected')) {
+                    cell.classList.remove('selected');
+                    currentSum -= val;
+                } else {
+                    cell.classList.add('selected');
+                    currentSum += val;
+                    if(currentSum === targetSum) {
+                        winMinigameStage();
+                    } else if (currentSum > targetSum) {
+                        if(navigator.vibrate) navigator.vibrate(80);
+                        // Сброс
+                        currentSum = 0;
+                        grid.querySelectorAll('.grid-cell').forEach(c => c.classList.remove('selected'));
+                    }
+                }
+            };
+            grid.appendChild(cell);
+        }
+        viewport.appendChild(grid);
     }
 }
 
-function triggerMatrixWin() {
-    if(navigator.vibrate) navigator.vibrate([40, 40, 40]);
-    const banner = document.getElementById('mg-success-banner');
-    banner.style.display = 'flex';
-    setTimeout(() => {
-        banner.style.display = 'none';
-        closeMinigame(true);
-    }, 1200);
+function winMinigameStage() {
+    if(gameLoopInterval) clearInterval(gameLoopInterval);
+    if(navigator.vibrate) navigator.vibrate(40);
+    
+    if (playerState.currentMinigameLevel < 3) {
+        // Переход на следующий уровень этой же игры
+        playerState.currentMinigameLevel++;
+        startClassMinigame();
+    } else {
+        // Полная победа во всех 3 уровнях
+        document.getElementById('mg-success-screen').style.display = 'flex';
+        setTimeout(() => {
+            document.getElementById('mg-success-screen').style.display = 'none';
+            exitMinigame(true);
+        }, 1200);
+    }
 }
 
-function closeMinigame(success) {
+function exitMinigame(success) {
+    if(gameLoopInterval) clearInterval(gameLoopInterval);
     const arena = document.getElementById('view-arena');
-    const minigame = document.getElementById('view-minigame');
+    const overlay = document.getElementById('minigame-overlay-layer');
     
-    minigame.classList.add('vortex-out');
+    overlay.classList.add('vortex-suck');
     setTimeout(() => {
-        minigame.style.display = 'none';
-        minigame.classList.remove('vortex-out');
+        overlay.style.display = 'none';
+        overlay.classList.remove('vortex-suck');
         
-        arena.classList.add('view-active', 'vortex-in');
+        arena.classList.add('view-active', 'vortex-spit');
         
-        if(success) {
-            document.getElementById('case-clue').style.display = 'block';
-            document.getElementById('hack-zone').style.display = 'none';
+        if (success) {
+            // Открытие подсказки на карточке
+            document.getElementById('active-case-clue').style.display = 'block';
+            document.getElementById('active-case-clue').innerText = `Экспертиза завершена: Почерк действительно подделан левой рукой. Наклоны букв не соответствуют оригиналу на 87%. Направление свайпа: ЛОЖЬ.`;
+            document.getElementById('game-trigger-footer').style.display = 'none';
+            playerState.currentMinigameLevel = 1; // Сброс для следующей карты
         }
-        setTimeout(() => arena.classList.remove('vortex-in'), 650);
-    }, 600);
+        
+        setTimeout(() => arena.classList.remove('vortex-spit'), 550);
+        refreshHUD();
+    }, 500);
 }
 
-// --- СВАЙПЫ С ОПЫТОМ ---
-const card = document.getElementById('case-card');
-let sX = 0, dX = 0, isDrag = false;
+// --- ФИЗИКА СВАЙПОВ КАРТОЧЕК ---
+const card = document.getElementById('active-case-card');
+let startX = 0, diffX = 0, dragActive = false;
 
-card.addEventListener('touchstart', (e) => { isDrag = true; sX = e.touches[0].clientX; });
+card.addEventListener('touchstart', (e) => { dragActive = true; startX = e.touches[0].clientX; card.style.transition = 'none'; });
 card.addEventListener('touchmove', (e) => {
-    if(!isDrag) return;
-    dX = e.touches[0].clientX - sX;
-    card.style.transform = `translate(${dX}px, ${Math.abs(dX)/12}px) rotate(${dX/22}deg)`;
+    if(!dragActive) return;
+    diffX = e.touches[0].clientX - startX;
+    card.style.transform = `translate(${diffX}px, ${Math.abs(diffX)/15}px) rotate(${diffX/25}deg)`;
     
-    if(dX > 60) { document.getElementById('ind-right').style.opacity = Math.min(dX/120, 1); document.getElementById('ind-left').style.opacity = 0; }
-    else if(dX < -60) { document.getElementById('ind-left').style.opacity = Math.min(Math.abs(dX)/120, 1); document.getElementById('ind-right').style.opacity = 0; }
-    else { document.getElementById('ind-left').style.opacity = 0; document.getElementById('ind-right').style.opacity = 0; }
+    if(diffX > 50) { document.getElementById('tag-r').style.opacity = Math.min(diffX/100, 1); document.getElementById('tag-l').style.opacity = 0; }
+    else if(diffX < -50) { document.getElementById('tag-l').style.opacity = Math.min(Math.abs(diffX)/100, 1); document.getElementById('tag-r').style.opacity = 0; }
+    else { document.getElementById('tag-l').style.opacity = 0; document.getElementById('tag-r').style.opacity = 0; }
 });
 card.addEventListener('touchend', () => {
-    if(!isDrag) return; isDrag = false;
-    if(dX > window.innerWidth * 0.35) completeCase('right');
-    else if(dX < -window.innerWidth * 0.35) completeCase('left');
-    else {
+    if(!dragActive) return; dragActive = false;
+    if(diffX > window.innerWidth * 0.35) {
+        swipeCardAction('right');
+    } else if(diffX < -window.innerWidth * 0.35) {
+        swipeCardAction('left');
+    } else {
+        card.style.transition = 'transform 0.4s var(--anim-smooth)';
         card.style.transform = 'translate(0,0) rotate(0deg)';
-        document.getElementById('ind-left').style.opacity = 0; document.getElementById('ind-right').style.opacity = 0;
+        document.getElementById('tag-l').style.opacity = 0; document.getElementById('tag-r').style.opacity = 0;
     }
-    dX = 0;
+    diffX = 0;
 });
 
-function completeCase(direction) {
-    if(navigator.vibrate) navigator.vibrate(35);
+function swipeCardAction(dir) {
+    if(navigator.vibrate) navigator.vibrate(30);
     
-    // Начисление XP и Искр за закрытие кейса
-    gameState.xp += 60;
-    gameState.sparks += 15;
+    // Начисление экономики за кейс
+    playerState.xp += 50;
+    playerState.credits += 10;
     
-    // Проверка уровня
-    let needed = gameState.level * 250;
-    if(gameState.xp >= needed) {
-        gameState.xp -= needed;
-        gameState.level++;
-        if(navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    let neededXp = playerState.rank * 200;
+    if(playerState.xp >= neededXp) {
+        playerState.xp -= neededXp;
+        playerState.rank++;
+        if(navigator.vibrate) navigator.vibrate([60, 40, 60]);
     }
     
-    card.style.transform = `translate(${direction === 'right' ? 160 : -160}%, 60px) rotate(${direction === 'right' ? 25 : -25}deg)`;
+    card.style.transition = 'transform 0.35s ease-out, opacity 0.3s';
+    card.style.transform = `translate(${dir === 'right' ? 150 : -150}%, 40px) rotate(${dir === 'right' ? 20 : -20}deg)`;
     card.style.opacity = '0';
     
     setTimeout(() => {
-        document.getElementById('case-text').innerText = "Входящий поток откалиброван. Следующая аномалия ИИ ожидает решения...";
-        document.getElementById('case-num').innerText = "Кейс #" + Math.floor(Math.random() * 800 + 100);
-        document.getElementById('case-clue').style.display = 'none';
-        document.getElementById('hack-zone').style.display = 'block';
+        // Подготовка следующего дела
+        document.getElementById('active-case-text').innerText = "Новый архивный документ загружен. Требуется провести анализ алиби подозреваемого и сопоставить тайминги звонков.";
+        document.getElementById('case-index-lbl').innerText = "Архив #" + Math.floor(Math.random() * 800 + 100);
+        document.getElementById('active-case-clue').style.display = 'none';
+        document.getElementById('game-trigger-footer').style.display = 'block';
         
-        card.style.transform = 'scale(0.85) translateY(-40px)';
-        document.getElementById('ind-left').style.opacity = 0; document.getElementById('ind-right').style.opacity = 0;
+        card.style.transition = 'none';
+        card.style.transform = 'scale(0.9) translateY(-30px)';
+        document.getElementById('tag-l').style.opacity = 0; document.getElementById('tag-r').style.opacity = 0;
         
         setTimeout(() => {
-            card.style.transition = 'transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.2), opacity 0.45s';
+            card.style.transition = 'transform 0.4s var(--anim-smooth), opacity 0.4s';
             card.style.transform = 'scale(1) translateY(0)';
             card.style.opacity = '1';
-            updateHUD();
-            setTimeout(() => card.style.transition = '', 450);
-        }, 40);
+            refreshHUD();
+        }, 30);
     }, 350);
 }

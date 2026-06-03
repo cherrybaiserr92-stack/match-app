@@ -5,52 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>СДВИГ // ОС</title>
+    <title>СДВИГ</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="splash-screen" id="splash-screen">
-        <div class="splash-logo">СДВИГ<span>//ОС</span></div>
-        <div class="splash-loader"></div>
+    <div class="splash-screen" id="splash-layer">
+        <div class="splash-title">СДВИГ</div>
+        <div class="splash-bar"><div class="splash-progress"></div></div>
     </div>
 
-    <div class="onboarding-screen" id="onboarding-screen">
-        <div style="text-align: center; margin-bottom: 10px;">
-            <h2 style="margin: 0; font-size: 24px; font-weight: 900;">Инициализация сущности</h2>
-            <p style="color: var(--text-muted); font-size: 13px; margin: 6px 0 0 0;">Выберите стартовую матрицу восприятия</p>
+    <div class="onboarding-screen" id="onboarding-layer">
+        <div class="onboarding-title">
+            <h2>Личное дело</h2>
+            <p>Выберите специализацию вашей личности для анализа архивов</p>
         </div>
-        <div class="roles-list" id="roles-anchor">
+        <div class="class-grid" id="class-cards-container">
             </div>
     </div>
 
-    <div class="app-header">
-        <div class="app-logo">Сдвиг<span>//ОС</span></div>
-        <div class="hud-metrics">
-            <div class="hud-badge">🔋 <span id="hud-energy">100</span>%</div>
-            <div class="hud-badge" style="color: var(--accent-amber);">✨ <span id="hud-sparks">350</span></div>
+    <div class="game-header">
+        <div class="game-logo">Сдвиг</div>
+        <div class="hud-container">
+            <div class="hud-pill">🔋 <span id="hud-energy-val">100</span>%</div>
+            <div class="hud-pill" style="color: var(--accent-gold);">🪙 <span id="hud-credits-val">150</span></div>
         </div>
     </div>
 
     <div class="view-container view-active" id="view-arena">
-        <div class="card-deck">
-            <div class="card" id="case-card">
-                <div class="swipe-indicator left" id="ind-left">ЛОЖЬ</div>
-                <div class="swipe-indicator right" id="ind-right">ИСТИНА</div>
-                <div class="card-header-line">
-                    <div id="case-num">Кейс #712</div>
-                    <div id="case-role-tag" style="color: var(--accent-cyan);">Загрузка...</div>
+        <div class="deck-wrapper">
+            <div class="case-card" id="active-case-card">
+                <div class="indicator-tag left" id="tag-l">Ложь</div>
+                <div class="indicator-tag right" id="tag-r">Истина</div>
+                <div class="case-top-bar">
+                    <div id="case-index-lbl">Архив #241</div>
+                    <div id="case-class-lbl" style="color: var(--accent-gold);">Анализ...</div>
                 </div>
-                <div class="card-main-body">
-                    <div class="card-main-text" id="case-text">Синтетический интеллект запрашивает доступ к биометрическим данным сотрудников под предлогом обновления систем безопасности.</div>
-                    <div class="clue-box" id="case-clue">
-                        <span style="font-size: 9px; text-transform: uppercase; color: var(--text-muted); display:block; margin-bottom: 2px;">Анализ узла</span>
-                        Логи запроса указывают на скрытую отправку данных на внешний сервер. Вероятность вредоносного ИИ: 96%.
-                    </div>
+                <div class="case-body">
+                    <div class="case-text" id="active-case-text">Свидетель утверждает, что находился в главном офисе во время инцидента, однако в журнале посещений его подпись продублирована чужим почерком.</div>
+                    <div class="clue-reveal-box" id="active-case-clue">
+                        </div>
                 </div>
-                <div class="hack-trigger-zone" id="hack-zone">
-                    <button class="action-cyber-btn" onclick="openMinigame()">
-                        🤖 Взломать узел для подсказки
+                <div class="action-footer" id="game-trigger-footer">
+                    <button class="premium-btn" onclick="startClassMinigame()">
+                        🔎 Запустить экспертизу (Уровень <span id="minigame-lv-indicator">1</span>/3)
                     </button>
                 </div>
             </div>
@@ -58,80 +56,75 @@
     </div>
 
     <div class="view-container" id="view-hq">
-        <div class="hq-hero">
-            <div class="hq-current-role" id="hq-role-display">Профиль: Не выбран</div>
-            <h2>Оперативный Штаб</h2>
-            <p style="margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.4;">Улучшайте характеристики имплантов, чтобы повысить точность калибровки ИИ.</p>
+        <div class="hq-banner">
+            <h2 id="hq-class-title">Штаб специалиста</h2>
+            <p>Развивайте профессиональные навыки, чтобы открывать скрытые ветки расследований в архивах.</p>
         </div>
-        
-        <h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; color: var(--text-muted);">Импланты и Модификаторы</h3>
-        <div class="upgrade-grid">
-            <div class="upgrade-item">
-                <div class="upgrade-info">
-                    <div class="upgrade-icon">👁️</div>
+        <div class="skill-list">
+            <div class="skill-card">
+                <div class="skill-details">
+                    <div class="skill-icon">🧠</div>
                     <div>
-                        <div class="up-title">Нейро-Сенсор</div>
-                        <div class="up-level">Ур. <span id="up-lvl-1">1</span></div>
+                        <div class="skill-name">Внимательность</div>
+                        <div class="skill-lv">Уровень <span id="skill-lv-1">1</span></div>
                     </div>
                 </div>
-                <button class="upgrade-cost-btn" onclick="buyUpgrade(1)">50 ✨</button>
+                <button class="buy-skill-btn" onclick="upgradeSkill(1)">40 🪙</button>
             </div>
-            <div class="upgrade-item">
-                <div class="upgrade-info">
-                    <div class="upgrade-icon">🧠</div>
+            <div class="skill-card">
+                <div class="skill-details">
+                    <div class="skill-icon">⚖️</div>
                     <div>
-                        <div class="up-title">Дешифратор Сигналов</div>
-                        <div class="up-level">Ур. <span id="up-lvl-2">1</span></div>
+                        <div class="skill-name">Дедуктивное мышление</div>
+                        <div class="skill-lv">Уровень <span id="skill-lv-2">1</span></div>
                     </div>
                 </div>
-                <button class="upgrade-cost-btn" onclick="buyUpgrade(2)">120 ✨</button>
+                <button class="buy-skill-btn" onclick="upgradeSkill(2)">90 🪙</button>
             </div>
         </div>
     </div>
 
     <div class="view-container" id="view-profile">
-        <div class="profile-card">
-            <div class="profile-avatar-frame"><span id="profile-avatar-icon">👤</span></div>
-            <div class="profile-meta">
-                <h3 id="profile-name-display">Оперативник</h3>
-                <p id="profile-role-display">Специалист</p>
+        <div class="dossier-card">
+            <div class="dossier-avatar" id="dossier-avatar-icon">👤</div>
+            <div class="dossier-meta">
+                <h3 id="dossier-name-lbl">Оперативник</h3>
+                <p id="dossier-class-lbl">Детектив</p>
             </div>
         </div>
-
-        <div class="progression-section">
-            <div class="level-badge">
-                <span>Уровень Синхронизации</span>
-                <span style="color: var(--accent-magenta);" id="profile-level">4 Ур.</span>
+        <div class="xp-container">
+            <div class="xp-header">
+                <span>Ранг синхронизации</span>
+                <span id="dossier-rank-lbl" style="color: var(--accent-gold);">1 Ранг</span>
             </div>
-            <div class="xp-track"><div class="xp-fill" id="profile-xp-fill"></div></div>
-            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 6px; color: var(--text-muted);">
-                <span id="profile-xp-text">140 / 400 XP</span>
+            <div class="xp-slider-bg"><div class="xp-slider-fill" id="dossier-xp-fill"></div></div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-top:6px;">
+                <span id="dossier-xp-text">0 / 200 XP</span>
                 <span>До следующего ранга</span>
             </div>
         </div>
-
-        <div class="tg-sync-panel">
-            <h4 style="margin: 0 0 6px 0; font-size: 15px;">Безопасность данных</h4>
-            <p style="margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.4;">Синхронизируйте прогресс с аккаунтом Telegram для сохранения матрицы.</p>
-            <button class="tg-btn" onclick="alert('Интеграция с Telegram Bot API...')">Подключить Telegram</button>
+        <div class="telegram-box">
+            <h4 style="margin:0 0 4px 0; font-size:14px;">Безопасность прогресса</h4>
+            <p style="margin:0; font-size:12px; color:var(--text-muted); line-height:1.4;">Свяжите досье с вашим Telegram-аккаунтом для сохранения уровня и монет.</p>
+            <button class="telegram-btn" onclick="alert('Подключение Telegram Bot API...')">Синхронизировать данные</button>
         </div>
     </div>
 
-    <div class="minigame-overlay" id="view-minigame">
-        <div class="board-container">
-            <h3 style="margin: 0; font-size: 22px; color: var(--accent-cyan); text-transform: uppercase; letter-spacing: 1px;">Обход Протокола</h3>
-            <p style="margin: 6px 0 0 0; font-size: 13px; color: var(--text-muted);">Замкните два соседних ядра</p>
-            <div class="board-matrix" id="minigame-board-matrix">
-                <div class="success-banner" id="mg-success-banner">УЗЕЛ ВЗЛОМАН</div>
+    <div class="minigame-overlay" id="minigame-overlay-layer">
+        <div class="minigame-box">
+            <div class="minigame-title" id="mg-title-lbl">Экспертиза</div>
+            <div class="minigame-subtitle" id="mg-subtitle-lbl">Уровень 1 из 3</div>
+            <div class="game-viewport" id="mg-render-viewport">
+                <div class="success-screen" id="mg-success-screen">АНАЛИЗ ЗАВЕРШЕН</div>
             </div>
-            <button class="action-cyber-btn" style="border-color: var(--accent-magenta); color: var(--accent-magenta);" onclick="closeMinigame(false)">Прервать соединение</button>
+            <button class="premium-btn" style="border-color:var(--accent-crimson); color:var(--accent-crimson);" onclick="exitMinigame(false)">Прервать экспертизу</button>
         </div>
     </div>
 
-    <div class="dock-nav">
-        <div class="dock-item" id="dock-hq" onclick="tabTo('hq')"><div class="dock-icon">⬡</div><span>Штаб</span></div>
-        <div class="dock-item active" id="dock-arena" onclick="tabTo('arena')"><div class="dock-icon">⎔</div><span>Арена</span></div>
-        <div class="dock-item" id="dock-profile" onclick="tabTo('profile')"><div class="dock-icon">👤</div><span>Досье</span></div>
+    <div class="navigation-bar">
+        <div class="nav-tab" id="tab-hq" onclick="switchView('hq')"><div class="nav-tab-icon">⬡</div><span>Штаб</span></div>
+        <div class="nav-tab active" id="tab-arena" onclick="switchView('arena')"><div class="nav-tab-icon">⎔</div><span>Арена</span></div>
+        <div class="nav-tab" id="tab-profile" onclick="switchView('profile')"><div class="nav-tab-icon">👤</div><span>Досье</span></div>
     </div>
 
     <script src="app.js"></script>
