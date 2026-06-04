@@ -11,35 +11,113 @@ const ARCHETYPES = [
     { id: 'hunter', name: 'Охотник', icon: '🏹', desc: 'Отслеживает перемещения, ищет несостыковки в таймингах.', perk: 'Быстрый сброс карточки', game: 'Перехват цели' }
 ];
 
+// Подключаем Telegram WebApp SDK
+const tg = window.Telegram?.WebApp;
+if(tg) tg.expand(); 
+
 export let playerState = {
+    telegramId: tg?.initDataUnsafe?.user?.id || 123456, 
+    username: tg?.initDataUnsafe?.user?.username || "Guest Operator",
     classData: null,
     energy: 100,
     credits: 150,
     rank: 1,
     xp: 0,
     skills: { s1: 1, s2: 1 },
-    currentLevel: 1 // Текущий уровень мини-игры (от 1 до 100)
+    currentLevel: 1 
 };
+
+const authHeader = tg?.initData || "MOCK_DATA_FOR_LOCAL_TESTING";
 
 window.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         const splash = document.getElementById('splash-layer');
-        splash.style.opacity = '0';
-        setTimeout(() => splash.style.display = 'none', 600);
+        if(splash) {
+            splash.style.opacity = '0';
+            setTimeout(() => splash.style.display = 'none', 600);
+        }
         checkGameAuth();
     }, 1200);
 });
 
-function checkGameAuth() {
-    const savedClass = localStorage.getItem('sdvig_user_class');
-    const savedLv = localStorage.getItem('sdvig_user_game_lv');
-    if (savedLv) playerState.currentLevel = parseInt(savedLv, 10);
+async function checkGameAuth() {
+    try {
+        const response = await fetch('/api/game/profile', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-TG-Auth': authHeader
+            },
+            body: JSON.stringify({
+                telegramId: playerState.telegramId,
+                username: playerState.username
+            })
+        });
+        
+        if (response.ok) {
+            const dbProfile = await response.json();
+            if (!dbProfile.archetype || dbProfile.archetype === "detective" && !localStorage.getItem('sdvig_user_class')) {
+                renderOnboardingGrid();
+                document.getElementById('onboarding-layer').style.display = 'flex';
+            } else {
+                mapProfileData(dbProfile);
+            }
+        }
+    } catch (err) {
+        console.error("Сервер не ответил. Локальный автономный режим.", err);
+        loadProfileData('detective'); 
+    }
+}
 
-    if (!savedClass) {
-        renderOnboardingGrid();
-        document.getElementById('onboarding-layer').style.display = 'flex';
-    } else {
-        loadProfileData(savedClass);
+function mapProfileData(dbData) {
+    playerState.energy = dbData.energy;
+    playerState.credits = dbData.credits;
+    playerState.rank = dbData.rank;
+    playerState.xp = dbData.xp;
+    playerState.skills.s1 = dbData.skill1;
+    playerState.skills.s2 = dbData.skill2;
+    playerState.currentLevel = dbData.currentGameLevel;
+    
+    loadProfileData(dbData.archetype);
+    loadNewAiCase();
+}
+
+async function syncProgressWithServer() {
+    try {
+        await fetch('/api/game/sync', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-TG-Auth': authHeader
+            },
+            body: JSON.stringify({
+                telegramId: playerState.telegramId,
+                username: playerState.username,
+                archetype: playerState.classData.id,
+                energy: playerState.energy,
+                credits: playerState.credits,
+                rank: playerState.rank,
+                xp: playerState.xp,
+                skill1: playerState.skills.s1,
+                skill2: playerState.skills.s2,
+                currentGameLevel: playerState.currentLevel
+            })
+        });
+    } catch(e) { console.error("Ошибка синхронизации данных с сервером"); }
+}
+
+async function loadNewAiCase() {
+    try {
+        document.getElementById('active-case-text').innerText = "Запрос к ИИ-Архиву...";
+        const res = await fetch(`/api/game/case?archetype=${playerState.classData.id}&level=${playerState.currentLevel}`, {
+            headers: { 'X-TG-Auth': authHeader }
+        });
+        if(res.ok) {
+            const data = await res.json();
+            document.getElementById('active-case-text').innerText = data.text;
+        }
+    } catch(e) { 
+        document.getElementById('active-case-text').innerText = "Ошибка соединения. Взят локальный архивный документ.";
     }
 }
 
@@ -54,7 +132,8 @@ function renderOnboardingGrid() {
             localStorage.setItem('sdvig_user_class', arch.id);
             document.getElementById('onboarding-layer').style.opacity = '0';
             setTimeout(() => document.getElementById('onboarding-layer').style.display = 'none', 400);
-            loadProfileData(arch.id);
+            playerState.classData = arch;
+            syncProgressWithServer().then(() => loadProfileData(arch.id));
         };
         card.innerHTML = `
             <div class="class-icon">${arch.icon}</div>
@@ -69,14 +148,14 @@ function renderOnboardingGrid() {
 }
 
 function loadProfileData(classId) {
-    playerState.classData = ARCHETYPES.find(a => a.id === classId);
+    playerState.classData = ARCHETYPES.find(a => a.id === classId) || ARCHETYPES[0];
     
     document.getElementById('case-class-lbl').innerText = `// Модуль: ${playerState.classData.name}`;
     document.getElementById('hq-class-title').innerText = `Штаб: ${playerState.classData.name} ${playerState.classData.icon}`;
     document.getElementById('dossier-class-lbl').innerText = `Специализация: ${playerState.classData.name}`;
     document.getElementById('dossier-avatar-icon').innerText = playerState.classData.icon;
+    document.getElementById('dossier-name-lbl').innerText = playerState.username;
     
-    // Инициализация событий навигации
     document.getElementById('tab-hq').onclick = () => switchView('hq');
     document.getElementById('tab-arena').onclick = () => switchView('arena');
     document.getElementById('tab-profile').onclick = () => switchView('profile');
@@ -105,7 +184,6 @@ function switchView(viewId) {
     document.getElementById(`tab-${viewId}`).classList.add('active');
 }
 
-// ДИНАМИЧЕСКИЙ ИМПОРТ ФАЙЛА ИГРЫ
 let activeModule = null;
 
 async function startClassMinigame() {
@@ -116,30 +194,29 @@ async function startClassMinigame() {
     arena.classList.add('vortex-suck');
     
     try {
-        // Загружаем только тот файл, который привязан к классу
         activeModule = await import(`./games/${playerState.classData.id}.js`);
-        
-        setTimeout(() => {
-            arena.classList.remove('view-active', 'vortex-suck');
-            document.getElementById('mg-title-lbl').innerText = playerState.classData.game;
-            document.getElementById('mg-subtitle-lbl').innerText = `Уровень ${playerState.currentLevel} из 100`;
-            
-            // Запускаем движок игры, передавая ему viewport и уровень
-            const viewport = document.getElementById('mg-render-viewport');
-            viewport.querySelectorAll(':not(#mg-success-screen)').forEach(el => el.remove());
-            
-            activeModule.initGame(viewport, playerState.currentLevel, finishStageCallback);
-            
-            overlay.style.display = 'flex';
-            overlay.classList.add('vortex-spit');
-            setTimeout(() => overlay.classList.remove('vortex-spit'), 550);
-        }, 500);
+        executeGameLaunch(arena, overlay);
     } catch (err) {
-        console.error("Ошибка загрузки файла игры:", err);
-        // Если файла еще нет, используем универсальный заглушку-генератор
         activeModule = await import('./games/universal.js');
-        startClassMinigame();
+        executeGameLaunch(arena, overlay);
     }
+}
+
+function executeGameLaunch(arena, overlay) {
+    setTimeout(() => {
+        arena.classList.remove('view-active', 'vortex-suck');
+        document.getElementById('mg-title-lbl').innerText = playerState.classData.game;
+        document.getElementById('mg-subtitle-lbl').innerText = `Уровень ${playerState.currentLevel} из 100`;
+        
+        const viewport = document.getElementById('mg-render-viewport');
+        viewport.querySelectorAll(':not(#mg-success-screen)').forEach(el => el.remove());
+        
+        activeModule.initGame(viewport, playerState.currentLevel, finishStageCallback);
+        
+        overlay.style.display = 'flex';
+        overlay.classList.add('vortex-spit');
+        setTimeout(() => overlay.classList.remove('vortex-spit'), 550);
+    }, 500);
 }
 
 function finishStageCallback() {
@@ -149,7 +226,6 @@ function finishStageCallback() {
     setTimeout(() => {
         document.getElementById('mg-success-screen').style.display = 'none';
         playerState.currentLevel++;
-        localStorage.setItem('sdvig_user_game_lv', playerState.currentLevel);
         exitMinigame(true);
     }, 1200);
 }
@@ -168,8 +244,9 @@ function exitMinigame(success) {
         
         if (success) {
             document.getElementById('active-case-clue').style.display = 'block';
-            document.getElementById('active-case-clue').innerText = `Экспертиза успешно завершена для уровня ${playerState.currentLevel - 1}. Получены новые зацепки для анализа дела.`;
+            document.getElementById('active-case-clue').innerText = `Экспертиза успешно завершена. Получены новые зацепки для анализа дела.`;
             document.getElementById('game-trigger-footer').style.display = 'none';
+            syncProgressWithServer(); // Отправляем прогресс уровня на бэкенд
         }
         setTimeout(() => arena.classList.remove('vortex-spit'), 550);
         refreshHUD();
@@ -192,16 +269,39 @@ card.addEventListener('touchend', () => {
     if(!dragActive) return; dragActive = false;
     if(Math.abs(diffX) > window.innerWidth * 0.35) {
         if(navigator.vibrate) navigator.vibrate(30);
-        playerState.xp += 50; playerState.credits += 10;
+        
+        // НАЧИСЛЕНИЕ НАГРАД ЗА СВАЙП
+        playerState.xp += 50; 
+        playerState.credits += 10;
+        
+        // Проверка на повышение Ранга
+        let nextXp = playerState.rank * 200;
+        if (playerState.xp >= nextXp) {
+            playerState.xp -= nextXp;
+            playerState.rank++;
+        }
+
         card.style.transition = 'transform 0.3s ease-out, opacity 0.2s';
         card.style.transform = `translate(${diffX > 0 ? 150 : -150}%, 40px) rotate(${diffX > 0 ? 20 : -20}deg)`;
         card.style.opacity = '0';
+        
+        // СИНХРОНИЗАЦИЯ ПОСЛЕ СВАЙПА
+        syncProgressWithServer();
+
         setTimeout(() => {
-            document.getElementById('active-case-text').innerText = "Следующий архивный документ готов к изучению. Проведите глубокую экспертизу улик для продвижения.";
             document.getElementById('active-case-clue').style.display = 'none';
             document.getElementById('game-trigger-footer').style.display = 'block';
             card.style.transition = 'none'; card.style.transform = 'scale(0.9) translateY(-30px)';
-            setTimeout(() => { card.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s'; card.style.transform = 'scale(1) translateY(0)'; card.style.opacity = '1'; refreshHUD(); }, 30);
+            
+            // ЗАГРУЗКА СЛЕДУЮЩЕЙ КАРТОЧКИ ИЗ ИИ
+            loadNewAiCase().then(() => {
+                setTimeout(() => { 
+                    card.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s'; 
+                    card.style.transform = 'scale(1) translateY(0)'; 
+                    card.style.opacity = '1'; 
+                    refreshHUD(); 
+                }, 30);
+            });
         }, 350);
     } else {
         card.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)'; card.style.transform = 'translate(0,0) rotate(0deg)';
