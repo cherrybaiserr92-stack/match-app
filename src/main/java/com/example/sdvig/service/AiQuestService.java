@@ -28,7 +28,7 @@ public class AiQuestService {
 
         try {
             Map<String, Object> requestBody = Map.of(
-                "model", "gpt-4o-mini",
+                "model", "deepseek-chat",
                 "messages", List.of(
                     Map.of("role", "system", "content", systemPrompt),
                     Map.of("role", "user", "content", "Сгенерируй новое запутанное описание дела длиной до 35 слов.")
