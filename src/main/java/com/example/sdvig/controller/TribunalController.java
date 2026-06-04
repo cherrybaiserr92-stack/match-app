@@ -1,9 +1,9 @@
-package com.example.matchapp.controller;
+package com.example.sdvig.controller;
 
-import com.example.matchapp.model.CaseItem;
-import com.example.matchapp.model.CaseType;
-import com.example.matchapp.dto.VoteMessage;
-import com.example.matchapp.dto.VoteResult;
+import com.example.sdvig.model.CaseItem;
+import com.example.sdvig.model.CaseType;
+import com.example.sdvig.dto.VoteMessage;
+import com.example.sdvig.dto.VoteResult;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;

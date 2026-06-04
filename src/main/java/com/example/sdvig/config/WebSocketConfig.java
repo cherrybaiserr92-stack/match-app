@@ -1,4 +1,4 @@
-package com.example.matchapp.config;
+package com.example.sdvig.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;

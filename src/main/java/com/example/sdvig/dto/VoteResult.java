@@ -1,4 +1,4 @@
-package com.example.matchapp.dto;
+package com.example.sdvig.dto;
 
 public class VoteResult {
     private String caseId;

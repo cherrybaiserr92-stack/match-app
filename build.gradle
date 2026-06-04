@@ -17,24 +17,19 @@ repositories {
 }
 
 dependencies {
-    // Основной веб-стартер
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    
-    // Работа с базой данных
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    
-    // WebClient для асинхронных запросов к ИИ
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
-    
-    // Стартер для WebSocket
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
-    
-    // Драйвер базы данных для Railway
     runtimeOnly 'org.postgresql:postgresql'
-    
-    // Тесты
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// Явно заставляем собирать jar с правильным именем
+bootJar {
+    archiveFileName = 'sdvig.jar'
+    mainClass = 'com.example.sdvig.SdvigApplication'
 }
 
 tasks.named('test') {
