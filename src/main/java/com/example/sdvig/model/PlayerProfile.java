@@ -10,17 +10,24 @@ public class PlayerProfile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Универсальный ключ авторизации, например "tg:123456" или "google:user@mail.com"
     @Column(unique = true, nullable = false)
     private String providerId;
 
     private String username;
     private String firstName;
+    private String archetype = "detective"; 
     
-    private Integer level = 1;
-    private Integer experience = 0;
+    private int energy = 100;
+    private int credits = 150;
+    private int rank = 1;
+    private int xp = 0;
+    
+    // Навыки игрока
+    private int skill1 = 1; // Проницательность (Увеличивает XP за квесты)
+    private int skill2 = 1; // Технологии (Снижает затраты энергии)
 
-    // Пустой конструктор нужен для Hibernate
+    private int currentGameLevel = 1;
+
     public PlayerProfile() {}
 
     // Геттеры и Сеттеры
@@ -36,9 +43,27 @@ public class PlayerProfile {
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
 
-    public Integer getLevel() { return level; }
-    public void setLevel(Integer level) { this.level = level; }
+    public String getArchetype() { return archetype; }
+    public void setArchetype(String archetype) { this.archetype = archetype; }
 
-    public Integer getExperience() { return experience; }
-    public void setExperience(Integer experience) { this.experience = experience; }
+    public int getEnergy() { return energy; }
+    public void setEnergy(int energy) { this.energy = energy; }
+
+    public int getCredits() { return credits; }
+    public void setCredits(int credits) { this.credits = credits; }
+
+    public int getRank() { return rank; }
+    public void setRank(int rank) { this.rank = rank; }
+
+    public int getXp() { return xp; }
+    public void setXp(int xp) { this.xp = xp; }
+
+    public int getSkill1() { return skill1; }
+    public void setSkill1(int skill1) { this.skill1 = skill1; }
+
+    public int getSkill2() { return skill2; }
+    public void setSkill2(int skill2) { this.skill2 = skill2; }
+
+    public int getCurrentGameLevel() { return currentGameLevel; }
+    public void setCurrentGameLevel(int currentGameLevel) { this.currentGameLevel = currentGameLevel; }
 }

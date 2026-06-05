@@ -17,27 +17,32 @@ public class AiQuestService {
 
     private final WebClient webClient = WebClient.builder().build();
 
-    public String generateCaseText(String archetype, int level) {
+    public String generateCaseJson(String archetype, int level) {
         if ("NONE".equals(apiKey)) {
-            return getFallbackCase(archetype, level);
+            return getFallbackJson(archetype, level);
         }
 
-        String systemPrompt = "Ты — бэкенд движок детективной игры 'Сдвиг'. Твоя задача — сгенерировать ОДНО описание архивного дела или инцидента. " +
-                "КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО упоминать роботов, андроидов, ИИ или фантастику. Только суровый кинематографичный реализм (криминалистика, подделка документов, логи серверов, экономические преступления). " +
-                "Сюжет должен подходить под класс оперативника: " + archetype + ". Уровень сложности кейса (от 1 до 100): " + level;
+        String systemPrompt = "Ты — ИИ-движок текстового детективного нуар-квеста 'Сдвиг'. " +
+                "Твоя задача — сгенерировать ОДИН инцидент строго в формате JSON. Никакой фантастики, только суровый нуарный детективный реализм (улики, логи, допросы). " +
+                "Ответ должен содержать исключительно валидный JSON-объект без разметки markdown (без ```json). " +
+                "Поля JSON объекта:\n" +
+                "\"text\": \"Описание запутанного инцидента или улики для класса " + archetype + " (уровень " + level + ")\",\n" +
+                "\"leftOption\": \"Вариант действия игрока при свайпе влево (короткая фраза до 4 слов)\",\n" +
+                "\"leftResult\": \"Сюжетное последствие и текстовый итог выбора влево (1-2 предложения)\",\n" +
+                "\"rightOption\": \"Вариант действия игрока при свайпе вправо (короткая фраза до 4 слов)\",\n" +
+                "\"rightResult\": \"Сюжетное последствие и текстовый итог выбора вправо (1-2 предложения)\"";
 
         try {
             Map<String, Object> requestBody = Map.of(
                 "model", "deepseek-chat",
                 "messages", List.of(
                     Map.of("role", "system", "content", systemPrompt),
-                    Map.of("role", "user", "content", "Сгенерируй новое запутанное описание дела длиной до 35 слов.")
+                    Map.of("role", "user", "content", "Сгенерируй новое дело.")
                 ),
-                "max_tokens", 150,
                 "temperature", 0.7
             );
 
-            Map<String, Object> response = webClient.post()
+            Map<?, ?> response = webClient.post()
                     .uri(apiUrl)
                     .header("Authorization", "Bearer " + apiKey)
                     .bodyValue(requestBody)
@@ -45,21 +50,22 @@ public class AiQuestService {
                     .bodyToMono(Map.class)
                     .block();
 
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-            Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+            List<?> choices = (List<?>) response.get("choices");
+            Map<?, ?> message = (Map<?, ?>) ((Map<?, ?>) choices.get(0)).get("message");
             return (String) message.get("content");
             
         } catch (Exception e) {
-            return getFallbackCase(archetype, level);
+            return getFallbackJson(archetype, level);
         }
     }
 
-    private String getFallbackCase(String archetype, int level) {
-        if ("detective".equals(archetype)) {
-            return "[Архив #" + (100 + level) + "] Несоответствие в финансовых отчетах. Главный бухгалтер утверждает, что транзакции проводились удаленно, но системные логи указывают на использование физического токена в офисе.";
-        } else if ("doctor".equals(archetype)) {
-            return "[Архив #" + (200 + level) + "] Свидетель уверяет, что не знал жертву. Однако во время допроса датчики зафиксировали резкий скачок пульса и изменение микромимики при упоминании адреса происшествия.";
-        }
-        return "[Архив #" + (300 + level) + "] Обнаружены следы постороннего вмешательства в распределительный щит. Очевидцы путаются в хронологии отключения электричества в блоке.";
+    private String getFallbackJson(String archetype, int level) {
+        return "{" +
+                "\"text\": \"[Дело #" + level + "] Обнаружена подозрительная транзакция на сервере. Системные логи стерты, но терминал входа находится в комнате охраны.\"," +
+                "\"leftOption\": \"Взломать терминал удаленно\"," +
+                "\"leftResult\": \"Вы попытались взломать систему. Защита заблокировала доступ, но благодаря техническим навыкам вы успели перехватить логи.\"," +
+                "\"rightOption\": \"Допросить охранника\"," +
+                "\"rightResult\": \"Дежурный сильно нервничал, но после предъявления улик сознался и передал вам скрытую флешку с копией архива.\"" +
+                "}";
     }
 }
