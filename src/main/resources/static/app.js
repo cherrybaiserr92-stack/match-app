@@ -54,7 +54,7 @@ window.onTelegramAuth = onTelegramAuth;
 
 function showError(msg) {
     document.getElementById('splash-screen').innerHTML = 
-        `<h2 style="color:#ff3333">ОШИБКА</h2><p>${msg}</p><button class="btn" onclick="location.reload()">Повторить</button>`;
+        `<div class="splash-content"><h2 style="color:#b05050">ОШИБКА</h2><p>${msg}</p><button class="btn" onclick="location.reload()">Повторить</button></div>`;
 }
 
 // 2. Старт игры
@@ -86,12 +86,11 @@ function loadCase() {
     card.style.transform = 'none';
 
     fetch('/api/game/case?providerId=' + encodeURIComponent(currentUser.providerId))
-    .then(res => res.text()) // Получаем как текст, так как Spring может вернуть JSON-строку
+    .then(res => res.text()) 
     .then(text => {
         try {
-            // Парсим JSON из ответа ИИ
             let data = typeof text === 'string' ? JSON.parse(text) : text;
-            if (typeof data === 'string') data = JSON.parse(data); // Двойной парсинг, если ИИ вернул строку в строке
+            if (typeof data === 'string') data = JSON.parse(data); 
             currentCase = data;
             document.getElementById('case-description').innerText = currentCase.text;
         } catch(e) {
@@ -121,12 +120,13 @@ function initCardPhysics() {
         const hint = document.getElementById('hint-text');
         if (diffX < -50) {
             hint.innerText = "← " + (currentCase.leftOption || "ВЛЕВО");
-            hint.style.color = "#ff3333";
+            hint.style.color = "#b05050";
         } else if (diffX > 50) {
             hint.innerText = (currentCase.rightOption || "ВПРАВО") + " →";
-            hint.style.color = "#00ff66";
+            hint.style.color = "#c8a96e";
         } else {
             hint.innerText = "";
+            hint.style.color = "#b0aaa0";
         }
     };
 

@@ -9,16 +9,20 @@
 </head>
 <body>
 
+    <!-- Заставка -->
     <div id="splash-screen" class="screen">
-        <h1 class="glitch" data-text="СДВИГ">СДВИГ</h1>
-        <p id="splash-text">Подключение к сети...</p>
-        <div class="loader"></div>
+        <div class="splash-content">
+            <h1 class="logo">СДВИГ</h1>
+            <p id="splash-text">Загрузка архива…</p>
+            <div class="loader"></div>
+        </div>
     </div>
 
+    <!-- Экран входа -->
     <div id="login-screen" class="screen hidden">
         <div class="glass-panel">
-            <h2>ИДЕНТИФИКАЦИЯ</h2>
-            <p>Доступ к архивам закрыт.</p>
+            <h2>ДОСТУП К ДЕЛАМ</h2>
+            <p>Авторизуйтесь через Telegram</p>
             
             <div class="widget-wrapper">
                 <script async src="https://telegram.org/js/telegram-widget.js?22" 
@@ -28,30 +32,31 @@
                         data-request-access="write"></script>
             </div>
 
-            <button class="btn locked" disabled>ВК (В разработке)</button>
-            <button class="btn locked" disabled>Google (В разработке)</button>
+            <button class="btn locked" disabled>ВК (скоро)</button>
+            <button class="btn locked" disabled>Google (скоро)</button>
         </div>
     </div>
 
+    <!-- Основной экран -->
     <div id="main-screen" class="screen hidden">
         
         <div class="hud">
             <div class="hud-item">🔋 <span id="hud-energy">100</span>%</div>
             <div class="hud-item">🪙 <span id="hud-credits">0</span></div>
             <div class="hud-item">🎖️ Ранг <span id="hud-rank">1</span></div>
-            <div class="hud-item xp-bar">XP: <span id="hud-xp">0</span></div>
+            <div class="hud-item xp-bar">Опыт: <span id="hud-xp">0</span></div>
         </div>
 
         <div class="swipe-area">
             <div id="main-card" class="case-card">
                 <div id="hint-text" class="card-hint"></div>
                 <div class="card-content">
-                    <p id="case-description">Инициализация нейросети. Ожидание данных...</p>
+                    <p id="case-description">Ожидание поступления дела…</p>
                 </div>
             </div>
 
             <div id="result-overlay" class="glass-panel hidden">
-                <h3 class="neon-text">ИТОГ</h3>
+                <h3>РЕЗУЛЬТАТ</h3>
                 <p id="result-text"></p>
                 <div class="rewards">
                     <span class="pill xp">+<span id="rew-xp">0</span> XP</span>
@@ -69,7 +74,7 @@
             <button class="dash-btn" onclick="upgradeSkill(2)">
                 🛠️ Технологии <span class="badge" id="lvl-skill2">Lv.1</span>
             </button>
-            <button class="dash-btn full-width highlight" onclick="buyCoffee()">
+            <button class="dash-btn full-width coffee-btn" onclick="buyCoffee()">
                 ☕ Синтетический кофе (+35🔋) <span class="badge cost">40 🪙</span>
             </button>
         </div>
