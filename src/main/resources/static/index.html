@@ -9,17 +9,17 @@
 </head>
 <body>
 
-    <div id="splash-screen" class="fullscreen-layer">
+    <div id="splash-screen" class="fullscreen-layer" style="z-index: 9999;">
         <h1 class="logo">СДВИГ</h1>
         <div class="loader"></div>
     </div>
 
-    <div id="login-screen" class="fullscreen-layer hidden">
+    <div id="login-screen" class="fullscreen-layer">
         <div class="login-card">
             <h2>ИДЕНТИФИКАЦИЯ</h2>
-            <div id="telegram-widget-container">
+            <div id="telegram-widget-container" style="min-height: 50px; display: flex; justify-content: center; margin: 20px 0;">
                 <script async src="https://telegram.org/js/telegram-widget.js?22" 
-                        data-telegram-login="ТВОЙ_БОТ_USERNAME" 
+                        data-telegram-login="sdvig_game_bot" 
                         data-size="large" 
                         data-onauth="onTelegramAuth(user)" 
                         data-request-access="write"></script>

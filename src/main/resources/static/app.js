@@ -10,18 +10,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     setTimeout(() => {
         if (tg && tg.initData && tg.initData.length > 0) {
+            // Прячем логин, так как мы внутри ТГ и будем логиниться тихо
+            document.getElementById('login-screen').classList.add('hidden');
             authWebApp();
         } else {
+            // Если в браузере, убираем Splash — под ним уже готовый отрисованный логин с кнопкой!
             document.getElementById('splash-screen').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('splash-screen').classList.add('hidden');
-                document.getElementById('login-screen').classList.remove('hidden');
             }, 400);
         }
     }, 1000);
 });
 
-// Навигация (Bottom Tabs)
 function switchTab(tabId, btnElement) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
     document.getElementById('tab-' + tabId).classList.remove('hidden');
@@ -38,12 +39,13 @@ function authWebApp() {
         body: JSON.stringify({ initData: tg.initData, initDataUnsafe: tg.initDataUnsafe })
     })
     .then(res => { if(!res.ok) throw new Error(); return res.json(); })
-    .then(loginSuccess).catch(() => alert("Ошибка WebApp. Нет токена."));
+    .then(loginSuccess).catch(() => alert("Ошибка WebApp. Проверьте токен."));
 }
 
 function onTelegramAuth(user) {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('splash-screen').classList.remove('hidden');
+    document.getElementById('splash-screen').style.opacity = '1';
     
     fetch('/api/game/auth/widget', {
         method: 'POST',
@@ -80,13 +82,11 @@ function updateHUD(p) {
     document.getElementById('lvl-skill2').innerText = `Lv.${p.skill2} (${p.skill2 * 50}🪙)`;
 }
 
-// Загрузка дела от ИИ
 function loadCase() {
     document.getElementById('case-description').innerText = "Анализ данных...";
     document.getElementById('hint-text').innerText = "";
     card.style.transform = 'none';
 
-    // Добавляем timestamp, чтобы сбросить кэш и получать новые дела
     fetch(`/api/game/case?providerId=${encodeURIComponent(currentUser.providerId)}&t=${Date.now()}`)
     .then(res => res.text())
     .then(text => {
@@ -103,7 +103,6 @@ function loadCase() {
     }).catch(() => document.getElementById('case-description').innerText = "Ошибка ИИ.");
 }
 
-// Пружинная физика свайпов
 function initCardPhysics() {
     const startDrag = (e) => {
         if (!document.getElementById('result-overlay').classList.contains('hidden') || !currentCase) return;
@@ -145,7 +144,6 @@ function initCardPhysics() {
             card.style.transform = `translateX(500px) rotate(30deg)`;
             setTimeout(() => submitChoice('right'), 300);
         } else {
-            // Пружинный возврат в центр
             card.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
             card.style.transform = 'translate(0px, 0px) rotate(0deg)';
             document.getElementById('hint-text').innerText = "";
@@ -178,7 +176,6 @@ function submitChoice(direction) {
 
         document.getElementById('result-overlay').classList.remove('hidden');
         
-        // Случайный триггер миниигры (20% шанс)
         const mgBtn = document.getElementById('minigame-trigger');
         if (Math.random() < 0.2) {
             mgBtn.classList.remove('hidden');
@@ -199,7 +196,6 @@ function nextCase() {
 }
 window.nextCase = nextCase;
 
-// Воронка: Открытие миниигры
 function startMinigame(title) {
     document.getElementById('mg-title').innerText = title;
     const overlay = document.getElementById('minigame-overlay');
@@ -221,12 +217,11 @@ function closeMinigame(success) {
     
     setTimeout(() => {
         overlay.classList.add('hidden');
-        nextCase(); // Переход к следующему делу после миниигры
+        nextCase();
     }, 400);
 }
 window.closeMinigame = closeMinigame;
 
-// Покупки
 function upgradeSkill(skillNum) {
     fetch(`/api/game/upgrade-skill?providerId=${encodeURIComponent(currentUser.providerId)}&skillNum=${skillNum}`, { method: 'POST' })
     .then(res => {
