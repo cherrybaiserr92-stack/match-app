@@ -2,62 +2,64 @@ package com.example.sdvig.controller;
 
 import com.example.sdvig.model.PlayerProfile;
 import com.example.sdvig.repository.PlayerProfileRepository;
-import com.example.sdvig.service.AiQuestService;
 import com.example.sdvig.service.TelegramAuthService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/game")
 public class GameApiController {
 
-    @Autowired private TelegramAuthService authService;
-    @Autowired private AiQuestService aiQuestService;
-    @Autowired private PlayerProfileRepository profileRepository;
+    private final TelegramAuthService authService;
+    private final PlayerProfileRepository profileRepo;
 
-    @PostMapping("/profile")
-    public ResponseEntity<?> getOrCreateProfile(@RequestHeader("X-TG-Auth") String initData, @RequestBody Map<String, Object> body) {
-        if (!authService.validateInitData(initData)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid Telegram Signature");
-        }
-        
-        Long tgId = Long.parseLong(body.get("telegramId").toString());
-        String username = (String) body.get("username");
-        
-        Optional<PlayerProfile> existing = profileRepository.findById(tgId);
-        if (existing.isPresent()) {
-            return ResponseEntity.ok(existing.get());
-        }
-        
-        PlayerProfile newProfile = new PlayerProfile();
-        newProfile.setTelegramId(tgId);
-        newProfile.setUsername(username);
-        newProfile.setArchetype((String) body.getOrDefault("archetype", "detective"));
-        profileRepository.save(newProfile);
-        
-        return ResponseEntity.ok(newProfile);
+    public GameApiController(TelegramAuthService authService, PlayerProfileRepository profileRepo) {
+        this.authService = authService;
+        this.profileRepo = profileRepo;
     }
 
-    @PostMapping("/sync")
-    public ResponseEntity<?> syncProgress(@RequestHeader("X-TG-Auth") String initData, @RequestBody PlayerProfile updatedProfile) {
-        if (!authService.validateInitData(initData)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Security error");
+    // Эндпоинт для тихой загрузки внутри Telegram
+    @PostMapping("/auth/webapp")
+    public ResponseEntity<?> authWebApp(@RequestBody Map<String, Object> payload) {
+        String initData = (String) payload.get("initData");
+        
+        if (!authService.validateWebAppInitData(initData)) {
+            return ResponseEntity.status(401).body("Invalid WebApp signature");
         }
-        profileRepository.save(updatedProfile);
-        return ResponseEntity.ok(Map.of("status", "success"));
+
+        Map<String, Object> initDataUnsafe = (Map<String, Object>) payload.get("initDataUnsafe");
+        Map<String, Object> user = (Map<String, Object>) initDataUnsafe.get("user");
+        
+        return processUser(user.get("id").toString(), (String) user.get("username"), (String) user.get("first_name"));
     }
 
-    @GetMapping("/case")
-    public ResponseEntity<?> getCase(@RequestHeader("X-TG-Auth") String initData, @RequestParam String archetype, @RequestParam int level) {
-        if (!authService.validateInitData(initData)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Security error");
+    // Эндпоинт для виджета авторизации из браузера
+    @PostMapping("/auth/widget")
+    public ResponseEntity<?> authWidget(@RequestBody Map<String, String> payload) {
+        if (!authService.validateWidgetAuth(payload)) {
+            return ResponseEntity.status(401).body("Invalid Widget signature");
         }
-        String text = aiQuestService.generateCaseText(archetype, level);
-        return ResponseEntity.ok(Map.of("text", text));
+        return processUser(payload.get("id"), payload.get("username"), payload.get("first_name"));
+    }
+
+    // Универсальная регистрация/вход
+    private ResponseEntity<?> processUser(String tgId, String username, String firstName) {
+        String providerId = "tg:" + tgId;
+        
+        PlayerProfile profile = profileRepo.findByProviderId(providerId).orElseGet(() -> {
+            PlayerProfile p = new PlayerProfile();
+            p.setProviderId(providerId);
+            p.setLevel(1);
+            p.setExperience(0);
+            return p;
+        });
+
+        profile.setUsername(username);
+        profile.setFirstName(firstName);
+        profileRepo.save(profile);
+        
+        return ResponseEntity.ok(profile);
     }
 }
