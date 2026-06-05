@@ -1,32 +1,48 @@
-const tg = window.Telegram.WebApp;
 let currentUser = null;
 let currentCase = null;
+let tg = null;
 
-// Переменные для отслеживания тачей и свайпов карточки
+// 1. Безопасная инициализация Telegram
+try {
+    if (window.Telegram && window.Telegram.WebApp) {
+        tg = window.Telegram.WebApp;
+    }
+} catch (e) {
+    console.warn("Telegram WebApp не найден. Работаем в режиме браузера.");
+}
+
 const card = document.getElementById('main-card');
 let startX = 0;
 let currentX = 0;
 let isDragging = false;
 
 document.addEventListener('DOMContentLoaded', () => {
-    tg.expand();
-    tg.ready();
+    if (tg && tg.expand) {
+        try { tg.expand(); tg.ready(); } catch(e) {}
+    }
     
-    // Эмуляция работы Splash-экрана на 1.5 секунды перед разводкой
     setTimeout(() => {
-        if (tg.initData && tg.initData !== "") {
-            // Если мы внутри Telegram App — запускаем тихий вход
+        if (tg && tg.initData && tg.initData !== "") {
             authWebApp();
         } else {
-            // Если в обычном браузере — убираем Splash и показываем Login с виджетом
+            // Режим обычного браузера - прячем лоадер и открываем логин
             document.getElementById('splash-screen').style.opacity = '0';
-            setTimeout(() => document.getElementById('splash-screen').classList.add('hidden'), 500);
+            setTimeout(() => {
+                document.getElementById('splash-screen').classList.add('hidden');
+                document.getElementById('login-screen').classList.remove('hidden');
+            }, 500);
         }
     }, 1500);
 });
 
-// 1. Авторизация в Telegram WebApp
+// 2. Авторизация внутри Telegram
 function authWebApp() {
+    document.getElementById('splash-screen').innerHTML = `
+        <h1 style="letter-spacing: 5px; margin: 0; color: #fff;">СДВИГ</h1>
+        <p style="color: #00ff66; font-size: 12px; margin: 5px 0 0 0;">Связь с сервером...</p>
+        <div class="spinner"></div>
+    `;
+
     fetch('/api/game/auth/webapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -35,73 +51,89 @@ function authWebApp() {
             initDataUnsafe: tg.initDataUnsafe
         })
     })
-    .then(res => { if (!res.ok) throw new Error(); return res.json(); })
+    .then(res => {
+        if (!res.ok) return res.text().then(t => { throw new Error(t); });
+        return res.json();
+    })
     .then(profile => loginSuccess(profile))
-    .catch(() => {
-        document.getElementById('splash-screen').innerHTML = "<h2 style='color:red;'>ОШИБКА СЕТИ</h2>";
+    .catch(err => {
+        console.error("Auth error:", err);
+        document.getElementById('splash-screen').innerHTML = `
+            <h2 style='color:#ff3333;'>ОТКАЗ В ДОСТУПЕ</h2>
+            <p style='color:#aaa; font-size:12px; padding: 0 20px;'>Не удалось проверить подпись Telegram.</p>
+            <p style='color:#ffcc00; font-size:11px; padding: 0 20px;'>Убедись, что в Railway добавлена переменная TELEGRAM_BOT_TOKEN</p>
+            <button onclick="location.reload()" style="margin-top:15px; padding:10px; background:#333; color:#fff; border:none; border-radius:4px;">Повторить</button>
+        `;
     });
 }
 
-// 2. Авторизация через Виджет в Браузере
+// 3. Авторизация через браузер (Виджет)
 function onTelegramAuth(user) {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('splash-screen').classList.remove('hidden');
     document.getElementById('splash-screen').style.opacity = '1';
+    
+    document.getElementById('splash-screen').innerHTML = `
+        <h1 style="letter-spacing: 5px; margin: 0; color: #fff;">СДВИГ</h1>
+        <p style="color: #00ff66; font-size: 12px; margin: 5px 0 0 0;">Проверка ID...</p>
+        <div class="spinner"></div>
+    `;
 
     fetch('/api/game/auth/widget', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(user)
     })
-    .then(res => { if (!res.ok) throw new Error(); return res.json(); })
+    .then(res => {
+        if (!res.ok) return res.text().then(t => { throw new Error(t); });
+        return res.json();
+    })
     .then(profile => loginSuccess(profile))
-    .catch(() => {
-        alert("Ошибка верификации через виджет");
-        document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('splash-screen').classList.add('hidden');
+    .catch(err => {
+        console.error("Widget Auth error:", err);
+        alert("Ошибка входа через виджет. Проверь токен на сервере!");
+        location.reload();
     });
 }
 
-// Успешный вход в систему
 function loginSuccess(profile) {
     currentUser = profile;
     updateHUD(profile);
     
     document.getElementById('splash-screen').classList.add('hidden');
     document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('main-screen').classList.remove('remove');
     document.getElementById('main-screen').classList.remove('hidden');
     
     loadCase();
     initCardPhysics();
 }
 
-// Обновление интерфейса параметров игрока
 function updateHUD(p) {
     document.getElementById('hud-energy').innerText = p.energy;
     document.getElementById('hud-credits').innerText = p.credits;
     document.getElementById('hud-rank').innerText = p.rank;
     document.getElementById('hud-xp').innerText = p.xp + " / " + (p.rank * 150);
     
-    document.getElementById('lvl-skill1').innerText = `Lvl ${p.skill1} (Цена: ${p.skill1 * 50})`;
-    document.getElementById('lvl-skill2').innerText = `Lvl ${p.skill2} (Цена: ${p.skill2 * 50})`;
+    document.getElementById('lvl-skill1').innerText = "Lvl " + p.skill1;
+    document.getElementById('lvl-skill2').innerText = "Lvl " + p.skill2;
 }
 
-// Загрузка нового ИИ-инцидента с бэкенда
 function loadCase() {
     document.getElementById('case-description').innerText = "Связь с архивом ИИ... Сканирование терабайтов данных...";
     document.getElementById('hint-text').innerText = "";
     card.style.transform = 'none';
 
-    fetch(`/api/game/case?providerId=${encodeURIComponent(currentUser.providerId)}`)
+    fetch('/api/game/case?providerId=' + encodeURIComponent(currentUser.providerId))
     .then(res => res.json())
     .then(data => {
         currentCase = data;
         document.getElementById('case-description').innerText = data.text;
+    })
+    .catch(() => {
+        document.getElementById('case-description').innerText = "Ошибка загрузки дела. Архивы ИИ недоступны.";
     });
 }
 
-// Инициализация механики свайпов
 function initCardPhysics() {
     const startDrag = (e) => {
         if (document.getElementById('result-overlay').classList.contains('hidden') === false) return;
@@ -115,15 +147,13 @@ function initCardPhysics() {
         currentX = e.touches ? e.touches[0].clientX : e.clientX;
         const diffX = currentX - startX;
         
-        // Поворот и смещение карты в зависимости от перемещения
-        card.style.transform = `translateX(${diffX}px) rotate(${diffX / 15}deg)`;
+        card.style.transform = "translateX(" + diffX + "px) rotate(" + (diffX / 15) + "deg)";
 
-        // Динамический вывод вариантов выбора прямо во время наклона
         if (diffX < -40) {
-            document.getElementById('hint-text').innerText = `← ВЛЕВО: ${currentCase.leftOption}`;
+            document.getElementById('hint-text').innerText = "← ВЛЕВО: " + currentCase.leftOption;
             document.getElementById('hint-text').style.color = "#ff3333";
         } else if (diffX > 40) {
-            document.getElementById('hint-text').innerText = `ВПРАВО: ${currentCase.rightOption} →`;
+            document.getElementById('hint-text').innerText = "ВПРАВО: " + currentCase.rightOption + " →";
             document.getElementById('hint-text').style.color = "#00ff66";
         } else {
             document.getElementById('hint-text').innerText = "";
@@ -138,13 +168,10 @@ function initCardPhysics() {
         card.style.transition = 'transform 0.4s ease';
 
         if (diffX < -120) {
-            // Зафиксирован уверенный свайп влево
             submitChoice('left');
         } else if (diffX > 120) {
-            // Зафиксирован уверенный свайп вправо
             submitChoice('right');
         } else {
-            // Возврат карты в центр, если сдвинули мало
             card.style.transform = 'none';
             document.getElementById('hint-text').innerText = "";
         }
@@ -159,22 +186,18 @@ function initCardPhysics() {
     window.addEventListener('touchend', endDrag);
 }
 
-// Отправка решения игрока на сервер
 function submitChoice(direction) {
-    fetch(`/api/game/choice?providerId=${encodeURIComponent(currentUser.providerId)}&direction=${direction}`, {
+    fetch('/api/game/choice?providerId=' + encodeURIComponent(currentUser.providerId) + '&direction=' + direction, {
         method: 'POST'
     })
     .then(res => {
-        if (!res.ok) {
-            return res.text().then(text => { alert(text); throw new Error(); });
-        }
+        if (!res.ok) return res.text().then(text => { alert(text); throw new Error(); });
         return res.json();
     })
     .then(data => {
         currentUser = data.profile;
         updateHUD(currentUser);
 
-        // Показываем текст развертывания сюжета на основе выбора
         const resultText = direction === 'left' ? currentCase.leftResult : currentCase.rightResult;
         document.getElementById('result-text').innerText = resultText;
         
@@ -182,7 +205,6 @@ function submitChoice(direction) {
         document.getElementById('rew-credits').innerText = data.creditsGained;
         document.getElementById('rew-energy').innerText = data.energyLost;
 
-        // Показываем оверлей результатов
         document.getElementById('result-overlay').classList.remove('hidden');
     })
     .catch(() => {
@@ -195,29 +217,36 @@ function nextCase() {
     document.getElementById('result-overlay').classList.add('hidden');
     loadCase();
 }
+window.nextCase = nextCase;
 
-// Прокачка Навыков
 function upgradeSkill(skillNum) {
-    fetch(`/api/game/upgrade-skill?providerId=${encodeURIComponent(currentUser.providerId)}&skillNum=${skillNum}`, {
+    fetch('/api/game/upgrade-skill?providerId=' + encodeURIComponent(currentUser.providerId) + '&skillNum=' + skillNum, {
         method: 'POST'
     })
-    .then(res => res.json())
+    .then(res => {
+        if(!res.ok) return res.text().then(t => { alert(t); throw new Error(); });
+        return res.json();
+    })
     .then(profile => {
         currentUser = profile;
         updateHUD(profile);
     })
-    .catch(() => alert("Недостаточно кредитов!"));
+    .catch(() => {});
 }
+window.upgradeSkill = upgradeSkill;
 
-// Покупка Кофе (Инвентарь)
 function buyCoffee() {
-    fetch(`/api/game/buy-coffee?providerId=${encodeURIComponent(currentUser.providerId)}`, {
+    fetch('/api/game/buy-coffee?providerId=' + encodeURIComponent(currentUser.providerId), {
         method: 'POST'
     })
-    .then(res => res.json())
+    .then(res => {
+        if(!res.ok) return res.text().then(t => { alert(t); throw new Error(); });
+        return res.json();
+    })
     .then(profile => {
         currentUser = profile;
         updateHUD(profile);
     })
-    .catch(() => alert("Недостаточно кредитов для покупки кофе!"));
+    .catch(() => {});
 }
+window.buyCoffee = buyCoffee;

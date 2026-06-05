@@ -27,21 +27,40 @@ public class GameApiController {
 
     @PostMapping("/auth/webapp")
     public ResponseEntity<?> authWebApp(@RequestBody Map<String, Object> payload) {
-        String initData = (String) payload.get("initData");
-        if (!authService.validateWebAppInitData(initData)) {
-            return ResponseEntity.status(401).body("Invalid WebApp signature");
+        try {
+            String initData = (String) payload.get("initData");
+            
+            // Проверка подписи Telegram
+            if (!authService.validateWebAppInitData(initData)) {
+                return ResponseEntity.status(401).body("Invalid WebApp signature. Токен бота не настроен или неверен.");
+            }
+
+            Map<String, Object> initDataUnsafe = (Map<String, Object>) payload.get("initDataUnsafe");
+            if (initDataUnsafe == null || !initDataUnsafe.containsKey("user")) {
+                return ResponseEntity.status(400).body("User data is missing");
+            }
+            
+            Map<String, Object> user = (Map<String, Object>) initDataUnsafe.get("user");
+            String tgId = String.valueOf(user.get("id"));
+            String username = (String) user.get("username");
+            String firstName = (String) user.get("first_name");
+
+            return processUser(tgId, username, firstName);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Server Error: " + e.getMessage());
         }
-        Map<String, Object> initDataUnsafe = (Map<String, Object>) payload.get("initDataUnsafe");
-        Map<String, Object> user = (Map<String, Object>) initDataUnsafe.get("user");
-        return processUser(user.get("id").toString(), (String) user.get("username"), (String) user.get("first_name"));
     }
 
     @PostMapping("/auth/widget")
     public ResponseEntity<?> authWidget(@RequestBody Map<String, String> payload) {
-        if (!authService.validateWidgetAuth(payload)) {
-            return ResponseEntity.status(401).body("Invalid Widget signature");
+        try {
+            if (!authService.validateWidgetAuth(payload)) {
+                return ResponseEntity.status(401).body("Invalid Widget signature");
+            }
+            return processUser(payload.get("id"), payload.get("username"), payload.get("first_name"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Server Error: " + e.getMessage());
         }
-        return processUser(payload.get("id"), payload.get("username"), payload.get("first_name"));
     }
 
     private ResponseEntity<?> processUser(String tgId, String username, String firstName) {
@@ -51,8 +70,10 @@ public class GameApiController {
             p.setProviderId(providerId);
             return p;
         });
-        profile.setUsername(username);
-        profile.setFirstName(firstName);
+        
+        if (username != null) profile.setUsername(username);
+        if (firstName != null) profile.setFirstName(firstName);
+        
         profileRepo.save(profile);
         return ResponseEntity.ok(profile);
     }
@@ -75,20 +96,16 @@ public class GameApiController {
             return ResponseEntity.badRequest().body("Недостаточно энергии! Нужно выпить кофе.");
         }
 
-        // Влияние Навыка 2 (Технологии) на расход энергии
         int energyCost = Math.max(3, 12 - profile.getSkill2());
         profile.setEnergy(Math.max(0, profile.getEnergy() - energyCost));
 
-        // Влияние Навыка 1 (Проницательность) на получение опыта
         int baseXp = 15 + random.nextInt(10);
         int xpGained = baseXp + (profile.getSkill1() * 4);
         profile.setXp(profile.getXp() + xpGained);
 
-        // Начисление кредитов за успешное действие
         int creditsGained = 10 + random.nextInt(15);
         profile.setCredits(profile.getCredits() + creditsGained);
 
-        // Расчет повышения Ранга (каждый ранг требует больше опыта)
         int xpRequired = profile.getRank() * 150;
         if (profile.getXp() >= xpRequired) {
             profile.setXp(profile.getXp() - xpRequired);
