@@ -5,6 +5,25 @@ let currentCase = null;
 const card = document.getElementById('main-card');
 let startX = 0, currentX = 0, isDragging = false;
 
+// ----- Новая функция для входа через Mini App -----
+function loginWithTelegram() {
+    if (!tg) {
+        alert("Telegram SDK не загружен. Обновите страницу.");
+        return;
+    }
+    tg.openTelegramLogin({
+        botUsername: "sdvig_game_bot",
+        onAuth: function(user) {
+            onTelegramAuth(user);
+        },
+        onError: function(err) {
+            alert("Ошибка входа: " + err);
+        }
+    });
+}
+window.loginWithTelegram = loginWithTelegram;
+// -------------------------------------------------
+
 document.addEventListener('DOMContentLoaded', () => {
     if (tg) { try { tg.expand(); tg.ready(); } catch(e) {} }
     
