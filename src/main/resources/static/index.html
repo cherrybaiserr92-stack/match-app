@@ -2,116 +2,79 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>СДВИГ</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="[https://telegram.org/js/telegram-web-app.js](https://telegram.org/js/telegram-web-app.js)"></script>
+    
+    <!-- КРИТИЧЕСКИ ВАЖНО: Этот скрипт позволяет приложению понять, что оно внутри Telegram -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
     <style>
-        body { font-family: 'Courier New', monospace; background: #0a0a0c; color: #00ff66; margin: 0; padding: 0; overflow: hidden; }
+        body { background: #111; color: #fff; font-family: monospace; text-align: center; margin: 0; padding: 20px; }
         .hidden { display: none !important; }
-        
-        /* Фиксированный Splash Экран поверх всего */
-        #splash-screen { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; transition: opacity 0.5s ease; }
-        .spinner { width: 50px; height: 50px; border: 3px solid #00ff6 green; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-top: 20px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* Экран авторизации */
-        #login-screen { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #15151a 0%, #050507 100%); text-align: center; p: 20px; }
-        .auth-container { background: rgba(0,0,0,0.6); padding: 40px; border: 1px solid #00ff66; border-radius: 10px; box-shadow: 0 0 20px rgba(0,255,102,0.2); }
-
-        /* Игровой интерфейс */
-        #main-screen { padding: 15px; height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
-        .hud-panel { display: flex; justify-content: space-between; background: #121216; padding: 10px; border-radius: 5px; border: 1px solid #333; font-size: 13px; }
-        .stat { color: #fff; } .stat span { color: #00ff66; font-weight: bold; }
-
-        /* Игровая карта */
-        .card-container { flex-grow: 1; display: flex; align-items: center; justify-content: center; position: relative; margin: 20px 0; }
-        .case-card { width: 90%; max-width: 340px; height: 280px; background: #16161e; border: 2px solid #00ff66; border-radius: 8px; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; cursor: grab; position: relative; user-select: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .case-text { font-size: 14px; line-height: 1.5; color: #e0e0e0; overflow-y: auto; }
-        .card-hint { font-size: 12px; font-weight: bold; text-align: center; color: #ffcc00; text-transform: uppercase; min-height: 16px; }
-
-        /* Оверлей последствий выбора */
-        #result-overlay { position: absolute; inset: 15px; background: rgba(10,10,14,0.95); border: 2px solid #ffcc00; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; z-index: 100; box-shadow: 0 0 30px rgba(255,204,0,0.2); }
-        .result-title { color: #ffcc00; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
-        .result-body { color: #fff; font-size: 14px; line-height: 1.5; flex-grow: 1; }
-        .rewards-pills { display: flex; gap: 10px; margin: 15px 0; font-size: 12px; }
-        .pill { background: #222; padding: 4px 8px; border-radius: 4px; border: 1px solid #555; }
-
-        /* Нижний блок: Навыки и Магазин */
-        .bottom-dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #121216; padding: 12px; border-radius: 5px; border: 1px solid #333; }
-        .section-title { font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 6px; grid-column: span 2; }
-        .dashboard-btn { background: #222; border: 1px solid #00ff66; color: #00ff66; padding: 8px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 11px; text-align: left; display: flex; justify-content: space-between; align-items: center; }
-        .dashboard-btn:hover { background: rgba(0,255,102,0.1); }
-        .dashboard-btn span { color: #fff; font-size: 10px; background: #333; padding: 2px 5px; border-radius: 3px; }
+        .btn { padding: 10px 20px; margin: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 5px; cursor: pointer; }
+        .btn:disabled { background: #222; color: #555; border-color: #333; cursor: not-allowed; }
+        .spinner { border: 4px solid #333; border-top: 4px solid #00ff66; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #main-card { margin: 20px auto; padding: 20px; border: 1px solid #00ff66; border-radius: 10px; width: 90%; max-width: 400px; background: #222; transition: transform 0.2s; user-select: none; }
     </style>
 </head>
 <body>
 
+    <!-- Экран загрузки -->
     <div id="splash-screen">
-        <h1 style="letter-spacing: 5px; margin: 0;">СДВИГ</h1>
-        <p style="color: #666; font-size: 12px; margin: 5px 0 0 0;">Инициализация систем ИИ...</p>
+        <h1 style="letter-spacing: 5px;">СДВИГ</h1>
+        <p id="splash-text" style="color: #00ff66;">Инициализация...</p>
         <div class="spinner"></div>
     </div>
 
-    <div id="login-screen">
-        <div class="auth-container">
-            <h1 style="margin-top: 0; color: #fff;">СДВИГ</h1>
-            <p style="color: #888; margin-bottom: 30px; font-size: 13px;">Для доступа к архивным расследованиям пройдите верификацию личности</p>
-            
-            <div style="margin-bottom: 20px; display: flex; justify-content: center;">
-                <script async src="[https://telegram.org/js/telegram-widget.js?22](https://telegram.org/js/telegram-widget.js?22)" 
-                        data-telegram-login="sdvig_game_bot" 
-                        data-size="large" 
-                        data-onauth="onTelegramAuth(user)" 
-                        data-request-access="write"></script>
-            </div>
-            
-            <button style="width:100%; padding:10px; background:#1a1a1a; border:1px solid #444; color:#666; margin-top:10px; border-radius:4px; font-family:inherit; font-size:12px;" disabled>Войти через Google (В разработке)</button>
-            <button style="width:100%; padding:10px; background:#1a1a1a; border:1px solid #444; color:#666; margin-top:5px; border-radius:4px; font-family:inherit; font-size:12px;" disabled>Войти через VK (В разработке)</button>
+    <!-- Экран логина (для браузера) -->
+    <div id="login-screen" class="hidden">
+        <h2>АВТОРИЗАЦИЯ</h2>
+        <p style="color: #aaa; font-size: 14px;">Для доступа к системе требуется идентификация.</p>
+        
+        <div id="telegram-widget-container" style="margin: 20px 0;">
+            <script async src="https://telegram.org/js/telegram-widget.js?22" 
+                    data-telegram-login="sdvig_game_bot" 
+                    data-size="large" 
+                    data-onauth="onTelegramAuth(user)" 
+                    data-request-access="write"></script>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button class="btn" disabled>ВК (В планах)</button>
+            <button class="btn" disabled>Google (В планах)</button>
         </div>
     </div>
 
+    <!-- Главный экран -->
     <div id="main-screen" class="hidden">
-        <div class="hud-panel">
-            <div class="stat">🔋 ЭНЕРГИЯ: <span id="hud-energy">0</span>%</div>
-            <div class="stat">🪙 КРЕДИТЫ: <span id="hud-credits">0</span></div>
-            <div class="stat">🎖️ РАНГ: <span id="hud-rank">0</span> (<span id="hud-xp">0</span> XP)</div>
+        <div id="hud" style="font-size: 14px; margin-bottom: 20px; color: #aaa;">
+            Энергия: <span id="hud-energy" style="color:#fff;"></span> | 
+            Кредиты: <span id="hud-credits" style="color:#ffcc00;"></span> | 
+            Ранг: <span id="hud-rank" style="color:#fff;"></span><br>
+            XP: <span id="hud-xp" style="color:#00ff66;"></span>
         </div>
 
-        <div class="card-container">
-            <div class="case-card" id="main-card">
-                <div class="card-hint" id="hint-text"></div>
-                <div class="case-text" id="case-description">Загрузка дела из архивов ИИ...</div>
-                <div style="font-size: 10px; color: #555; text-align: center;">← Свайп влево или вправо →</div>
-            </div>
-
-            <div id="result-overlay" class="hidden">
-                <div>
-                    <div class="result-title">РЕЗУЛЬТАТ ДЕЙСТВИЯ</div>
-                    <div class="result-body" id="result-text">Вы успешно завершили этап дела.</div>
-                    <div class="rewards-pills">
-                        <div class="pill" style="color: #00ff66;">XP: +<span id="rew-xp">0</span></div>
-                        <div class="pill" style="color: #ffcc00;">Кредиты: +<span id="rew-credits">0</span></div>
-                        <div class="pill" style="color: #ff3333;">Энергия: -<span id="rew-energy">0</span></div>
-                    </div>
-                </div>
-                <button onclick="nextCase()" style="width: 100%; padding: 12px; background: #ffcc00; border: none; color: #000; font-family: inherit; font-weight: bold; cursor: pointer; border-radius: 4px;">ПРОДОЛЖИТЬ РАССЛЕДОВАНИЕ</button>
-            </div>
+        <div id="main-card">
+            <p id="case-description" style="font-size: 16px; line-height: 1.5;"></p>
+            <p id="hint-text" style="font-weight: bold; margin-top: 20px; height: 20px;"></p>
         </div>
 
-        <div class="bottom-dashboard">
-            <div class="section-title">Прокачка оперативных навыков</div>
-            <button class="dashboard-btn" onclick="upgradeSkill(1)">
-                🧠 Проницательность <span id="lvl-skill1">Lvl 1</span>
-            </button>
-            <button class="dashboard-btn" onclick="upgradeSkill(2)">
-                🛠️ Технологии <span id="lvl-skill2">Lvl 1</span>
-            </button>
+        <div id="result-overlay" class="hidden" style="margin-top: 20px; border: 1px solid #555; padding: 15px; background: #1a1a1a;">
+            <p id="result-text" style="margin-top: 0;"></p>
+            <div style="color: #aaa; font-size: 14px; margin-bottom: 15px;">
+                Получено XP: <span id="rew-xp" style="color:#00ff66;"></span> | 
+                Кредиты: <span id="rew-credits" style="color:#ffcc00;"></span> | 
+                Потеря энергии: <span id="rew-energy" style="color:#ff3333;"></span>
+            </div>
+            <button class="btn" onclick="nextCase()">СЛЕДУЮЩЕЕ ДЕЛО</button>
+        </div>
 
-            <div class="section-title" style="margin-top: 5px;">Снабжение (Инвентарь)</div>
-            <button class="dashboard-btn" onclick="buyCoffee()" style="grid-column: span 2; border-color: #ffcc00; color: #ffcc00;">
-                ☕ Заказать синтетический кофе (+35 🔋) <span>Цена: 40 🪙</span>
-            </button>
+        <div id="controls" style="margin-top: 20px; display: flex; flex-wrap: wrap; justify-content: center;">
+            <button class="btn" onclick="upgradeSkill(1)">Навык 1 (<span id="lvl-skill1"></span>)</button>
+            <button class="btn" onclick="upgradeSkill(2)">Навык 2 (<span id="lvl-skill2"></span>)</button>
+            <button class="btn" onclick="buyCoffee()">Кофе (40 Cr)</button>
+            <button class="btn">Ассистент</button>
         </div>
     </div>
 
