@@ -2,7 +2,6 @@ const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : 
 let currentUser = null;
 let currentCase = null;
 
-// Элементы свайпа
 const card = document.getElementById('main-card');
 let startX = 0, currentX = 0, isDragging = false;
 
@@ -11,53 +10,51 @@ document.addEventListener('DOMContentLoaded', () => {
     
     setTimeout(() => {
         if (tg && tg.initData && tg.initData.length > 0) {
-            document.getElementById('splash-text').innerText = "Авторизация WebApp...";
             authWebApp();
         } else {
             document.getElementById('splash-screen').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('splash-screen').classList.add('hidden');
                 document.getElementById('login-screen').classList.remove('hidden');
-            }, 500);
+            }, 400);
         }
-    }, 800);
+    }, 1000);
 });
 
-// 1. Авторизации
+// Навигация (Bottom Tabs)
+function switchTab(tabId, btnElement) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.getElementById('tab-' + tabId).classList.remove('hidden');
+    
+    document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+    btnElement.classList.add('active');
+}
+window.switchTab = switchTab;
+
 function authWebApp() {
     fetch('/api/game/auth/webapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ initData: tg.initData, initDataUnsafe: tg.initDataUnsafe })
     })
-    .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-    .then(profile => loginSuccess(profile))
-    .catch(() => showError("Ошибка входа WebApp. Проверьте токен."));
+    .then(res => { if(!res.ok) throw new Error(); return res.json(); })
+    .then(loginSuccess).catch(() => alert("Ошибка WebApp. Нет токена."));
 }
 
 function onTelegramAuth(user) {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('splash-screen').classList.remove('hidden');
-    document.getElementById('splash-screen').style.opacity = '1';
-    document.getElementById('splash-text').innerText = "Проверка данных виджета...";
-
+    
     fetch('/api/game/auth/widget', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(user)
     })
-    .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-    .then(profile => loginSuccess(profile))
-    .catch(() => { alert("Ошибка виджета."); location.reload(); });
+    .then(res => { if(!res.ok) throw new Error(); return res.json(); })
+    .then(loginSuccess).catch(() => { alert("Ошибка виджета."); location.reload(); });
 }
 window.onTelegramAuth = onTelegramAuth;
 
-function showError(msg) {
-    document.getElementById('splash-screen').innerHTML = 
-        `<div class="splash-content"><h2 style="color:#b05050">ОШИБКА</h2><p>${msg}</p><button class="btn" onclick="location.reload()">Повторить</button></div>`;
-}
-
-// 2. Старт игры
 function loginSuccess(profile) {
     currentUser = profile;
     updateHUD(profile);
@@ -74,34 +71,39 @@ function updateHUD(p) {
     document.getElementById('hud-energy').innerText = p.energy;
     document.getElementById('hud-credits').innerText = p.credits;
     document.getElementById('hud-rank').innerText = p.rank;
-    document.getElementById('hud-xp').innerText = p.xp + " / " + (p.rank * 150);
-    document.getElementById('lvl-skill1').innerText = "Lv." + p.skill1 + " (" + (p.skill1 * 50) + "🪙)";
-    document.getElementById('lvl-skill2').innerText = "Lv." + p.skill2 + " (" + (p.skill2 * 50) + "🪙)";
+    
+    const xpNeeded = p.rank * 150;
+    document.getElementById('hud-xp').innerText = `${p.xp} / ${xpNeeded}`;
+    document.getElementById('xp-bar').style.width = `${(p.xp / xpNeeded) * 100}%`;
+    
+    document.getElementById('lvl-skill1').innerText = `Lv.${p.skill1} (${p.skill1 * 50}🪙)`;
+    document.getElementById('lvl-skill2').innerText = `Lv.${p.skill2} (${p.skill2 * 50}🪙)`;
 }
 
-// 3. Генерация дел ИИ
+// Загрузка дела от ИИ
 function loadCase() {
-    document.getElementById('case-description').innerText = "ИИ сканирует архивы...";
+    document.getElementById('case-description').innerText = "Анализ данных...";
     document.getElementById('hint-text').innerText = "";
     card.style.transform = 'none';
 
-    fetch('/api/game/case?providerId=' + encodeURIComponent(currentUser.providerId))
-    .then(res => res.text()) 
+    // Добавляем timestamp, чтобы сбросить кэш и получать новые дела
+    fetch(`/api/game/case?providerId=${encodeURIComponent(currentUser.providerId)}&t=${Date.now()}`)
+    .then(res => res.text())
     .then(text => {
         try {
-            let data = typeof text === 'string' ? JSON.parse(text) : text;
-            if (typeof data === 'string') data = JSON.parse(data); 
+            let data = JSON.parse(text);
+            if (typeof data === 'string') data = JSON.parse(data);
             currentCase = data;
             document.getElementById('case-description').innerText = currentCase.text;
         } catch(e) {
-            currentCase = { text: text, leftOption: "Действовать", rightOption: "Отступить", leftResult: "Вы действовали наугад.", rightResult: "Вы отступили." };
-            document.getElementById('case-description').innerText = currentCase.text;
+            console.error("JSON Error:", e);
+            currentCase = { leftOption: "Влево", rightOption: "Вправо", leftResult: "Свайп влево.", rightResult: "Свайп вправо." };
+            document.getElementById('case-description').innerText = text;
         }
-    })
-    .catch(() => document.getElementById('case-description').innerText = "Ошибка загрузки ИИ.");
+    }).catch(() => document.getElementById('case-description').innerText = "Ошибка ИИ.");
 }
 
-// 4. Физика свайпов
+// Пружинная физика свайпов
 function initCardPhysics() {
     const startDrag = (e) => {
         if (!document.getElementById('result-overlay').classList.contains('hidden') || !currentCase) return;
@@ -115,18 +117,17 @@ function initCardPhysics() {
         currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
         const diffX = currentX - startX;
         
-        card.style.transform = `translateX(${diffX}px) rotate(${diffX / 15}deg)`;
+        card.style.transform = `translateX(${diffX}px) rotate(${diffX / 20}deg)`;
 
         const hint = document.getElementById('hint-text');
         if (diffX < -50) {
             hint.innerText = "← " + (currentCase.leftOption || "ВЛЕВО");
-            hint.style.color = "#b05050";
+            hint.style.color = "var(--danger)";
         } else if (diffX > 50) {
             hint.innerText = (currentCase.rightOption || "ВПРАВО") + " →";
-            hint.style.color = "#c8a96e";
+            hint.style.color = "var(--accent)";
         } else {
             hint.innerText = "";
-            hint.style.color = "#b0aaa0";
         }
     };
 
@@ -134,12 +135,19 @@ function initCardPhysics() {
         if (!isDragging) return;
         isDragging = false;
         const diffX = currentX - startX;
-        card.style.transition = 'transform 0.3s ease';
 
-        if (diffX < -100) submitChoice('left');
-        else if (diffX > 100) submitChoice('right');
-        else {
-            card.style.transform = 'none';
+        if (diffX < -120) {
+            card.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            card.style.transform = `translateX(-500px) rotate(-30deg)`;
+            setTimeout(() => submitChoice('left'), 300);
+        } else if (diffX > 120) {
+            card.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            card.style.transform = `translateX(500px) rotate(30deg)`;
+            setTimeout(() => submitChoice('right'), 300);
+        } else {
+            // Пружинный возврат в центр
+            card.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            card.style.transform = 'translate(0px, 0px) rotate(0deg)';
             document.getElementById('hint-text').innerText = "";
         }
     };
@@ -153,7 +161,6 @@ function initCardPhysics() {
     window.addEventListener('touchend', endDrag);
 }
 
-// 5. Отправка решения и результаты
 function submitChoice(direction) {
     fetch(`/api/game/choice?providerId=${encodeURIComponent(currentUser.providerId)}&direction=${direction}`, { method: 'POST' })
     .then(res => {
@@ -170,9 +177,18 @@ function submitChoice(direction) {
         document.getElementById('rew-energy').innerText = data.energyLost;
 
         document.getElementById('result-overlay').classList.remove('hidden');
+        
+        // Случайный триггер миниигры (20% шанс)
+        const mgBtn = document.getElementById('minigame-trigger');
+        if (Math.random() < 0.2) {
+            mgBtn.classList.remove('hidden');
+        } else {
+            mgBtn.classList.add('hidden');
+        }
     })
     .catch(() => {
-        card.style.transform = 'none';
+        card.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        card.style.transform = 'translate(0px, 0px) rotate(0deg)';
         document.getElementById('hint-text').innerText = "";
     });
 }
@@ -183,15 +199,41 @@ function nextCase() {
 }
 window.nextCase = nextCase;
 
-// 6. Навыки и Магазин
+// Воронка: Открытие миниигры
+function startMinigame(title) {
+    document.getElementById('mg-title').innerText = title;
+    const overlay = document.getElementById('minigame-overlay');
+    overlay.classList.remove('hidden', 'vortex-exit');
+    overlay.classList.add('vortex-enter');
+}
+window.startMinigame = startMinigame;
+
+function closeMinigame(success) {
+    const overlay = document.getElementById('minigame-overlay');
+    overlay.classList.remove('vortex-enter');
+    overlay.classList.add('vortex-exit');
+    
+    if(success) {
+        alert("Взлом успешен! Вы получили бонус.");
+        currentUser.credits += 25;
+        updateHUD(currentUser);
+    }
+    
+    setTimeout(() => {
+        overlay.classList.add('hidden');
+        nextCase(); // Переход к следующему делу после миниигры
+    }, 400);
+}
+window.closeMinigame = closeMinigame;
+
+// Покупки
 function upgradeSkill(skillNum) {
     fetch(`/api/game/upgrade-skill?providerId=${encodeURIComponent(currentUser.providerId)}&skillNum=${skillNum}`, { method: 'POST' })
     .then(res => {
         if(!res.ok) return res.text().then(t => { alert(t); throw new Error(); });
         return res.json();
     })
-    .then(profile => { currentUser = profile; updateHUD(profile); })
-    .catch(() => {});
+    .then(p => { currentUser = p; updateHUD(p); }).catch(() => {});
 }
 window.upgradeSkill = upgradeSkill;
 
@@ -201,7 +243,6 @@ function buyCoffee() {
         if(!res.ok) return res.text().then(t => { alert(t); throw new Error(); });
         return res.json();
     })
-    .then(profile => { currentUser = profile; updateHUD(profile); })
-    .catch(() => {});
+    .then(p => { currentUser = p; updateHUD(p); }).catch(() => {});
 }
 window.buyCoffee = buyCoffee;

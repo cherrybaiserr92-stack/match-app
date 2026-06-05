@@ -2,83 +2,117 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>СДВИГ</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 
-    <!-- Заставка -->
-    <div id="splash-screen" class="screen">
-        <div class="splash-content">
-            <h1 class="logo">СДВИГ</h1>
-            <p id="splash-text">Загрузка архива…</p>
-            <div class="loader"></div>
-        </div>
+    <div id="splash-screen" class="fullscreen-layer">
+        <h1 class="logo">СДВИГ</h1>
+        <div class="loader"></div>
     </div>
 
-    <!-- Экран входа -->
-    <div id="login-screen" class="screen hidden">
-        <div class="glass-panel">
-            <h2>ДОСТУП К ДЕЛАМ</h2>
-            <p>Авторизуйтесь через Telegram</p>
-            
-            <div class="widget-wrapper">
+    <div id="login-screen" class="fullscreen-layer hidden">
+        <div class="login-card">
+            <h2>ИДЕНТИФИКАЦИЯ</h2>
+            <div id="telegram-widget-container">
                 <script async src="https://telegram.org/js/telegram-widget.js?22" 
-                        data-telegram-login="sdvig_game_bot" 
+                        data-telegram-login="ТВОЙ_БОТ_USERNAME" 
                         data-size="large" 
                         data-onauth="onTelegramAuth(user)" 
                         data-request-access="write"></script>
             </div>
-
-            <button class="btn locked" disabled>ВК (скоро)</button>
-            <button class="btn locked" disabled>Google (скоро)</button>
+            <button class="btn ghost-btn" disabled>VK ID (СКОРО)</button>
         </div>
     </div>
 
-    <!-- Основной экран -->
-    <div id="main-screen" class="screen hidden">
+    <div id="main-screen" class="hidden">
         
-        <div class="hud">
-            <div class="hud-item">🔋 <span id="hud-energy">100</span>%</div>
-            <div class="hud-item">🪙 <span id="hud-credits">0</span></div>
-            <div class="hud-item">🎖️ Ранг <span id="hud-rank">1</span></div>
-            <div class="hud-item xp-bar">Опыт: <span id="hud-xp">0</span></div>
-        </div>
+        <header class="hud-bar">
+            <div class="hud-stat"><span class="icon">🔋</span> <span id="hud-energy">100</span>%</div>
+            <div class="hud-stat"><span class="icon">🪙</span> <span id="hud-credits">0</span></div>
+            <div class="hud-stat"><span class="icon">🎖️</span> Ранг <span id="hud-rank">1</span></div>
+        </header>
+        <div class="progress-container"><div class="progress-bar" id="xp-bar"></div></div>
 
-        <div class="swipe-area">
-            <div id="main-card" class="case-card">
-                <div id="hint-text" class="card-hint"></div>
-                <div class="card-content">
-                    <p id="case-description">Ожидание поступления дела…</p>
+        <main class="tab-content" id="tab-game">
+            <div class="swipe-area">
+                <div id="main-card" class="modern-card">
+                    <div id="hint-text" class="card-hint"></div>
+                    <div class="card-body">
+                        <p id="case-description">Синхронизация с архивом...</p>
+                    </div>
+                    <div class="card-footer">СВАЙП ВЛЕВО / ВПРАВО</div>
+                </div>
+
+                <div id="result-overlay" class="modern-card hidden result-card">
+                    <h3>ОТЧЕТ</h3>
+                    <p id="result-text"></p>
+                    <div class="rewards">
+                        <span class="pill green">+<span id="rew-xp">0</span> XP</span>
+                        <span class="pill gold">+<span id="rew-credits">0</span> Cr</span>
+                        <span class="pill red">-<span id="rew-energy">0</span> En</span>
+                    </div>
+                    <button class="btn primary-btn" onclick="nextCase()">ПРОДОЛЖИТЬ</button>
+                    <button id="minigame-trigger" class="btn secondary-btn hidden" onclick="startMinigame('Взлом терминала')">НАЧАТЬ ВЗЛОМ</button>
                 </div>
             </div>
+        </main>
 
-            <div id="result-overlay" class="glass-panel hidden">
-                <h3>РЕЗУЛЬТАТ</h3>
-                <p id="result-text"></p>
-                <div class="rewards">
-                    <span class="pill xp">+<span id="rew-xp">0</span> XP</span>
-                    <span class="pill credits">+<span id="rew-credits">0</span> 🪙</span>
-                    <span class="pill energy">-<span id="rew-energy">0</span> 🔋</span>
+        <main class="tab-content hidden" id="tab-upgrades">
+            <h2 class="section-title">АУГМЕНТАЦИИ</h2>
+            <div class="list-item">
+                <div>
+                    <h4>🧠 Проницательность</h4>
+                    <p class="desc">Увеличивает получаемый опыт</p>
                 </div>
-                <button class="btn action-btn" onclick="nextCase()">СЛЕДУЮЩЕЕ ДЕЛО</button>
+                <button class="btn outline-btn" onclick="upgradeSkill(1)"><span id="lvl-skill1">Lvl 1</span></button>
             </div>
-        </div>
+            <div class="list-item">
+                <div>
+                    <h4>🛠️ Кибернетика</h4>
+                    <p class="desc">Снижает расход энергии</p>
+                </div>
+                <button class="btn outline-btn" onclick="upgradeSkill(2)"><span id="lvl-skill2">Lvl 1</span></button>
+            </div>
+        </main>
 
-        <div class="dashboard">
-            <button class="dash-btn" onclick="upgradeSkill(1)">
-                🧠 Проницательность <span class="badge" id="lvl-skill1">Lv.1</span>
-            </button>
-            <button class="dash-btn" onclick="upgradeSkill(2)">
-                🛠️ Технологии <span class="badge" id="lvl-skill2">Lv.1</span>
-            </button>
-            <button class="dash-btn full-width coffee-btn" onclick="buyCoffee()">
-                ☕ Синтетический кофе (+35🔋) <span class="badge cost">40 🪙</span>
-            </button>
-        </div>
+        <main class="tab-content hidden" id="tab-shop">
+            <h2 class="section-title">ТЕНЕВОЙ РЫНОК</h2>
+            <div class="list-item">
+                <div>
+                    <h4>☕ Энергетик</h4>
+                    <p class="desc">Восстанавливает 35% 🔋</p>
+                </div>
+                <button class="btn buy-btn" onclick="buyCoffee()">40 🪙</button>
+            </div>
+        </main>
 
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="switchTab('game', this)">
+                <span class="nav-icon">📁</span>
+                <span class="nav-label">Дела</span>
+            </button>
+            <button class="nav-item" onclick="switchTab('upgrades', this)">
+                <span class="nav-icon">🧬</span>
+                <span class="nav-label">Навыки</span>
+            </button>
+            <button class="nav-item" onclick="switchTab('shop', this)">
+                <span class="nav-icon">🛒</span>
+                <span class="nav-label">Рынок</span>
+            </button>
+        </nav>
+    </div>
+
+    <div id="minigame-overlay" class="fullscreen-layer hidden">
+        <div class="minigame-container">
+            <h2 id="mg-title" style="color: #00ff66;">МИНИИГРА</h2>
+            <p style="color: #aaa;">Здесь будет интерфейс взлома...</p>
+            <button class="btn primary-btn" style="margin-top: auto;" onclick="closeMinigame(true)">ВЗЛОМ УСПЕШЕН</button>
+            <button class="btn ghost-btn" onclick="closeMinigame(false)">ОТМЕНА</button>
+        </div>
     </div>
 
     <script src="app.js"></script>
