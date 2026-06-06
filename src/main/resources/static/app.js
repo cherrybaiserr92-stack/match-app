@@ -87,7 +87,7 @@ function onTelegramAuth(user) {
     fetch('/api/game/auth/widget', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(user)
+        body: JSON.stringify(Object.fromEntries(Object.entries(user).map(([k, v]) => [k, String(v)])))
     })
     .then(r => { if (!r.ok) throw new Error('auth'); return r.json(); })
     .then(profile => loginSuccess(profile))
