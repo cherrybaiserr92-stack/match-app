@@ -239,3 +239,56 @@ function buyCoffee() {
     .then(p => { currentUser = p; updateHUD(p); }).catch(() => {});
 }
 window.buyCoffee = buyCoffee;
+
+// Проверка и вход через виджет Telegram в браузере
+function onTelegramAuth(user) {
+    const loginScreen = document.getElementById('login-screen');
+    const splashScreen = document.getElementById('splash-screen');
+    const mainScreen = document.getElementById('main-screen');
+
+    // Переключаем экраны на состояние загрузки
+    if (loginScreen) loginScreen.classList.add('hidden');
+    if (splashScreen) {
+        splashScreen.style.opacity = '1';
+        splashScreen.classList.remove('hidden');
+    }
+
+    // Отправляем профиль пользователя на бэкенд для валидации хэша
+    fetch('/api/game/auth/widget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user)
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Widget validation failed");
+        return res.json();
+    })
+    .then(profile => {
+        // Сохраняем профиль в глобальную переменную приложения
+        currentUser = profile;
+        
+        // Обновляем интерфейс HUD, если функция определена
+        if (typeof updateHUD === 'function') {
+            updateHUD(profile);
+        }
+        
+        // Скрываем загрузку и открываем игровое пространство
+        if (splashScreen) splashScreen.classList.add('hidden');
+        if (mainScreen) mainScreen.classList.remove('hidden');
+        
+        // Запускаем генерацию/загрузку первого дела
+        if (typeof nextCase === 'function') {
+            nextCase();
+        }
+    })
+    .catch(err => {
+        console.error("Ошибка авторизации через виджет:", err);
+        // Возвращаем интерфейс в исходное состояние при ошибке
+        if (splashScreen) splashScreen.classList.add('hidden');
+        if (loginScreen) loginScreen.classList.remove('hidden');
+        alert("Идентификация не удалась. Попробуйте снова.");
+    });
+}
+
+// Принудительно регистрируем функцию глобально для внешнего скрипта виджета
+window.onTelegramAuth = onTelegramAuth;
