@@ -73,7 +73,7 @@ function updateHUD(p) {
     document.getElementById('hud-rank').innerText = p.rank;
     
     const xpNeeded = p.rank * 150;
-    document.getElementById('hud-xp').innerText = `${p.xp} / ${xpNeeded}`;
+    
     document.getElementById('xp-bar').style.width = `${(p.xp / xpNeeded) * 100}%`;
     
     document.getElementById('lvl-skill1').innerText = `Lv.${p.skill1} (${p.skill1 * 50}🪙)`;
