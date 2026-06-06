@@ -54,6 +54,14 @@ public class TelegramAuthService {
 
     // 2. Проверка для входа через браузер (Telegram Login Widget)
     public boolean validateWidgetAuth(Map<String, String> payload) {
+        // ЛОГ ДЛЯ ОТЛАДКИ
+        System.out.println("=== WIDGET AUTH START ===");
+        System.out.println("TOKEN LENGTH: " + (botToken != null ? botToken.length() : 0));
+        if (botToken != null && botToken.length() > 5) {
+            System.out.println("TOKEN STARTS WITH: " + botToken.substring(0,5) + "...");
+        } else {
+            System.out.println("TOKEN IS NULL OR TOO SHORT");
+        }
         try {
             if (botToken == null || botToken.isEmpty()) return false;
             
@@ -66,6 +74,8 @@ public class TelegramAuthService {
                     .map(e -> e.getKey() + "=" + e.getValue())
                     .collect(Collectors.joining("\n"));
 
+            System.out.println("DATA CHECK STRING: " + dataCheckString);
+
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] secretKey = digest.digest(botToken.getBytes(StandardCharsets.UTF_8));
 
@@ -73,8 +83,13 @@ public class TelegramAuthService {
             mac.init(new SecretKeySpec(secretKey, "HmacSHA256"));
             byte[] calculatedHash = mac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
 
-            return bytesToHex(calculatedHash).equals(hash);
+            String calcHex = bytesToHex(calculatedHash);
+            System.out.println("CALCULATED HASH: " + calcHex);
+            System.out.println("RECEIVED HASH: " + hash);
+
+            return calcHex.equals(hash);
         } catch (Exception e) {
+            System.err.println("ERROR: " + e.getMessage());
             return false;
         }
     }
