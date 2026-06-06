@@ -21,7 +21,8 @@ public class TelegramAuthService {
     // 1. Проверка для входа внутри самого Telegram (Mini App)
     public boolean validateWebAppInitData(String initData) {
         try {
-            if (initData == null || botToken == null || botToken.isEmpty()) return false;
+            String token = botToken != null ? botToken.trim() : "";
+            if (initData == null || token.isEmpty()) return false;
             
             Map<String, String> parsed = Arrays.stream(initData.split("&"))
                     .map(param -> param.split("=", 2))
@@ -40,7 +41,7 @@ public class TelegramAuthService {
 
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec("WebAppData".getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            byte[] secretKey = mac.doFinal(botToken.getBytes(StandardCharsets.UTF_8));
+            byte[] secretKey = mac.doFinal(token.getBytes(StandardCharsets.UTF_8));
 
             Mac macDataCheck = Mac.getInstance("HmacSHA256");
             macDataCheck.init(new SecretKeySpec(secretKey, "HmacSHA256"));
@@ -48,48 +49,38 @@ public class TelegramAuthService {
 
             return bytesToHex(calculatedHash).equals(hash);
         } catch (Exception e) {
+            e.printStackTrace();
             return false;
         }
     }
 
     // 2. Проверка для входа через браузер (Telegram Login Widget)
-    public boolean validateWidgetAuth(Map<String, String> payload) {
-        // ЛОГ ДЛЯ ОТЛАДКИ
-        System.out.println("=== WIDGET AUTH START ===");
-        System.out.println("TOKEN LENGTH: " + (botToken != null ? botToken.length() : 0));
-        if (botToken != null && botToken.length() > 5) {
-            System.out.println("TOKEN STARTS WITH: " + botToken.substring(0,5) + "...");
-        } else {
-            System.out.println("TOKEN IS NULL OR TOO SHORT");
-        }
+    public boolean validateWidgetAuth(Map<String, Object> payload) {
         try {
-            if (botToken == null || botToken.isEmpty()) return false;
+            String token = botToken != null ? botToken.trim() : "";
+            if (token.isEmpty()) return false;
             
-            String hash = payload.remove("hash");
+            String hash = (String) payload.remove("hash");
             if (hash == null) return false;
 
+            // Конвертируем все значения (включая числа) в строки для проверки подписи
             String dataCheckString = payload.entrySet().stream()
-                    .filter(e -> e.getValue() != null && !e.getValue().isEmpty())
+                    .filter(e -> e.getValue() != null)
+                    .map(e -> Map.entry(e.getKey(), String.valueOf(e.getValue())))
                     .sorted(Map.Entry.comparingByKey())
                     .map(e -> e.getKey() + "=" + e.getValue())
                     .collect(Collectors.joining("\n"));
 
-            System.out.println("DATA CHECK STRING: " + dataCheckString);
-
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] secretKey = digest.digest(botToken.getBytes(StandardCharsets.UTF_8));
+            byte[] secretKey = digest.digest(token.getBytes(StandardCharsets.UTF_8));
 
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secretKey, "HmacSHA256"));
             byte[] calculatedHash = mac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
 
-            String calcHex = bytesToHex(calculatedHash);
-            System.out.println("CALCULATED HASH: " + calcHex);
-            System.out.println("RECEIVED HASH: " + hash);
-
-            return calcHex.equals(hash);
+            return bytesToHex(calculatedHash).equals(hash);
         } catch (Exception e) {
-            System.err.println("ERROR: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
