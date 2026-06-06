@@ -5,35 +5,14 @@ let currentCase = null;
 const card = document.getElementById('main-card');
 let startX = 0, currentX = 0, isDragging = false;
 
-// ----- Новая функция для входа через Mini App -----
-function loginWithTelegram() {
-    if (!tg) {
-        alert("Telegram SDK не загружен. Обновите страницу.");
-        return;
-    }
-    tg.openTelegramLogin({
-        botUsername: "sdvig_game_bot",
-        onAuth: function(user) {
-            onTelegramAuth(user);
-        },
-        onError: function(err) {
-            alert("Ошибка входа: " + err);
-        }
-    });
-}
-window.loginWithTelegram = loginWithTelegram;
-// -------------------------------------------------
-
 document.addEventListener('DOMContentLoaded', () => {
     if (tg) { try { tg.expand(); tg.ready(); } catch(e) {} }
     
     setTimeout(() => {
         if (tg && tg.initData && tg.initData.length > 0) {
-            // Прячем логин, так как мы внутри ТГ и будем логиниться тихо
             document.getElementById('login-screen').classList.add('hidden');
             authWebApp();
         } else {
-            // Если в браузере, убираем Splash — под ним уже готовый отрисованный логин с кнопкой!
             document.getElementById('splash-screen').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('splash-screen').classList.add('hidden');
