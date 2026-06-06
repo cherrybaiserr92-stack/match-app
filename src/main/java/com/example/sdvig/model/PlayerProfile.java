@@ -15,22 +15,34 @@ public class PlayerProfile {
 
     private String username;
     private String firstName;
-    private String archetype = "detective"; 
-    
-    private int energy = 100;
-    private int credits = 150;
-    private int rank = 1;
-    private int xp = 0;
-    
-    // Навыки игрока
-    private int skill1 = 1; // Проницательность (Увеличивает XP за квесты)
-    private int skill2 = 1; // Технологии (Снижает затраты энергии)
+    private String archetype = "detective";
 
-    private int currentGameLevel = 1;
+    private int energy      = 100;
+    private int credits     = 150;
+    private int rank        = 1;
+    private int xp          = 0;
+
+    // Skills
+    private int skill1      = 1; // Проницательность → XP boost
+    private int skill2      = 1; // Технологии → energy reduction
+
+    // Game levels
+    private int detectiveLvl  = 1;
+    private int doctorLvl     = 1;
+    private int universalLvl  = 1;
+
+    // Stats
+    private int totalCases    = 0;
+    private int streak        = 0;
+
+    // Daily bonus: stored as "YYYY-MM-DD"
+    @Column(name = "last_daily_bonus")
+    private String lastDailyBonus = "";
 
     public PlayerProfile() {}
 
-    // Геттеры и Сеттеры
+    // ── Getters / Setters ─────────────────────
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -64,6 +76,27 @@ public class PlayerProfile {
     public int getSkill2() { return skill2; }
     public void setSkill2(int skill2) { this.skill2 = skill2; }
 
+    public int getDetectiveLvl() { return detectiveLvl; }
+    public void setDetectiveLvl(int detectiveLvl) { this.detectiveLvl = detectiveLvl; }
+
+    public int getDoctorLvl() { return doctorLvl; }
+    public void setDoctorLvl(int doctorLvl) { this.doctorLvl = doctorLvl; }
+
+    public int getUniversalLvl() { return universalLvl; }
+    public void setUniversalLvl(int universalLvl) { this.universalLvl = universalLvl; }
+
+    public int getTotalCases() { return totalCases; }
+    public void setTotalCases(int totalCases) { this.totalCases = totalCases; }
+
+    public int getStreak() { return streak; }
+    public void setStreak(int streak) { this.streak = streak; }
+
+    public String getLastDailyBonus() { return lastDailyBonus; }
+    public void setLastDailyBonus(String lastDailyBonus) { this.lastDailyBonus = lastDailyBonus; }
+
+    // Legacy field kept for Hibernate compatibility
+    private int currentGameLevel = 1;
     public int getCurrentGameLevel() { return currentGameLevel; }
     public void setCurrentGameLevel(int currentGameLevel) { this.currentGameLevel = currentGameLevel; }
 }
+
