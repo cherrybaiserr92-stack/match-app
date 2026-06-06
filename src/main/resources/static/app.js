@@ -1,554 +1,540 @@
 // ═══════════════════════════════════════════════
-//  СДВИГ · app.js  2026
+//  СДВИГ · app.js
+//  Обычный скрипт (не модуль) — избегает timing
+//  проблем с Telegram виджетом
 // ═══════════════════════════════════════════════
+
+'use strict';
 
 const tg = window.Telegram?.WebApp ?? null;
 
-// ── State ────────────────────────────────────
-let currentUser   = null;
-let currentCase   = null;
-let activeTab     = 'cases';
+let currentUser        = null;
+let currentCase        = null;
+let activeTab          = 'cases';
 let currentGameDestroy = null;
-let dailyClaimed  = false;
+let dailyClaimed       = false;
+let newAchCount        = 0;
+let caseCounter        = 0;
 
-// ── DOM refs ─────────────────────────────────
 const $ = id => document.getElementById(id);
 
-// ── Init ─────────────────────────────────────
+// ── Достижения ──────────────────────────────────
+const ACH_DEFS = [
+    {id:'rank5',   check:p=>p.rank>=5,            icon:'🏅', title:'АГЕНТ В ДЕЛЕ',  desc:'Ранг 5'},
+    {id:'rank10',  check:p=>p.rank>=10,           icon:'🏆', title:'ЭЛИТА',         desc:'Ранг 10'},
+    {id:'cases10', check:p=>(p.totalCases||0)>=10,icon:'📂', title:'ДЕТЕКТИВ',      desc:'10 дел'},
+    {id:'cases50', check:p=>(p.totalCases||0)>=50,icon:'🗃️', title:'АРХИВАРИУС',    desc:'50 дел'},
+    {id:'streak3', check:p=>(p.streak||0)>=3,     icon:'🔥', title:'НА СЕРИИ',      desc:'3 дня подряд'},
+    {id:'streak7', check:p=>(p.streak||0)>=7,     icon:'💥', title:'НЕСГИБАЕМЫЙ',   desc:'7 дней подряд'},
+    {id:'sk1max',  check:p=>p.skill1>=5,          icon:'🧠', title:'ПРОНИЦАТЕЛЬ',   desc:'Проницательность Lv.5'},
+    {id:'sk2max',  check:p=>p.skill2>=5,          icon:'⚙️', title:'ТЕХНАРЬ',       desc:'Технологии Lv.5'},
+];
+
+const earnedAch = new Set(
+    JSON.parse(localStorage.getItem('sdvig_ach') || '[]')
+);
+
+// ── Init ────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     if (tg) { try { tg.expand(); tg.ready(); } catch(e){} }
-    spawnParticles();
-    animateSplashBar();
+    runSplash();
+    detectWidget();
+
+    // Подключаем реальный обработчик виджета
+    window.__tgAuthHandler = function(user) {
+        showScreen('splash-screen');
+        setSplashText('Проверка подписи…');
+        widgetLogin(user);
+    };
+    // Обрабатываем auth, который мог прийти до загрузки app.js
+    if (window.__tgAuthPending) {
+        window.__tgAuthHandler(window.__tgAuthPending);
+        window.__tgAuthPending = null;
+    }
+});
+
+// ── Splash ──────────────────────────────────────
+function runSplash() {
+    const fill  = $('splash-fill');
+    const texts = ['Загрузка данных…','Подключение к архиву…','Проверка доступа…'];
+    let step = 0;
+    const steps  = [25, 55, 80, 95];
+    const delays = [200, 600, 1000, 1300];
+    delays.forEach((d,i) => {
+        setTimeout(() => {
+            fill.style.width = steps[i] + '%';
+            setSplashText(texts[i] || texts[texts.length-1]);
+        }, d);
+    });
 
     setTimeout(() => {
+        fill.style.width = '100%';
         if (tg?.initData?.length > 0) {
-            setSplashText('Авторизация Telegram WebApp…');
-            authWebApp();
+            setSplashText('Авторизация Telegram…');
+            webappLogin();
         } else {
             showScreen('login-screen');
         }
-    }, 1400);
-});
-
-// ── Particles ────────────────────────────────
-function spawnParticles() {
-    const wrap = $('splash-particles');
-    for (let i = 0; i < 25; i++) {
-        const p = document.createElement('div');
-        p.className = 'splash-particle';
-        p.style.left      = Math.random() * 100 + '%';
-        p.style.width     = (Math.random() * 3 + 1) + 'px';
-        p.style.height    = p.style.width;
-        p.style.animationDuration  = (Math.random() * 6 + 4) + 's';
-        p.style.animationDelay     = (Math.random() * 4) + 's';
-        const hue = Math.random() > 0.5 ? '263' : '189';
-        p.style.background = `hsl(${hue}, 80%, 70%)`;
-        wrap.appendChild(p);
-    }
+    }, 1600);
 }
+function setSplashText(t) { const el=$('splash-text'); if(el) el.textContent=t; }
 
-function animateSplashBar() {
-    const bar = $('splash-bar-fill');
-    let w = 0;
-    const steps = [20, 45, 70, 90];
-    const delays = [200, 500, 900, 1200];
-    delays.forEach((d, i) => {
-        setTimeout(() => { bar.style.width = steps[i] + '%'; }, d);
-    });
-}
-
-function setSplashText(txt) {
-    const el = $('splash-text');
-    if (el) el.textContent = txt;
-}
-
-// ── Screen management ─────────────────────────
+// ── Screens ─────────────────────────────────────
 function showScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     $(id).classList.add('active');
 }
 
-// ── Auth ──────────────────────────────────────
-function authWebApp() {
+// ── Widget detection ─────────────────────────────
+function detectWidget() {
+    const area    = $('tg-widget-area');
+    const loading = $('tg-loading');
+    const fallback= $('tg-fallback');
+    if (!area) return;
+
+    // Наблюдатель: как только виджет добавил iframe или ссылку — убираем spinner
+    const obs = new MutationObserver(() => {
+        if (area.querySelector('iframe, a.tgme_widget_login')) {
+            loading && loading.remove();
+            obs.disconnect();
+        }
+    });
+    obs.observe(area, {childList:true, subtree:true});
+
+    // Таймаут: если через 8с виджет не появился — показываем fallback
+    setTimeout(() => {
+        if (!area.querySelector('iframe, a.tgme_widget_login')) {
+            loading && loading.remove();
+            fallback && fallback.classList.remove('hidden');
+            obs.disconnect();
+        }
+    }, 8000);
+}
+
+// ── Auth ─────────────────────────────────────────
+function webappLogin() {
     fetch('/api/game/auth/webapp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData, initDataUnsafe: tg.initDataUnsafe })
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({initData:tg.initData, initDataUnsafe:tg.initDataUnsafe})
     })
-    .then(r => { if (!r.ok) throw new Error('auth'); return r.json(); })
-    .then(profile => loginSuccess(profile))
-    .catch(() => showError('Ошибка авторизации WebApp.\nПроверьте токен бота.'));
+    .then(r=>{ if(!r.ok) throw 0; return r.json(); })
+    .then(onLogin)
+    .catch(()=>showError('Ошибка WebApp-авторизации.\nПроверьте токен бота в переменных Railway.'));
 }
 
-function onTelegramAuth(user) {
-    showScreen('splash-screen');
-    setSplashText('Проверка данных…');
-
+function widgetLogin(user) {
+    const payload = {};
+    for (const [k,v] of Object.entries(user)) payload[k] = String(v);
     fetch('/api/game/auth/widget', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.fromEntries(Object.entries(user).map(([k, v]) => [k, String(v)])))
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
     })
-    .then(r => { if (!r.ok) throw new Error('auth'); return r.json(); })
-    .then(profile => loginSuccess(profile))
-    .catch(() => showError('Ошибка входа через виджет.'));
+    .then(r=>{ if(!r.ok) return r.text().then(t=>{throw t;}); return r.json(); })
+    .then(onLogin)
+    .catch(err=>{
+        const msg = typeof err==='string' ? err : 'Ошибка виджет-авторизации';
+        showError(msg + '\n\nУбедитесь что домен добавлен в @BotFather через /setdomain');
+    });
 }
-window.onTelegramAuth = onTelegramAuth;
 
 function showError(msg) {
     $('error-msg').textContent = msg;
     showScreen('error-screen');
 }
 
-// ── Login success ─────────────────────────────
-function loginSuccess(profile) {
+function onLogin(profile) {
     currentUser = profile;
     updateHUD(profile);
-    updateProfileTab(profile);
+    updateProfile(profile);
+    renderAchievements();
     showScreen('main-screen');
-    loadCase();
     initSwipe();
+    loadCase();
     checkDailyBonus();
-    vibrate(30);
+    updateShopAffordability();
+    vib(30);
 }
 
-// ── HUD update ────────────────────────────────
+// ── HUD ──────────────────────────────────────────
 function updateHUD(p) {
-    $('hud-energy').textContent   = p.energy;
-    $('hud-credits').textContent  = p.credits;
-    $('hud-rank').textContent     = p.rank;
-    $('hud-xp').textContent       = p.xp;
+    $('hud-energy').textContent  = p.energy;
+    $('hud-credits').textContent = p.credits;
+    $('hud-rank').textContent    = p.rank;
+    $('hud-xp').textContent      = p.xp;
     const xpMax = p.rank * 150;
-    $('hud-xp-max').textContent   = xpMax;
-    $('xp-fill').style.width      = Math.min(100, (p.xp / xpMax) * 100) + '%';
+    $('hud-xp-max').textContent  = xpMax;
+    $('xp-fill').style.width     = Math.min(100,(p.xp/xpMax)*100) + '%';
+    $('xp-bar-wrap').title       = `XP: ${p.xp} / ${xpMax}`;
 
-    // Update game levels in Games tab
     const dl = p.detectiveLvl  || 1;
-    const dcl = p.doctorLvl    || 1;
+    const dc = p.doctorLvl     || 1;
     const ul = p.universalLvl  || 1;
-    $('det-lvl').textContent  = dl;
-    $('doc-lvl').textContent  = dcl;
-    $('uni-lvl').textContent  = ul;
-    $('det-progress').style.width = Math.min(100, dl) + '%';
-    $('doc-progress').style.width = Math.min(100, dcl) + '%';
-    $('uni-progress').style.width = Math.min(100, ul) + '%';
+    $('det-lvl').textContent = dl;  $('det-bar').style.width = Math.min(100,dl) + '%';
+    $('doc-lvl').textContent = dc;  $('doc-bar').style.width = Math.min(100,dc) + '%';
+    $('uni-lvl').textContent = ul;  $('uni-bar').style.width = Math.min(100,ul) + '%';
 }
 
-function updateProfileTab(p) {
+// ── Profile ──────────────────────────────────────
+function updateProfile(p) {
     const name = p.firstName || p.username || 'Агент';
-    $('profile-avatar').textContent = name.charAt(0).toUpperCase();
-    $('profile-name').textContent   = name;
-    $('profile-id').textContent     = 'ID: ' + (p.providerId || '—');
+    $('profile-av').textContent    = name.charAt(0).toUpperCase();
+    $('profile-name').textContent  = name;
+    $('profile-id').textContent    = 'ID ' + (p.providerId||'—').replace('tg:','');
+    const archs = {detective:'🔍 Детектив', doctor:'⚕️ Медик', hacker:'💻 Хакер'};
+    $('profile-arch').textContent  = archs[p.archetype] || '🔍 Детектив';
 
-    const archetypeNames = {
-        detective: '🔍 Детектив',
-        doctor:    '⚕️ Медик',
-        hacker:    '💻 Хакер'
-    };
-    $('profile-archetype').textContent = archetypeNames[p.archetype] || '🔍 Детектив';
+    $('ps-rank').textContent    = p.rank;
+    $('ps-credits').textContent = p.credits;
+    $('ps-cases').textContent   = p.totalCases || 0;
+    $('ps-streak').textContent  = p.streak || 0;
 
-    $('pstat-rank').textContent    = p.rank;
-    $('pstat-credits').textContent = p.credits;
-    $('pstat-cases').textContent   = p.totalCases || 0;
-    $('pstat-streak').textContent  = p.streak || 0;
-
-    const s1 = p.skill1 || 1;
-    const s2 = p.skill2 || 1;
-    $('sk1-lvl').textContent  = 'Lv.' + s1;
-    $('sk2-lvl').textContent  = 'Lv.' + s2;
-    $('sk1-cost').textContent = (s1 * 50) + '💎';
-    $('sk2-cost').textContent = (s2 * 50) + '💎';
-    $('sk1-bar').style.width  = Math.min(100, s1 * 10) + '%';
-    $('sk2-bar').style.width  = Math.min(100, s2 * 10) + '%';
+    const s1 = p.skill1||1, s2 = p.skill2||1;
+    $('sk1-lv').textContent  = 'Lv.'+s1;
+    $('sk2-lv').textContent  = 'Lv.'+s2;
+    $('sk1-cost').textContent= (s1*50)+'💎';
+    $('sk2-cost').textContent= (s2*50)+'💎';
+    $('sk1-fill').style.width= Math.min(100,s1*10)+'%';
+    $('sk2-fill').style.width= Math.min(100,s2*10)+'%';
 }
 
-// ── Tab navigation ────────────────────────────
+function renderAchievements() {
+    const grid = $('achievements-grid');
+    if (!grid) return;
+    grid.innerHTML = ACH_DEFS.map(d=>{
+        const ok = earnedAch.has(d.id);
+        return `<div class="ach-badge ${ok?'earned':'locked'}" title="${d.desc}">
+            <div class="ach-icon">${ok ? d.icon : '❓'}</div>
+            <div class="ach-lbl">${ok ? d.title : '???'}</div>
+        </div>`;
+    }).join('');
+}
+
+// ── Tab navigation ───────────────────────────────
 function switchTab(name) {
     if (activeTab === name) return;
-
-    // Hide game viewport if switching away from games
     if (activeTab === 'games') closeGame();
-
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-
-    $('tab-' + name).classList.add('active');
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+    $('tab-'+name).classList.add('active');
     document.querySelector(`[data-tab="${name}"]`).classList.add('active');
-
     activeTab = name;
-    vibrate(10);
-
-    if (name === 'profile') updateProfileTab(currentUser);
+    vib(10);
+    if (name === 'profile') {
+        updateProfile(currentUser);
+        renderAchievements();
+        // Clear badge
+        newAchCount = 0;
+        const badge = $('ach-badge');
+        if (badge) badge.classList.add('hidden');
+    }
+    if (name === 'shop') updateShopAffordability();
 }
 window.switchTab = switchTab;
 
-// ── Case loading ──────────────────────────────
+// ── Case loading ─────────────────────────────────
 function loadCase() {
-    $('case-description').textContent = 'ИИ сканирует архивы…';
-    $('card-badge').textContent = '📁 ДЕЛО';
-    $('card-icon').textContent  = '🔍';
-    $('result-overlay').classList.add('hidden');
-
     const card = $('main-card');
+    $('case-description').textContent = 'Архив обрабатывает запрос…';
+    $('card-type').textContent = '📁 ДЕЛО';
+    caseCounter++;
+    $('card-num').textContent = '#' + String(caseCounter).padStart(3,'0');
+    $('result-overlay').classList.add('hidden');
+    $('stamp-accept').style.opacity = '0';
+    $('stamp-deny').style.opacity   = '0';
+
     card.style.transition = 'none';
     card.style.transform  = 'none';
-    card.classList.remove('drag-left', 'drag-right');
-    $('sh-left').style.opacity  = '0';
-    $('sh-right').style.opacity = '0';
+    card.style.opacity    = '1';
+    card.classList.remove('tilt-left','tilt-right');
 
-    fetch('/api/game/case?providerId=' + encodeURIComponent(currentUser.providerId))
-    .then(r => r.text())
-    .then(text => {
+    fetch('/api/game/case?providerId='+enc(currentUser.providerId))
+    .then(r=>r.text())
+    .then(raw=>{
+        let d;
         try {
-            let data = JSON.parse(text);
-            if (typeof data === 'string') data = JSON.parse(data);
-            currentCase = data;
-            $('case-description').textContent = data.text;
-            $('sh-left-text').textContent     = data.leftOption  || 'ОТКАЗАТЬ';
-            $('sh-right-text').textContent    = data.rightOption || 'ПРИНЯТЬ';
-            $('ca-left').textContent          = '◀ ' + (data.leftOption  || 'ОТКАЗАТЬ');
-            $('ca-right').textContent         = (data.rightOption || 'ПРИНЯТЬ') + ' ▶';
+            d = JSON.parse(raw);
+            if (typeof d==='string') d = JSON.parse(d);
         } catch {
-            currentCase = {
-                text: text,
-                leftOption:   'ОТКАЗАТЬ',
-                rightOption:  'ПРИНЯТЬ',
-                leftResult:   'Вы отказались.',
-                rightResult:  'Вы приняли дело.'
-            };
-            $('case-description').textContent = text;
+            d = {text:raw, leftOption:'ОТКЛОНИТЬ', rightOption:'ОДОБРИТЬ',
+                 leftResult:'Вы отклонили дело.', rightResult:'Вы одобрили дело.'};
         }
+        currentCase = d;
+        $('case-description').textContent = d.text;
+        $('card-type').textContent = d.type ? caseTypeLabel(d.type) : '📁 ДЕЛО';
+        $('ca-left').textContent   = '✕ ' + (d.leftOption  || 'ОТКЛОНИТЬ');
+        $('ca-right').textContent  = (d.rightOption || 'ОДОБРИТЬ') + ' ✓';
     })
-    .catch(() => {
-        $('case-description').textContent = '⚠️ Ошибка связи с архивом.';
-    });
+    .catch(()=>{ $('case-description').textContent='⚠️ Архив недоступен'; });
 }
 
-// ── Swipe physics ─────────────────────────────
+function caseTypeLabel(t) {
+    const m = {detective:'🔍 РАССЛЕДОВАНИЕ', medical:'⚕️ МЕДИЦИНА', tech:'💻 ТЕХНОЛОГИИ',
+               social:'👥 СОЦИУМ', criminal:'⚖️ УГОЛОВНОЕ', emergency:'🚨 СРОЧНО'};
+    return m[t] || '📁 ДЕЛО';
+}
+
+// ── Swipe ────────────────────────────────────────
 function initSwipe() {
     const card = $('main-card');
-    let startX = 0, startY = 0, currentX = 0;
-    let dragging = false;
-    let lastX = 0, velocity = 0, lastTime = 0;
+    let sx=0, sy=0, cx=0, dragging=false;
+    let lx=0, vel=0, lt=0;
 
-    const onStart = (e) => {
+    const start = e=>{
         if (!$('result-overlay').classList.contains('hidden')) return;
         if (!currentCase) return;
-        dragging  = true;
-        startX    = getX(e);
-        startY    = getY(e);
-        lastX     = startX;
-        lastTime  = Date.now();
-        card.style.transition = 'none';
+        dragging=true; sx=gx(e); sy=gy(e); lx=sx; lt=Date.now();
+        card.style.transition='none';
     };
-
-    const onMove = (e) => {
-        if (!dragging) return;
-        e.preventDefault();
-        currentX  = getX(e);
-        const now = Date.now();
-        velocity  = (currentX - lastX) / Math.max(1, now - lastTime);
-        lastX     = currentX;
-        lastTime  = now;
-
-        const diffX = currentX - startX;
-        const rot   = diffX / 16;
-        const scaleY = 1 - Math.min(0.04, Math.abs(diffX) / 3000);
-        card.style.transform = `translateX(${diffX}px) rotate(${rot}deg) scaleY(${scaleY})`;
-
-        const ratio = Math.min(1, Math.abs(diffX) / 80);
-        if (diffX < -30) {
-            card.classList.add('drag-left');
-            card.classList.remove('drag-right');
-            $('sh-left').style.opacity  = ratio;
-            $('sh-right').style.opacity = '0';
-        } else if (diffX > 30) {
-            card.classList.add('drag-right');
-            card.classList.remove('drag-left');
-            $('sh-right').style.opacity = ratio;
-            $('sh-left').style.opacity  = '0';
+    const move = e=>{
+        if (!dragging) return; e.preventDefault();
+        cx=gx(e);
+        const now=Date.now(); vel=(cx-lx)/Math.max(1,now-lt); lx=cx; lt=now;
+        const dx=cx-sx, rot=dx/18;
+        card.style.transform=`translateX(${dx}px) rotate(${rot}deg)`;
+        const r=Math.min(1,Math.abs(dx)/70);
+        if (dx<-25){
+            card.classList.add('tilt-left'); card.classList.remove('tilt-right');
+            $('stamp-deny').style.opacity   = r;
+            $('stamp-accept').style.opacity = '0';
+        } else if (dx>25){
+            card.classList.add('tilt-right'); card.classList.remove('tilt-left');
+            $('stamp-accept').style.opacity = r;
+            $('stamp-deny').style.opacity   = '0';
         } else {
-            card.classList.remove('drag-left', 'drag-right');
-            $('sh-left').style.opacity  = '0';
-            $('sh-right').style.opacity = '0';
+            card.classList.remove('tilt-left','tilt-right');
+            $('stamp-accept').style.opacity='0';
+            $('stamp-deny').style.opacity='0';
+        }
+    };
+    const end = ()=>{
+        if (!dragging) return; dragging=false;
+        const dx=cx-sx, THRESH=85, VTHRESH=0.38;
+        card.style.transition='transform .32s cubic-bezier(.25,.46,.45,.94)';
+        if (dx<-THRESH || vel<-VTHRESH)      fly('left');
+        else if (dx>THRESH || vel>VTHRESH)   fly('right');
+        else {
+            card.style.transform='none';
+            card.classList.remove('tilt-left','tilt-right');
+            $('stamp-accept').style.opacity='0';
+            $('stamp-deny').style.opacity='0';
         }
     };
 
-    const onEnd = () => {
-        if (!dragging) return;
-        dragging = false;
-        const diffX = currentX - startX;
-        const threshold = 90;
-        const velThreshold = 0.4;
-
-        card.style.transition = 'transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94)';
-
-        if (diffX < -threshold || velocity < -velThreshold) {
-            flyCard('left');
-        } else if (diffX > threshold || velocity > velThreshold) {
-            flyCard('right');
-        } else {
-            card.style.transform = 'none';
-            card.classList.remove('drag-left', 'drag-right');
-            $('sh-left').style.opacity  = '0';
-            $('sh-right').style.opacity = '0';
-        }
-    };
-
-    card.addEventListener('touchstart', onStart, { passive: true });
-    card.addEventListener('mousedown',  onStart);
-    window.addEventListener('touchmove',  onMove, { passive: false });
-    window.addEventListener('mousemove',  onMove);
-    window.addEventListener('touchend',   onEnd);
-    window.addEventListener('mouseup',    onEnd);
+    card.addEventListener('touchstart', start, {passive:true});
+    card.addEventListener('mousedown',  start);
+    window.addEventListener('touchmove',  move, {passive:false});
+    window.addEventListener('mousemove',  move);
+    window.addEventListener('touchend',   end);
+    window.addEventListener('mouseup',    end);
 }
 
-function getX(e) { return e.touches ? e.touches[0].clientX : e.clientX; }
-function getY(e) { return e.touches ? e.touches[0].clientY : e.clientY; }
+function gx(e){return e.touches?e.touches[0].clientX:e.clientX}
+function gy(e){return e.touches?e.touches[0].clientY:e.clientY}
 
-function flyCard(direction) {
-    const card = $('main-card');
-    const tx   = direction === 'left' ? '-150vw' : '150vw';
-    const rot  = direction === 'left' ? '-30deg'  : '30deg';
-    card.style.transition = 'transform 0.4s cubic-bezier(0.55,0,1,0.45), opacity 0.4s ease';
-    card.style.transform  = `translateX(${tx}) rotate(${rot})`;
-    card.style.opacity    = '0';
-    vibrate(25);
-    submitChoice(direction);
+function fly(dir) {
+    const card=$('main-card');
+    card.style.transition='transform .38s cubic-bezier(.55,0,1,.45),opacity .38s ease';
+    card.style.transform =`translateX(${dir==='left'?'-160vw':'160vw'}) rotate(${dir==='left'?'-28deg':'28deg'})`;
+    card.style.opacity='0';
+    vib(25);
+    sendChoice(dir);
 }
 
-// ── Submit choice ─────────────────────────────
-function submitChoice(direction) {
-    if (!currentUser || !currentCase) return;
-
-    fetch(`/api/game/choice?providerId=${encodeURIComponent(currentUser.providerId)}&direction=${direction}`, { method: 'POST' })
-    .then(r => {
-        if (!r.ok) return r.text().then(t => { showToast('⚡', 'Нет энергии', t); throw new Error(); });
-        return r.json();
-    })
-    .then(data => {
-        currentUser = data.profile;
+function sendChoice(dir) {
+    if (!currentUser||!currentCase) return;
+    fetch(`/api/game/choice?providerId=${enc(currentUser.providerId)}&direction=${dir}`,{method:'POST'})
+    .then(r=>{ if(!r.ok) return r.text().then(t=>{toast('⚡','Нет энергии',t);throw 0;}); return r.json(); })
+    .then(data=>{
+        currentUser=data.profile;
         updateHUD(currentUser);
-
-        const isRight = direction === 'right';
-        $('result-badge').textContent  = isRight ? '✓ ПРИНЯТО' : '✕ ОТКАЗАНО';
-        $('result-badge').style.color  = isRight ? 'var(--green)' : 'var(--red)';
-        $('result-text').textContent   = isRight ? currentCase.rightResult : currentCase.leftResult;
+        const ok=dir==='right';
+        const stamp=$('ro-stamp');
+        stamp.textContent = ok?'ОДОБРЕНО':'ОТКЛОНЕНО';
+        stamp.className   = 'ro-stamp '+(ok?'accept':'deny');
+        $('result-text').textContent   = ok?currentCase.rightResult:currentCase.leftResult;
         $('rew-xp').textContent        = data.xpGained;
         $('rew-credits').textContent   = data.creditsGained;
         $('rew-energy').textContent    = data.energyLost;
-
-        setTimeout(() => {
-            $('result-overlay').classList.remove('hidden');
-            checkAchievements(data.profile);
-        }, 320);
-
-        vibrate([30, 20, 60]);
+        setTimeout(()=>{ $('result-overlay').classList.remove('hidden'); checkAch(data.profile); }, 300);
+        vib([30,20,60]);
     })
-    .catch(() => {
-        const card = $('main-card');
-        card.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
-        card.style.transform  = 'none';
-        card.style.opacity    = '1';
-        card.classList.remove('drag-left', 'drag-right');
-        $('sh-left').style.opacity  = '0';
-        $('sh-right').style.opacity = '0';
+    .catch(()=>{
+        const card=$('main-card');
+        card.style.transition='transform .35s cubic-bezier(.34,1.56,.64,1)';
+        card.style.transform='none'; card.style.opacity='1';
+        card.classList.remove('tilt-left','tilt-right');
+        $('stamp-accept').style.opacity='0'; $('stamp-deny').style.opacity='0';
     });
 }
 
 function nextCase() {
     $('result-overlay').classList.add('hidden');
-    const card = $('main-card');
-    card.style.transition = 'none';
-    card.style.opacity    = '0';
-    card.style.transform  = 'translateX(40px)';
+    const card=$('main-card');
+    card.style.transition='none';
+    card.style.opacity='0'; card.style.transform='translateX(30px)';
     loadCase();
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            card.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease';
-            card.style.transform  = 'none';
-            card.style.opacity    = '1';
-        });
-    });
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        card.style.transition='transform .38s cubic-bezier(.34,1.56,.64,1),opacity .28s ease';
+        card.style.transform='none'; card.style.opacity='1';
+    }));
 }
 window.nextCase = nextCase;
 
-// ── Skills & Shop ─────────────────────────────
-function upgradeSkill(num) {
+// ── Skills ────────────────────────────────────────
+function upgradeSkill(n) {
     if (!currentUser) return;
-    fetch(`/api/game/upgrade-skill?providerId=${encodeURIComponent(currentUser.providerId)}&skillNum=${num}`, { method: 'POST' })
-    .then(r => {
-        if (!r.ok) return r.text().then(t => { showToast('💎', 'Недостаточно кредитов', t); throw new Error(); });
-        return r.json();
-    })
-    .then(p => {
-        currentUser = p;
-        updateHUD(p);
-        updateProfileTab(p);
-        showToast('🧠', 'НАВЫК УЛУЧШЕН', num === 1 ? 'Проницательность Lv.' + p.skill1 : 'Технологии Lv.' + p.skill2);
-        vibrate([20, 20, 40]);
-    })
-    .catch(() => {});
+    fetch(`/api/game/upgrade-skill?providerId=${enc(currentUser.providerId)}&skillNum=${n}`,{method:'POST'})
+    .then(r=>{ if(!r.ok) return r.text().then(t=>{toast('💎','Мало кредитов',t);throw 0;}); return r.json(); })
+    .then(p=>{ currentUser=p; updateHUD(p); updateProfile(p); vib([20,20,40]);
+        toast('🧠','НАВЫК ПРОКАЧАН', n===1?'Проницательность Lv.'+p.skill1:'Технологии Lv.'+p.skill2); })
+    .catch(()=>{});
 }
 window.upgradeSkill = upgradeSkill;
 
+// ── Shop ─────────────────────────────────────────
 function buyCoffee() {
     if (!currentUser) return;
-    fetch(`/api/game/buy-coffee?providerId=${encodeURIComponent(currentUser.providerId)}`, { method: 'POST' })
-    .then(r => {
-        if (!r.ok) return r.text().then(t => { showToast('☕', 'Нет кредитов', t); throw new Error(); });
-        return r.json();
-    })
-    .then(p => {
-        currentUser = p;
-        updateHUD(p);
-        updateProfileTab(p);
-        showToast('☕', 'КОФЕ ВЫПИТ', '+35 ⚡ энергии');
-        vibrate(30);
-    })
-    .catch(() => {});
+    fetch(`/api/game/buy-coffee?providerId=${enc(currentUser.providerId)}`,{method:'POST'})
+    .then(r=>{ if(!r.ok) return r.text().then(t=>{toast('☕','Мало кредитов',t);throw 0;}); return r.json(); })
+    .then(p=>{ currentUser=p; updateHUD(p); updateProfile(p); updateShopAffordability();
+        toast('☕','КОФЕ ВЫПИТ','+35 ⚡ энергии'); vib(30); })
+    .catch(()=>{});
 }
 window.buyCoffee = buyCoffee;
 
-// ── Daily bonus ───────────────────────────────
+function updateShopAffordability() {
+    if (!currentUser) return;
+    const coffee = $('shop-coffee');
+    if (coffee) {
+        const can = currentUser.credits >= 40;
+        coffee.classList.toggle('cant-afford', !can);
+        const price = $('coffee-price');
+        if (price) price.textContent = can ? '40 💎' : '40 💎 (не хватает)';
+    }
+}
+
+// ── Daily bonus ──────────────────────────────────
 function checkDailyBonus() {
     if (!currentUser) return;
-    fetch(`/api/game/daily-bonus?providerId=${encodeURIComponent(currentUser.providerId)}`)
-    .then(r => r.ok ? r.json() : null)
-    .then(data => {
-        if (!data || !data.available) return;
-        $('daily-streak').textContent = data.streak || 1;
+    fetch('/api/game/daily-bonus?providerId='+enc(currentUser.providerId))
+    .then(r=>r.ok?r.json():null)
+    .then(data=>{
+        if (!data||!data.available) return;
+        buildWeekCalendar(data.streak||1);
+        $('daily-days').textContent = data.streak||1;
         $('daily-modal').classList.remove('hidden');
     })
-    .catch(() => {});
+    .catch(()=>{});
+}
+
+function buildWeekCalendar(streak) {
+    const wrap = $('daily-week');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    for (let i=1;i<=7;i++){
+        const d = document.createElement('div');
+        d.className = 'dw-dot';
+        if (i < streak % 7 || (streak >= 7 && i <= 7)) d.classList.add('done');
+        if (i === (streak % 7 || 7)) d.classList.add('today');
+        d.textContent = i;
+        wrap.appendChild(d);
+    }
 }
 
 function claimDaily() {
-    if (!currentUser || dailyClaimed) return;
-    $('daily-modal').classList.add('hidden');
+    if (!currentUser||dailyClaimed) return;
     dailyClaimed = true;
-
-    fetch(`/api/game/daily-bonus/claim?providerId=${encodeURIComponent(currentUser.providerId)}`, { method: 'POST' })
-    .then(r => r.ok ? r.json() : null)
-    .then(data => {
+    $('daily-modal').classList.add('hidden');
+    fetch('/api/game/daily-bonus/claim?providerId='+enc(currentUser.providerId),{method:'POST'})
+    .then(r=>r.ok?r.json():null)
+    .then(data=>{
         if (!data) return;
-        currentUser = data.profile;
-        updateHUD(currentUser);
-        updateProfileTab(currentUser);
-        showToast('🎁', 'БОНУС ПОЛУЧЕН', `+50💎 · +30⚡ · Серия: ${data.profile.streak}д.`);
-        vibrate([30, 20, 30, 20, 80]);
+        currentUser=data.profile; updateHUD(currentUser); updateProfile(currentUser);
+        toast('🎁','БОНУС ПОЛУЧЕН',`+50💎 · +30⚡ · Серия: ${data.profile.streak} дн.`);
+        vib([30,20,30,20,80]);
     })
-    .catch(() => {});
+    .catch(()=>{});
 }
 window.claimDaily = claimDaily;
 
-// ── Achievements ──────────────────────────────
-const achievementDefs = [
-    { id: 'rank5',    check: p => p.rank >= 5,   icon: '🏅', title: 'АГЕНТ В ДЕЛЕ',    desc: 'Достигнут 5-й ранг' },
-    { id: 'rank10',   check: p => p.rank >= 10,  icon: '🏆', title: 'ЭЛИТА',           desc: 'Достигнут 10-й ранг' },
-    { id: 'cases10',  check: p => (p.totalCases||0) >= 10, icon: '📂', title: 'ДЕТЕКТИВ',  desc: '10 дел закрыто' },
-    { id: 'cases50',  check: p => (p.totalCases||0) >= 50, icon: '🗃️', title: 'АРХИВАРИУС', desc: '50 дел закрыто' },
-    { id: 'streak3',  check: p => (p.streak||0) >= 3,  icon: '🔥', title: 'НА СЕРИИ',      desc: 'Серия 3 дня подряд' },
-    { id: 'streak7',  check: p => (p.streak||0) >= 7,  icon: '💥', title: 'НЕСГИБАЕМЫЙ',   desc: 'Серия 7 дней' },
-    { id: 'sk1max',   check: p => p.skill1 >= 5, icon: '🧠', title: 'ПРОНИЦАТЕЛЬ',   desc: 'Проницательность Lv.5' },
-    { id: 'sk2max',   check: p => p.skill2 >= 5, icon: '⚙️', title: 'ТЕХНАРЬ',        desc: 'Технологии Lv.5' },
-];
-
-const shownAchievements = new Set(
-    JSON.parse(localStorage.getItem('sdvig_ach') || '[]')
-);
-
-function checkAchievements(profile) {
-    for (const def of achievementDefs) {
-        if (!shownAchievements.has(def.id) && def.check(profile)) {
-            shownAchievements.add(def.id);
-            localStorage.setItem('sdvig_ach', JSON.stringify([...shownAchievements]));
-            setTimeout(() => showToast(def.icon, def.title, def.desc), 600);
-            break;
+// ── Achievements ─────────────────────────────────
+function checkAch(profile) {
+    let found=false;
+    for (const d of ACH_DEFS) {
+        if (!earnedAch.has(d.id) && d.check(profile)) {
+            earnedAch.add(d.id);
+            localStorage.setItem('sdvig_ach', JSON.stringify([...earnedAch]));
+            if (!found) { setTimeout(()=>toast(d.icon, d.title, d.desc), 500); found=true; }
+            newAchCount++;
+            const badge=$('ach-badge');
+            if (badge) { badge.textContent='!'; badge.classList.remove('hidden'); }
         }
     }
 }
 
-// ── Toast ─────────────────────────────────────
-let toastTimer = null;
-function showToast(icon, title, desc) {
-    const toast = $('toast');
+// ── Toast ────────────────────────────────────────
+let _toastTimer=null;
+function toast(icon,title,desc){
+    const el=$('toast');
     $('toast-icon').textContent  = icon;
     $('toast-title').textContent = title;
     $('toast-desc').textContent  = desc;
-    toast.classList.remove('hidden', 'hide-out');
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-        toast.classList.add('hide-out');
-        setTimeout(() => toast.classList.add('hidden'), 350);
-    }, 3000);
-    vibrate(20);
+    el.classList.remove('hidden','out');
+    clearTimeout(_toastTimer);
+    _toastTimer=setTimeout(()=>{
+        el.classList.add('out');
+        setTimeout(()=>el.classList.add('hidden'),320);
+    },3200);
+    vib(20);
 }
 
-// ── Mini-games launcher ───────────────────────
-const GAME_TITLES = {
-    detective: '💎 САМОЦВЕТЫ',
-    doctor:    '💓 КАРДИОГРАММА',
-    universal: '🧮 ЭКСПЕРТИЗА ШИФРА'
-};
+// ── Games ─────────────────────────────────────────
+const GTITLES = {detective:'💎 Самоцветы', doctor:'💓 Кардиограмма', universal:'🧮 Экспертиза шифра'};
 
-async function launchGame(type) {
-    $('game-vp-wrap').classList.remove('hidden');
-    $('game-vp-title').textContent = GAME_TITLES[type] || 'ИГРА';
+function launchGame(type) {
+    $('gvp-wrap').classList.remove('hidden');
+    $('gvp-title').textContent = GTITLES[type]||'Игра';
     $('win-badge').classList.add('hidden');
+    const vp = $('game-vp');
+    vp.innerHTML='';
+    if (currentGameDestroy){try{currentGameDestroy();}catch(e){} currentGameDestroy=null;}
+    const level = gameLevel(type);
 
-    const viewport = $('game-viewport');
-    viewport.innerHTML = '';
-
-    if (currentGameDestroy) { try { currentGameDestroy(); } catch(e){} currentGameDestroy = null; }
-
-    const level = getGameLevel(type);
-
-    try {
-        const mod = await import(`./games/${type}.js`);
+    import('./games/'+type+'.js')
+    .then(mod=>{
         currentGameDestroy = mod.destroy;
-        mod.initGame(viewport, level, () => onGameWin(type));
-    } catch(err) {
-        viewport.innerHTML = `<div style="color:var(--red);text-align:center;padding:32px">⚠️ Ошибка загрузки игры</div>`;
-    }
+        mod.initGame(vp, level, ()=>onWin(type));
+    })
+    .catch(()=>{ vp.innerHTML='<div style="color:var(--red);text-align:center;padding:24px">⚠️ Ошибка загрузки игры</div>'; });
 }
 window.launchGame = launchGame;
 
-function getGameLevel(type) {
+function gameLevel(t){
     if (!currentUser) return 1;
-    const map = { detective: 'detectiveLvl', doctor: 'doctorLvl', universal: 'universalLvl' };
-    return currentUser[map[type]] || 1;
+    return currentUser[{detective:'detectiveLvl',doctor:'doctorLvl',universal:'universalLvl'}[t]] || 1;
 }
 
-function onGameWin(type) {
-    const badge = $('win-badge');
-    badge.classList.remove('hidden');
-    vibrate([30, 20, 30, 20, 100]);
-    showToast('🎮', 'УРОВЕНЬ ПРОЙДЕН', 'Получено +50 XP');
-
-    // Advance level on server
-    fetch(`/api/game/advance-level?providerId=${encodeURIComponent(currentUser.providerId)}&gameType=${type}`, { method: 'POST' })
-    .then(r => r.ok ? r.json() : null)
-    .then(p => {
-        if (p) {
-            currentUser = p;
-            updateHUD(p);
-            updateProfileTab(p);
-        }
-    })
-    .catch(() => {});
+function onWin(type) {
+    $('win-badge').classList.remove('hidden');
+    vib([30,20,30,20,100]);
+    toast('🎮','УРОВЕНЬ ПРОЙДЕН','+50 XP');
+    fetch(`/api/game/advance-level?providerId=${enc(currentUser.providerId)}&gameType=${type}`,{method:'POST'})
+    .then(r=>r.ok?r.json():null)
+    .then(p=>{ if(p){currentUser=p;updateHUD(p);updateProfile(p);} })
+    .catch(()=>{});
 }
 
 function closeGame() {
-    if (currentGameDestroy) { try { currentGameDestroy(); } catch(e){} currentGameDestroy = null; }
-    $('game-vp-wrap').classList.add('hidden');
-    $('game-viewport').innerHTML = '';
+    if (currentGameDestroy){try{currentGameDestroy();}catch(e){} currentGameDestroy=null;}
+    $('gvp-wrap').classList.add('hidden');
+    $('game-vp').innerHTML='';
     $('win-badge').classList.add('hidden');
 }
 window.closeGame = closeGame;
 
-// ── Haptics ───────────────────────────────────
-function vibrate(pattern) {
-    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch(e) {}
-}
+// ── Utils ─────────────────────────────────────────
+function enc(s){ return encodeURIComponent(s); }
+function vib(p){ try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){} }
 

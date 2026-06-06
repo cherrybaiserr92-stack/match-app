@@ -2,357 +2,410 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#07070f">
+    <meta name="theme-color" content="#0e0e0e">
     <title>СДВИГ</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+
+    <!--
+      ВАЖНО: этот inline-скрипт должен быть ДО виджета Telegram.
+      Он создаёт глобальную заглушку onTelegramAuth, чтобы виджет
+      мог её найти ещё до загрузки app.js.
+    -->
+    <script>
+        window.__tgAuthPending = null;
+        function onTelegramAuth(user) {
+            if (window.__tgAuthHandler) {
+                window.__tgAuthHandler(user);
+            } else {
+                window.__tgAuthPending = user;
+            }
+        }
+    </script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 
-<!-- ══════════ SPLASH ══════════ -->
+<!-- ══ СПЛЭШ ══════════════════════════════════ -->
 <div id="splash-screen" class="screen active">
-    <div class="splash-particles" id="splash-particles"></div>
-    <div class="splash-content">
-        <div class="splash-logo-wrap">
-            <div class="splash-glyph">⚡</div>
-            <h1 class="splash-title">СДВИГ</h1>
-            <p class="splash-sub">АГЕНТУРА БУДУЩЕГО</p>
+    <div class="splash-center">
+        <div class="splash-emblem">
+            <div class="splash-ring"></div>
+            <span class="splash-icon">⚡</span>
         </div>
-        <div class="splash-loader-wrap">
-            <div class="splash-bar"><div class="splash-bar-fill" id="splash-bar-fill"></div></div>
-            <p class="splash-status" id="splash-text">Инициализация системы…</p>
+        <h1 class="splash-title">СДВИГ</h1>
+        <p class="splash-sub">АГЕНТУРА</p>
+        <div class="splash-progress">
+            <div class="splash-bar"><div id="splash-fill" class="splash-fill"></div></div>
+            <p id="splash-text" class="splash-status">Инициализация…</p>
         </div>
     </div>
 </div>
 
-<!-- ══════════ LOGIN ══════════ -->
+<!-- ══ ЛОГИН ═══════════════════════════════════ -->
 <div id="login-screen" class="screen">
-    <div class="login-bg-grid"></div>
-    <div class="login-wrap">
-        <div class="login-logo">
-            <span class="login-glyph">⚡</span>
-            <h1>СДВИГ</h1>
-            <p>АГЕНТУРА БУДУЩЕГО</p>
+    <div class="login-bg"></div>
+    <div class="login-layout">
+
+        <div class="login-header">
+            <span class="login-icon">⚡</span>
+            <h1 class="login-title">СДВИГ</h1>
+            <p class="login-tagline">Агентура · Оперативная система</p>
         </div>
+
         <div class="login-card">
-            <div class="login-card-label">ДОСТУП К СИСТЕМЕ</div>
-            <p class="login-desc">Авторизуйтесь для доступа к базе дел</p>
-            <div class="tg-widget-wrap">
-                <script async src="https://telegram.org/js/telegram-widget.js?22"
-                        data-telegram-login="sdvig_game_bot"
-                        data-size="large"
-                        data-onauth="onTelegramAuth"
-                        data-request-access="write"></script>
+            <p class="login-card-label">АВТОРИЗАЦИЯ</p>
+            <p class="login-hint">Войдите через Telegram чтобы начать</p>
+
+            <!-- Виджет с loading-состоянием -->
+            <div id="tg-widget-area" class="tg-widget-area">
+                <div id="tg-loading" class="tg-loading">
+                    <div class="tg-spinner"></div>
+                    <span>Загрузка виджета…</span>
+                </div>
+                <!-- Виджет вставляется сюда -->
+                <script
+                    src="https://telegram.org/js/telegram-widget.js?22"
+                    data-telegram-login="sdvig_game_bot"
+                    data-size="large"
+                    data-radius="8"
+                    data-onauth="onTelegramAuth"
+                    data-request-access="write">
+                </script>
             </div>
-            <div class="login-divider"><span>СКОРО</span></div>
-            <button class="btn btn-ghost" disabled>V&nbsp;&nbsp;ВКонтакте</button>
-            <button class="btn btn-ghost" disabled>G&nbsp;&nbsp;Google</button>
+
+            <!-- Fallback: показывается если виджет не загрузился -->
+            <div id="tg-fallback" class="tg-fallback hidden">
+                <div class="fallback-icon">⚠️</div>
+                <p class="fallback-title">Виджет не загрузился</p>
+                <p class="fallback-text">
+                    Возможные причины:<br>
+                    — Домен не добавлен в @BotFather (<code>/setdomain</code>)<br>
+                    — Telegram заблокирован в вашей сети
+                </p>
+                <a id="bot-link" href="https://t.me/sdvig_game_bot" target="_blank" class="btn btn-amber">
+                    Открыть бота в Telegram
+                </a>
+            </div>
+
+            <div class="login-divider"><span>скоро</span></div>
+            <button class="btn btn-ghost" disabled>ВКонтакте</button>
+            <button class="btn btn-ghost" disabled>Google</button>
         </div>
+
+        <p class="login-footer">
+            Нужна помощь? Напишите <a href="https://t.me/sdvig_game_bot" target="_blank">@sdvig_game_bot</a>
+        </p>
     </div>
 </div>
 
-<!-- ══════════ MAIN ══════════ -->
+<!-- ══ ГЛАВНЫЙ ЭКРАН ════════════════════════════ -->
 <div id="main-screen" class="screen">
 
-    <!-- Top bar -->
+    <!-- Шапка -->
     <header class="topbar">
-        <div class="topbar-brand">⚡ <span>СДВИГ</span></div>
-        <div class="topbar-chips">
-            <div class="chip chip-energy">
-                <span>⚡</span>
+        <div class="topbar-left">
+            <span class="topbar-logo">⚡</span>
+            <span class="topbar-name">СДВИГ</span>
+        </div>
+        <div class="topbar-stats">
+            <div class="stat-chip" id="chip-energy">
+                <span class="sc-icon">⚡</span>
                 <span id="hud-energy">100</span>
             </div>
-            <div class="chip chip-credits">
-                <span>💎</span>
+            <div class="stat-chip" id="chip-credits">
+                <span class="sc-icon">💎</span>
                 <span id="hud-credits">0</span>
             </div>
-            <div class="chip chip-rank">
-                <span>🏅</span>
+            <div class="stat-chip stat-chip-rank" id="chip-rank">
+                <span class="sc-icon">★</span>
                 <span>R<span id="hud-rank">1</span></span>
             </div>
         </div>
     </header>
 
-    <!-- XP track -->
-    <div class="xp-track">
-        <div class="xp-fill" id="xp-fill" style="width:0%"></div>
-        <span class="xp-label">XP <span id="hud-xp">0</span>/<span id="hud-xp-max">150</span></span>
+    <!-- XP полоса -->
+    <div class="xp-bar-wrap" id="xp-bar-wrap" title="">
+        <div class="xp-bar"><div id="xp-fill" class="xp-fill" style="width:0%"></div></div>
+        <span class="xp-text"><span id="hud-xp">0</span> / <span id="hud-xp-max">150</span> XP</span>
     </div>
 
-    <!-- Tab content -->
-    <div class="tab-content">
+    <!-- Контент табов -->
+    <div class="tab-area">
 
-        <!-- ── ДЕЛА ── -->
-        <div class="tab-panel active" id="tab-cases">
+        <!-- ─ ДЕЛА ─────────────────────────────── -->
+        <div class="tab-pane active" id="tab-cases">
             <div class="swipe-zone">
-                <div class="card-shadow-3"></div>
-                <div class="card-shadow-2"></div>
-                <div class="card-shadow-1"></div>
+                <!-- Фоновые карточки стопки -->
+                <div class="stack-card sc3"></div>
+                <div class="stack-card sc2"></div>
+                <div class="stack-card sc1"></div>
 
+                <!-- Основная карточка дела -->
                 <div id="main-card" class="case-card">
-                    <div class="card-badge" id="card-badge">📁 ДЕЛО</div>
-                    <div class="swipe-hint sh-left" id="sh-left">
-                        <div class="sh-icon sh-icon-left">✕</div>
-                        <div class="sh-text" id="sh-left-text">ОТКАЗАТЬ</div>
+                    <!-- Штамп: ОДОБРЕНО -->
+                    <div class="stamp-wrap stamp-right" id="stamp-accept" style="opacity:0">
+                        <div class="stamp stamp-green">ОДОБРЕНО</div>
                     </div>
-                    <div class="swipe-hint sh-right" id="sh-right">
-                        <div class="sh-text" id="sh-right-text">ПРИНЯТЬ</div>
-                        <div class="sh-icon sh-icon-right">✓</div>
+                    <!-- Штамп: ОТКЛОНЕНО -->
+                    <div class="stamp-wrap stamp-left" id="stamp-deny" style="opacity:0">
+                        <div class="stamp stamp-red">ОТКЛОНЕНО</div>
+                    </div>
+
+                    <div class="card-head">
+                        <span class="card-type" id="card-type">📁 ДЕЛО</span>
+                        <span class="card-num" id="card-num">#—</span>
                     </div>
                     <div class="card-body">
-                        <div class="card-case-icon" id="card-icon">🔍</div>
+                        <div class="card-emoji" id="card-icon">🔍</div>
                         <p class="card-text" id="case-description">ИИ сканирует архивы…</p>
                     </div>
-                    <div class="card-actions">
-                        <span class="ca-left" id="ca-left">◀ ОТКАЗАТЬ</span>
-                        <span class="ca-right" id="ca-right">ПРИНЯТЬ ▶</span>
+                    <div class="card-foot">
+                        <span class="foot-l" id="ca-left">✕ ОТКЛОНИТЬ</span>
+                        <div class="foot-sep"></div>
+                        <span class="foot-r" id="ca-right">ОДОБРИТЬ ✓</span>
                     </div>
                 </div>
 
-                <!-- Result overlay -->
+                <!-- Результат -->
                 <div id="result-overlay" class="result-overlay hidden">
-                    <div class="result-badge" id="result-badge">РЕЗУЛЬТАТ</div>
-                    <p class="result-text" id="result-text"></p>
-                    <div class="reward-row">
-                        <div class="reward-chip r-xp">⭐ +<span id="rew-xp">0</span> XP</div>
-                        <div class="reward-chip r-credits">💎 +<span id="rew-credits">0</span></div>
-                        <div class="reward-chip r-energy">⚡ -<span id="rew-energy">0</span></div>
+                    <div class="ro-stamp" id="ro-stamp">РЕЗУЛЬТАТ</div>
+                    <p class="ro-text" id="result-text"></p>
+                    <div class="ro-rewards">
+                        <div class="ro-chip ro-xp">⭐ +<span id="rew-xp">0</span> XP</div>
+                        <div class="ro-chip ro-cr">💎 +<span id="rew-credits">0</span></div>
+                        <div class="ro-chip ro-en">⚡ −<span id="rew-energy">0</span></div>
                     </div>
-                    <button class="btn btn-primary full-w" onclick="nextCase()">СЛЕДУЮЩЕЕ ДЕЛО →</button>
+                    <button class="btn btn-amber" onclick="nextCase()">Следующее дело →</button>
                 </div>
             </div>
         </div>
 
-        <!-- ── ИГРЫ ── -->
-        <div class="tab-panel" id="tab-games">
-            <div class="section-hd">
-                <h2 class="section-title">АРСЕНАЛ АГЕНТА</h2>
-                <p class="section-sub">Прокачивай навыки через испытания</p>
+        <!-- ─ ИГРЫ ──────────────────────────────── -->
+        <div class="tab-pane" id="tab-games">
+            <div class="pane-hd">
+                <h2 class="pane-title">Игровой арсенал</h2>
+                <p class="pane-sub">Прокачивай навыки в испытаниях</p>
             </div>
-            <div class="games-list">
-                <div class="game-card" onclick="launchGame('detective')">
-                    <div class="gc-glow gc-violet"></div>
-                    <div class="gc-icon">💎</div>
-                    <div class="gc-info">
-                        <div class="gc-name">Самоцветы</div>
-                        <div class="gc-desc">Match-3 · 100 уровней</div>
-                        <div class="gc-progress">
-                            <div class="gc-progress-bar">
-                                <div class="gc-progress-fill" id="det-progress" style="width:1%"></div>
-                            </div>
-                            <span class="gc-lvl">Ур.<span id="det-lvl">1</span></span>
+            <div class="game-list">
+                <div class="game-row" onclick="launchGame('detective')">
+                    <div class="gr-accent gr-violet"></div>
+                    <div class="gr-icon">💎</div>
+                    <div class="gr-info">
+                        <div class="gr-name">Самоцветы</div>
+                        <div class="gr-desc">Match-3 · 100 уровней</div>
+                        <div class="gr-prog">
+                            <div class="gr-bar"><div id="det-bar" class="gr-fill" style="width:1%"></div></div>
+                            <span class="gr-lvl">Ур.&thinsp;<span id="det-lvl">1</span></span>
                         </div>
                     </div>
-                    <div class="gc-arrow">▶</div>
+                    <span class="gr-arrow">›</span>
                 </div>
-                <div class="game-card" onclick="launchGame('doctor')">
-                    <div class="gc-glow gc-cyan"></div>
-                    <div class="gc-icon">💓</div>
-                    <div class="gc-info">
-                        <div class="gc-name">Кардиограмма</div>
-                        <div class="gc-desc">Прецизия · 100 уровней</div>
-                        <div class="gc-progress">
-                            <div class="gc-progress-bar">
-                                <div class="gc-progress-fill" id="doc-progress" style="width:1%"></div>
-                            </div>
-                            <span class="gc-lvl">Ур.<span id="doc-lvl">1</span></span>
+                <div class="game-row" onclick="launchGame('doctor')">
+                    <div class="gr-accent gr-blue"></div>
+                    <div class="gr-icon">💓</div>
+                    <div class="gr-info">
+                        <div class="gr-name">Кардиограмма</div>
+                        <div class="gr-desc">Прецизия · 100 уровней</div>
+                        <div class="gr-prog">
+                            <div class="gr-bar"><div id="doc-bar" class="gr-fill" style="width:1%"></div></div>
+                            <span class="gr-lvl">Ур.&thinsp;<span id="doc-lvl">1</span></span>
                         </div>
                     </div>
-                    <div class="gc-arrow">▶</div>
+                    <span class="gr-arrow">›</span>
                 </div>
-                <div class="game-card" onclick="launchGame('universal')">
-                    <div class="gc-glow gc-gold"></div>
-                    <div class="gc-icon">🧮</div>
-                    <div class="gc-info">
-                        <div class="gc-name">Экспертиза Шифра</div>
-                        <div class="gc-desc">Математика · 100 уровней</div>
-                        <div class="gc-progress">
-                            <div class="gc-progress-bar">
-                                <div class="gc-progress-fill" id="uni-progress" style="width:1%"></div>
-                            </div>
-                            <span class="gc-lvl">Ур.<span id="uni-lvl">1</span></span>
+                <div class="game-row" onclick="launchGame('universal')">
+                    <div class="gr-accent gr-amber"></div>
+                    <div class="gr-icon">🧮</div>
+                    <div class="gr-info">
+                        <div class="gr-name">Экспертиза шифра</div>
+                        <div class="gr-desc">Математика · 100 уровней</div>
+                        <div class="gr-prog">
+                            <div class="gr-bar"><div id="uni-bar" class="gr-fill" style="width:1%"></div></div>
+                            <span class="gr-lvl">Ур.&thinsp;<span id="uni-lvl">1</span></span>
                         </div>
                     </div>
-                    <div class="gc-arrow">▶</div>
+                    <span class="gr-arrow">›</span>
                 </div>
             </div>
 
-            <!-- Game viewport (full panel) -->
-            <div id="game-vp-wrap" class="game-vp-wrap hidden">
-                <div class="game-vp-header">
-                    <button class="back-btn" onclick="closeGame()">← ВЫХОД</button>
-                    <span class="game-vp-title" id="game-vp-title">ИГРА</span>
-                    <div class="win-badge hidden" id="win-badge">WIN ✓</div>
+            <!-- Просмотр игры (полноэкранный) -->
+            <div id="gvp-wrap" class="gvp-wrap hidden">
+                <div class="gvp-bar">
+                    <button class="back-btn" onclick="closeGame()">← Выход</button>
+                    <span id="gvp-title" class="gvp-title"></span>
+                    <div id="win-badge" class="win-badge hidden">WIN ✓</div>
                 </div>
-                <div id="game-viewport" class="game-viewport"></div>
+                <div id="game-vp" class="game-vp"></div>
             </div>
         </div>
 
-        <!-- ── АГЕНТ ── -->
-        <div class="tab-panel" id="tab-profile">
+        <!-- ─ АГЕНТ ──────────────────────────────── -->
+        <div class="tab-pane" id="tab-profile">
             <div class="profile-hero">
-                <div class="profile-avatar" id="profile-avatar">?</div>
-                <div class="profile-meta">
+                <div class="profile-av" id="profile-av">?</div>
+                <div class="profile-info">
                     <div class="profile-name" id="profile-name">Агент</div>
-                    <div class="profile-archetype" id="profile-archetype">🔍 Детектив</div>
-                    <div class="profile-id" id="profile-id">ID: —</div>
+                    <div class="profile-arch" id="profile-arch">🔍 Детектив</div>
+                    <div class="profile-id" id="profile-id">ID —</div>
                 </div>
             </div>
-            <div class="stats-row">
-                <div class="stat-box">
-                    <div class="stat-num" id="pstat-rank">1</div>
-                    <div class="stat-lbl">РАНГ</div>
+
+            <div class="stats-grid">
+                <div class="sg-box">
+                    <div class="sg-val" id="ps-rank">1</div>
+                    <div class="sg-lbl">РАНГ</div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-num" id="pstat-credits">0</div>
-                    <div class="stat-lbl">КРЕДИТЫ</div>
+                <div class="sg-box">
+                    <div class="sg-val" id="ps-credits">0</div>
+                    <div class="sg-lbl">КРЕДИТЫ</div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-num" id="pstat-cases">0</div>
-                    <div class="stat-lbl">ДЕЛ</div>
+                <div class="sg-box">
+                    <div class="sg-val" id="ps-cases">0</div>
+                    <div class="sg-lbl">ДЕЛ</div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-num" id="pstat-streak">0</div>
-                    <div class="stat-lbl">СЕРИЯ 🔥</div>
+                <div class="sg-box">
+                    <div class="sg-val" id="ps-streak">0</div>
+                    <div class="sg-lbl">СЕРИЯ 🔥</div>
                 </div>
             </div>
-            <div class="section-hd" style="margin-top:20px">
-                <h2 class="section-title">НАВЫКИ</h2>
+
+            <div class="pane-hd" style="margin-top:16px">
+                <h2 class="pane-title">Навыки</h2>
             </div>
             <div class="skill-list">
-                <div class="skill-item">
-                    <div class="skill-icon-wrap">🧠</div>
-                    <div class="skill-body">
-                        <div class="skill-name">Проницательность</div>
-                        <div class="skill-desc">+XP за каждое дело</div>
-                        <div class="skill-bar"><div class="skill-bar-fill" id="sk1-bar"></div></div>
+                <div class="skill-row">
+                    <div class="sk-icon">🧠</div>
+                    <div class="sk-body">
+                        <div class="sk-name">Проницательность</div>
+                        <div class="sk-desc">+XP за каждое дело</div>
+                        <div class="sk-bar"><div id="sk1-fill" class="sk-fill"></div></div>
                     </div>
-                    <div class="skill-side">
-                        <div class="skill-lvl" id="sk1-lvl">Lv.1</div>
-                        <button class="upgrade-btn" id="sk1-btn" onclick="upgradeSkill(1)">
-                            <span id="sk1-cost">50💎</span>
-                        </button>
+                    <div class="sk-side">
+                        <div class="sk-lv" id="sk1-lv">Lv.1</div>
+                        <button class="up-btn" onclick="upgradeSkill(1)"><span id="sk1-cost">50💎</span></button>
                     </div>
                 </div>
-                <div class="skill-item">
-                    <div class="skill-icon-wrap">⚙️</div>
-                    <div class="skill-body">
-                        <div class="skill-name">Технологии</div>
-                        <div class="skill-desc">−Энергия за дело</div>
-                        <div class="skill-bar"><div class="skill-bar-fill" id="sk2-bar"></div></div>
+                <div class="skill-row">
+                    <div class="sk-icon">⚙️</div>
+                    <div class="sk-body">
+                        <div class="sk-name">Технологии</div>
+                        <div class="sk-desc">−Энергия за дело</div>
+                        <div class="sk-bar"><div id="sk2-fill" class="sk-fill"></div></div>
                     </div>
-                    <div class="skill-side">
-                        <div class="skill-lvl" id="sk2-lvl">Lv.1</div>
-                        <button class="upgrade-btn" id="sk2-btn" onclick="upgradeSkill(2)">
-                            <span id="sk2-cost">50💎</span>
-                        </button>
+                    <div class="sk-side">
+                        <div class="sk-lv" id="sk2-lv">Lv.1</div>
+                        <button class="up-btn" onclick="upgradeSkill(2)"><span id="sk2-cost">50💎</span></button>
                     </div>
                 </div>
             </div>
+
+            <div class="pane-hd" style="margin-top:4px">
+                <h2 class="pane-title">Достижения</h2>
+            </div>
+            <div id="achievements-grid" class="ach-grid"></div>
         </div>
 
-        <!-- ── МАГАЗИН ── -->
-        <div class="tab-panel" id="tab-shop">
-            <div class="section-hd">
-                <h2 class="section-title">СНАРЯЖЕНИЕ АГЕНТА</h2>
-                <p class="section-sub">Ресурсы для выживания в поле</p>
+        <!-- ─ МАГАЗИН ────────────────────────────── -->
+        <div class="tab-pane" id="tab-shop">
+            <div class="pane-hd">
+                <h2 class="pane-title">Снаряжение</h2>
+                <p class="pane-sub">Ресурсы для работы в поле</p>
             </div>
             <div class="shop-grid">
-                <div class="shop-item" onclick="buyCoffee()">
-                    <div class="shop-item-icon">☕</div>
-                    <div class="shop-item-name">Синт. Кофе</div>
-                    <div class="shop-item-desc">+35 ⚡ энергии</div>
-                    <div class="shop-item-price">40 💎</div>
+                <div class="shop-item" id="shop-coffee" onclick="buyCoffee()">
+                    <div class="si-icon">☕</div>
+                    <div class="si-name">Синт. кофе</div>
+                    <div class="si-desc">+35 ⚡ энергии</div>
+                    <div class="si-price" id="coffee-price">40 💎</div>
                 </div>
                 <div class="shop-item shop-locked">
-                    <div class="shop-item-icon">🔮</div>
-                    <div class="shop-item-name">Нейроусилитель</div>
-                    <div class="shop-item-desc">×2 XP на 5 дел</div>
-                    <div class="shop-item-price shop-soon">СКОРО</div>
+                    <div class="si-icon">🔮</div>
+                    <div class="si-name">Нейроусилитель</div>
+                    <div class="si-desc">×2 XP · 5 дел</div>
+                    <div class="si-price si-soon">Скоро</div>
                 </div>
                 <div class="shop-item shop-locked">
-                    <div class="shop-item-icon">🛡️</div>
-                    <div class="shop-item-name">Броня данных</div>
-                    <div class="shop-item-desc">−50% энергии за дело</div>
-                    <div class="shop-item-price shop-soon">СКОРО</div>
+                    <div class="si-icon">🛡️</div>
+                    <div class="si-name">Броня данных</div>
+                    <div class="si-desc">−50% расход ⚡</div>
+                    <div class="si-price si-soon">Скоро</div>
                 </div>
                 <div class="shop-item shop-locked">
-                    <div class="shop-item-icon">⚡</div>
-                    <div class="shop-item-name">Реактор</div>
-                    <div class="shop-item-desc">+100 макс. энергии</div>
-                    <div class="shop-item-price shop-soon">СКОРО</div>
+                    <div class="si-icon">⚡</div>
+                    <div class="si-name">Реактор</div>
+                    <div class="si-desc">+100 макс. ⚡</div>
+                    <div class="si-price si-soon">Скоро</div>
                 </div>
             </div>
         </div>
 
-    </div><!-- /tab-content -->
+    </div><!-- /tab-area -->
 
-    <!-- Bottom nav -->
+    <!-- Нижняя навигация -->
     <nav class="bottom-nav">
-        <button class="nav-btn active" data-tab="cases" onclick="switchTab('cases')">
-            <span class="nav-icon">📂</span>
-            <span class="nav-lbl">ДЕЛА</span>
-            <div class="nav-dot"></div>
+        <button class="nb active" data-tab="cases" onclick="switchTab('cases')">
+            <span class="nb-icon">📂</span>
+            <span class="nb-lbl">ДЕЛА</span>
         </button>
-        <button class="nav-btn" data-tab="games" onclick="switchTab('games')">
-            <span class="nav-icon">🎮</span>
-            <span class="nav-lbl">ИГРЫ</span>
-            <div class="nav-dot"></div>
+        <button class="nb" data-tab="games" onclick="switchTab('games')">
+            <span class="nb-icon">🎮</span>
+            <span class="nb-lbl">ИГРЫ</span>
         </button>
-        <button class="nav-btn" data-tab="profile" onclick="switchTab('profile')">
-            <span class="nav-icon">👤</span>
-            <span class="nav-lbl">АГЕНТ</span>
-            <div class="nav-dot"></div>
+        <button class="nb" data-tab="profile" onclick="switchTab('profile')">
+            <span class="nb-icon">👤</span>
+            <span class="nb-lbl">АГЕНТ</span>
+            <span id="ach-badge" class="nb-badge hidden">!</span>
         </button>
-        <button class="nav-btn" data-tab="shop" onclick="switchTab('shop')">
-            <span class="nav-icon">🛒</span>
-            <span class="nav-lbl">МАГАЗИН</span>
-            <div class="nav-dot"></div>
+        <button class="nb" data-tab="shop" onclick="switchTab('shop')">
+            <span class="nb-icon">🛒</span>
+            <span class="nb-lbl">МАГАЗИН</span>
         </button>
     </nav>
+
 </div><!-- /main-screen -->
 
-<!-- ══════════ ACHIEVEMENT TOAST ══════════ -->
+<!-- ══ ТОСТ ════════════════════════════════════ -->
 <div id="toast" class="toast hidden">
     <span class="toast-icon" id="toast-icon">🏆</span>
     <div class="toast-body">
-        <div class="toast-title" id="toast-title">ДОСТИЖЕНИЕ</div>
+        <div class="toast-title" id="toast-title">УВЕДОМЛЕНИЕ</div>
         <div class="toast-desc" id="toast-desc"></div>
     </div>
 </div>
 
-<!-- ══════════ DAILY MODAL ══════════ -->
-<div id="daily-modal" class="modal-overlay hidden">
+<!-- ══ ЕЖЕДНЕВНЫЙ БОНУС ═════════════════════════ -->
+<div id="daily-modal" class="modal-bg hidden">
     <div class="daily-card">
         <div class="daily-icon">🎁</div>
-        <h2 class="daily-title">ЕЖЕДНЕВНЫЙ БОНУС</h2>
-        <p class="daily-streak">Серия: <span id="daily-streak">1</span> д. 🔥</p>
-        <div class="daily-rewards">
-            <div class="daily-rchip">+50 💎</div>
-            <div class="daily-rchip">+30 ⚡</div>
+        <h2 class="daily-h">Ежедневный бонус</h2>
+        <p class="daily-streak">Серия: <span id="daily-days">1</span> дн. 🔥</p>
+        <div class="daily-week" id="daily-week"></div>
+        <div class="daily-chips">
+            <div class="dc-chip">+50 💎</div>
+            <div class="dc-chip">+30 ⚡</div>
         </div>
-        <button class="btn btn-primary full-w" onclick="claimDaily()">ЗАБРАТЬ БОНУС</button>
+        <button class="btn btn-amber" onclick="claimDaily()">Забрать бонус</button>
     </div>
 </div>
 
-<!-- ══════════ ERROR SCREEN ══════════ -->
+<!-- ══ ОШИБКА ════════════════════════════════════ -->
 <div id="error-screen" class="screen">
-    <div class="error-content">
-        <div class="error-icon">⚠️</div>
-        <h2 class="error-title">СИСТЕМНАЯ ОШИБКА</h2>
-        <p class="error-msg" id="error-msg">Что-то пошло не так</p>
-        <button class="btn btn-primary" onclick="location.reload()">ПЕРЕЗАГРУЗИТЬ</button>
+    <div class="err-center">
+        <div class="err-icon">⚠️</div>
+        <h2 class="err-title">Ошибка системы</h2>
+        <p class="err-msg" id="error-msg">Что-то пошло не так</p>
+        <button class="btn btn-amber" onclick="location.reload()">Перезагрузить</button>
     </div>
 </div>
 
-<script type="module" src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
 

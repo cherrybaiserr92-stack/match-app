@@ -1,153 +1,161 @@
-// ─── ЭКСПЕРТИЗА ШИФРА · Math cipher ──────────
+// ─── ЭКСПЕРТИЗА ШИФРА · Math cipher ──────────────
 
 export function initGame(viewport, level, onWin) {
     viewport.innerHTML = '';
-    viewport.style.display        = 'flex';
-    viewport.style.flexDirection  = 'column';
-    viewport.style.alignItems     = 'center';
-    viewport.style.gap            = '16px';
-    viewport.style.width          = '100%';
+    Object.assign(viewport.style, {
+        display:'flex', flexDirection:'column',
+        alignItems:'center', gap:'16px', width:'100%'
+    });
 
-    const targetSum   = 10 + level * 4 + Math.floor(Math.random() * 5);
-    const cellsCount  = level <= 10 ? 6 : level <= 40 ? 8 : 12;
-    let currentSum    = 0;
-    const selected    = new Set();
+    const target   = 10 + level * 4 + Math.floor(Math.random() * 6);
+    const count    = level <= 10 ? 6 : level <= 40 ? 9 : 12;
+    const maxVal   = 4 + Math.floor(level / 2);
+    let   sumNow   = 0;
+    const picked   = new Set();
 
-    // ── Header ─────────────────────────────
-    const header = document.createElement('div');
-    header.style.cssText = 'text-align:center;width:100%;';
-    header.innerHTML = `
-        <div style="font-size:11px;letter-spacing:2px;color:var(--text-3);font-weight:700;text-transform:uppercase;margin-bottom:4px;">УРОВЕНЬ ${level} · ЭКСПЕРТИЗА ШИФРА</div>
-        <div style="font-size:13px;color:var(--text-2);font-weight:600;">Выбери числа в сумме:</div>
+    // Генерируем числа с гарантированным решением
+    const nums = Array.from({length: count}, () => Math.floor(Math.random() * maxVal) + 2);
+    let acc = 0;
+    for (let i = 0; i < nums.length; i++) {
+        if (acc + nums[i] <= target) acc += nums[i];
+    }
+    if (acc !== target) nums[nums.length - 1] = target - acc + (acc > 0 ? 0 : nums[0]);
+
+    // ── Шапка ────────────────────────────────────
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'text-align:center;width:100%;';
+    hdr.innerHTML = `
+        <div style="font-size:11px;letter-spacing:2px;color:var(--tx3);font-weight:700;
+            text-transform:uppercase;margin-bottom:4px;">УРОВЕНЬ ${level} · ШИФР</div>
+        <div style="font-size:13px;color:var(--tx2);font-weight:600;">Выбери числа в сумме:</div>
     `;
-    viewport.appendChild(header);
+    viewport.appendChild(hdr);
 
-    // ── Target display ─────────────────────
+    // ── Цель ─────────────────────────────────────
     const targetBox = document.createElement('div');
     targetBox.style.cssText = `
-        background: var(--surface);
-        border: 1px solid var(--border-hi);
-        border-radius: var(--radius);
-        padding: 14px 32px;
-        text-align: center;
-        box-shadow: 0 0 20px var(--primary-glow);
+        background:var(--s1);border:1px solid var(--b2);
+        border-radius:var(--r);padding:14px 36px;text-align:center;
+        box-shadow:0 4px 20px rgba(212,151,26,.08);
     `;
     targetBox.innerHTML = `
-        <div style="font-size:10px;letter-spacing:2px;color:var(--primary);font-weight:700;text-transform:uppercase;">ЦЕЛЬ</div>
-        <div style="font-size:48px;font-weight:800;color:var(--text);line-height:1.1;">${targetSum}</div>
+        <div style="font-size:10px;letter-spacing:2px;color:var(--amber);
+            font-weight:700;text-transform:uppercase;">ЦЕЛЬ</div>
+        <div id="cipher-target" style="font-size:52px;font-weight:800;
+            color:var(--tx);line-height:1.1;">${target}</div>
     `;
     viewport.appendChild(targetBox);
 
-    // ── Progress bar ───────────────────────
-    const progressWrap = document.createElement('div');
-    progressWrap.style.cssText = 'width:100%;max-width:300px;';
-    progressWrap.innerHTML = `
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);font-weight:600;margin-bottom:6px;letter-spacing:0.5px;">
+    // ── Прогресс ─────────────────────────────────
+    const progWrap = document.createElement('div');
+    progWrap.style.cssText = 'width:100%;max-width:300px;';
+    progWrap.innerHTML = `
+        <div style="display:flex;justify-content:space-between;
+            font-size:11px;color:var(--tx3);font-weight:600;
+            margin-bottom:6px;letter-spacing:.3px;">
             <span>ТЕКУЩАЯ СУММА</span>
-            <span id="cipher-sum-label">0 / ${targetSum}</span>
+            <span id="cs-lbl">0 / ${target}</span>
         </div>
-        <div style="height:4px;background:var(--surface-3);border-radius:99px;overflow:hidden;">
-            <div id="cipher-progress" style="height:100%;width:0%;background:linear-gradient(90deg,var(--primary),var(--cyan));border-radius:99px;transition:width 0.25s ease,background 0.2s;"></div>
+        <div style="height:4px;background:var(--s3);border-radius:99px;overflow:hidden;">
+            <div id="cs-bar" style="height:100%;width:0%;
+                background:var(--amber);border-radius:99px;
+                transition:width .2s ease,background .15s;"></div>
         </div>
     `;
-    viewport.appendChild(progressWrap);
+    viewport.appendChild(progWrap);
 
-    // ── Number grid ────────────────────────
+    // ── Сетка числе ──────────────────────────────
     const grid = document.createElement('div');
-    grid.className = 'cipher-grid';
+    grid.style.cssText = `
+        display:flex;flex-wrap:wrap;gap:8px;
+        justify-content:center;max-width:320px;
+    `;
     viewport.appendChild(grid);
 
-    // ── Reset hint ─────────────────────────
-    const hint = document.createElement('div');
-    hint.style.cssText = 'font-size:11px;color:var(--text-3);letter-spacing:0.5px;min-height:16px;text-align:center;font-weight:500;';
-    viewport.appendChild(hint);
+    // ── Статус ────────────────────────────────────
+    const status = document.createElement('div');
+    status.style.cssText = `
+        font-size:12px;color:var(--tx3);min-height:18px;
+        text-align:center;font-weight:500;letter-spacing:.3px;
+    `;
+    viewport.appendChild(status);
 
-    // ── Generate values ────────────────────
-    const maxVal  = 5 + Math.floor(level / 2);
-    const values  = Array.from({ length: cellsCount }, () => Math.floor(Math.random() * maxVal) + 2);
-
-    // Guarantee solution exists: replace last value if needed
-    let testSum = 0;
-    const soln = [];
-    for (const v of values) {
-        if (testSum + v <= targetSum) { testSum += v; soln.push(v); }
-    }
-    if (testSum !== targetSum) {
-        values[values.length - 1] = targetSum - testSum + (soln.length > 0 ? 0 : values[0]);
-    }
-
-    // Build cells
-    for (let i = 0; i < cellsCount; i++) {
-        const val  = values[i];
+    // Строим ячейки
+    for (let i = 0; i < count; i++) {
+        const val  = nums[i];
         const cell = document.createElement('div');
-        cell.className = 'cipher-cell';
+        cell.className  = 'cipher-cell';
         cell.textContent = val;
-        cell.dataset.val = val;
         cell.dataset.idx = i;
 
         cell.addEventListener('click', () => {
-            if (selected.has(i)) {
-                selected.delete(i);
-                currentSum -= val;
-                cell.classList.remove('selected');
+            if (picked.has(i)) {
+                // Снимаем
+                picked.delete(i);
+                sumNow -= val;
+                cell.classList.remove('sel');
             } else {
-                selected.add(i);
-                currentSum += val;
-                cell.classList.add('selected');
+                picked.add(i);
+                sumNow += val;
+                cell.classList.add('sel');
 
-                if (currentSum === targetSum) {
-                    // Win!
+                if (sumNow === target) {
+                    // WIN
                     grid.querySelectorAll('.cipher-cell').forEach(c => {
                         c.style.pointerEvents = 'none';
-                        if (c.classList.contains('selected')) {
+                        if (c.classList.contains('sel')) {
                             c.style.borderColor = 'var(--green)';
-                            c.style.background  = 'rgba(52,211,153,0.2)';
+                            c.style.background  = 'var(--green-d)';
                             c.style.color       = 'var(--green)';
-                            c.style.boxShadow   = '0 0 12px var(--green-glow)';
+                            c.style.boxShadow   = '0 0 10px rgba(62,176,119,.3)';
                         }
                     });
-                    hint.textContent = '✓ ШИФР ВЗЛОМАН';
-                    hint.style.color = 'var(--green)';
-                    updateProgress(currentSum, targetSum);
-                    setTimeout(() => onWin(), 500);
+                    status.textContent = '✓ ШИФР ВЗЛОМАН!';
+                    status.style.color = 'var(--green)';
+                    status.style.fontWeight = '700';
+                    setProgress(target, target);
+                    if (navigator.vibrate) navigator.vibrate([30,20,60]);
+                    setTimeout(() => onWin(), 450);
                     return;
                 }
 
-                if (currentSum > targetSum) {
-                    // Overshoot — reset
-                    cell.classList.add('over-target');
-                    setTimeout(() => cell.classList.remove('over-target'), 300);
-                    if (navigator.vibrate) navigator.vibrate(60);
-                    hint.textContent = '⚠️ Сумма превышена — сброс';
-                    hint.style.color = 'var(--red)';
-                    setTimeout(() => { hint.textContent = ''; hint.style.color = 'var(--text-3)'; }, 1200);
-                    // deselect all
-                    grid.querySelectorAll('.cipher-cell').forEach(c => c.classList.remove('selected'));
-                    selected.clear();
-                    currentSum = 0;
-                    updateProgress(0, targetSum);
+                if (sumNow > target) {
+                    // Перебор — сброс
+                    cell.classList.add('over');
+                    setTimeout(() => cell.classList.remove('over'), 280);
+                    if (navigator.vibrate) navigator.vibrate(70);
+                    status.textContent = '⚠ Сумма превышена — сброс';
+                    status.style.color = 'var(--red)';
+                    setTimeout(() => {
+                        if (status.style.color !== 'var(--green)') {
+                            status.textContent = '';
+                            status.style.color = 'var(--tx3)';
+                        }
+                    }, 1100);
+                    grid.querySelectorAll('.cipher-cell').forEach(c => c.classList.remove('sel'));
+                    picked.clear();
+                    sumNow = 0;
+                    setProgress(0, target);
                     return;
                 }
             }
-            updateProgress(currentSum, targetSum);
+            setProgress(sumNow, target);
         });
 
         grid.appendChild(cell);
     }
 
-    function updateProgress(cur, target) {
-        const pct = Math.min(100, Math.round((cur / target) * 100));
-        const bar = document.getElementById('cipher-progress');
-        const lbl = document.getElementById('cipher-sum-label');
+    function setProgress(cur, max) {
+        const pct = Math.min(100, Math.round(cur / max * 100));
+        const bar = document.getElementById('cs-bar');
+        const lbl = document.getElementById('cs-lbl');
         if (bar) {
             bar.style.width = pct + '%';
-            bar.style.background = cur > target
-                ? 'linear-gradient(90deg,var(--red),var(--red))'
-                : cur === target
-                ? 'linear-gradient(90deg,var(--green),var(--green))'
-                : 'linear-gradient(90deg,var(--primary),var(--cyan))';
+            bar.style.background =
+                cur > max   ? 'var(--red)' :
+                cur === max ? 'var(--green)' : 'var(--amber)';
         }
-        if (lbl) lbl.textContent = `${cur} / ${target}`;
+        if (lbl) lbl.textContent = `${cur} / ${max}`;
     }
 }
 

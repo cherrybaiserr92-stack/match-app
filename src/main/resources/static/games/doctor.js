@@ -1,147 +1,168 @@
-// ─── КАРДИОГРАММА · Precision tap ────────────
+// ─── КАРДИОГРАММА · Precision tap ────────────────
 
-let _loop = null;
+let _raf = null;
+let _tapped = false;
 
 export function initGame(viewport, level, onWin) {
-    if (_loop) { clearInterval(_loop); _loop = null; }
+    if (_raf) { cancelAnimationFrame(_raf); _raf = null; }
+    _tapped = false;
 
     viewport.innerHTML = '';
-    viewport.style.display        = 'flex';
-    viewport.style.flexDirection  = 'column';
-    viewport.style.alignItems     = 'center';
-    viewport.style.gap            = '20px';
-    viewport.style.padding        = '12px';
+    Object.assign(viewport.style, {
+        display:'flex', flexDirection:'column',
+        alignItems:'center', gap:'20px',
+        padding:'8px 4px', width:'100%'
+    });
 
-    // ── Header ─────────────────────────────
-    const header = document.createElement('div');
-    header.style.cssText = `
-        text-align: center;
-        width: 100%;
-    `;
-    header.innerHTML = `
-        <div style="font-size:11px;letter-spacing:2px;color:var(--text-3);font-weight:700;text-transform:uppercase;">УРОВЕНЬ ${level}</div>
-        <div style="font-size:36px;margin:8px 0;filter:drop-shadow(0 0 12px rgba(248,113,113,0.5));">💓</div>
-        <div style="font-size:13px;color:var(--text-2);font-weight:600;">Поймай импульс в зелёной зоне</div>
-    `;
-    viewport.appendChild(header);
+    const speed = 2 + level * 0.13;
+    const zoneW = Math.max(7, 32 - level * 0.24); // % ширина зоны
+    const zoneL = 12 + Math.random() * (72 - zoneW);
 
-    // ── EKG Decoration ─────────────────────
-    const ekgWrap = document.createElement('div');
-    ekgWrap.style.cssText = 'width:100%;max-width:340px;height:40px;position:relative;overflow:hidden;opacity:0.35;';
-    const ekgSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    ekgSvg.setAttribute('viewBox', '0 0 340 40');
-    ekgSvg.setAttribute('width', '100%');
-    ekgSvg.setAttribute('height', '40');
-    ekgSvg.innerHTML = `
-        <polyline
-          fill="none"
-          stroke="var(--red)"
-          stroke-width="1.5"
-          points="0,20 30,20 38,5 44,35 50,20 60,20 90,20 98,5 104,35 110,20 120,20 150,20 158,5 164,35 170,20 180,20 210,20 218,5 224,35 230,20 240,20 270,20 278,5 284,35 290,20 300,20 330,20 338,5 340,35"
-        />
+    // ── Шапка ────────────────────────────────────
+    const hdr = el('div', {
+        textAlign:'center', width:'100%',
+        fontFamily:'inherit'
+    });
+    hdr.innerHTML = `
+        <div style="font-size:11px;letter-spacing:2px;color:var(--tx3);font-weight:700;text-transform:uppercase;">УРОВЕНЬ ${level}</div>
+        <div style="font-size:44px;margin:8px 0;line-height:1;" id="doc-heart">💓</div>
+        <div style="font-size:14px;color:var(--tx2);font-weight:600;">Поймай импульс в зелёной зоне</div>
     `;
-    ekgWrap.appendChild(ekgSvg);
+    viewport.appendChild(hdr);
+
+    // Мини-ЭКГ декоративная
+    const ekgSvg = `<svg width="100%" height="36" viewBox="0 0 340 36"
+        style="opacity:.2;display:block;margin:0 auto;max-width:340px;">
+        <polyline fill="none" stroke="var(--red)" stroke-width="1.5"
+            points="0,18 28,18 36,4 42,32 48,18 58,18 86,18 94,4 100,32 106,18
+                    116,18 144,18 152,4 158,32 164,18 174,18 202,18 210,4 216,32
+                    222,18 232,18 260,18 268,4 274,32 280,18 290,18 318,18 326,4 332,32 340,18"/>
+    </svg>`;
+    const ekgWrap = el('div', {width:'100%'});
+    ekgWrap.innerHTML = ekgSvg;
     viewport.appendChild(ekgWrap);
 
-    // ── Track ──────────────────────────────
-    const trackWrap = document.createElement('div');
-    trackWrap.style.cssText = `
-        width: 100%;
-        max-width: 340px;
-        padding: 0 4px;
-    `;
+    // ── Трек ─────────────────────────────────────
+    const trackWrap = el('div', {width:'100%', maxWidth:'340px'});
 
-    const track = document.createElement('div');
-    track.className = 'doctor-track';
+    const track = el('div', {
+        width:'100%', height:'72px',
+        background:'var(--s1)', border:'1px solid var(--b2)',
+        borderRadius:'var(--r)', position:'relative',
+        overflow:'hidden', cursor:'pointer',
+        userSelect:'none', WebkitUserSelect:'none'
+    });
+
+    // Зелёная зона
+    const zone = el('div', {
+        position:'absolute', top:'0', bottom:'0',
+        left: zoneL+'%', width: zoneW+'%',
+        background:'var(--green-d)',
+        borderLeft:'2px solid var(--green)',
+        borderRight:'2px solid var(--green)',
+        transition:'background .1s'
+    });
+    track.appendChild(zone);
+
+    // Пин
+    const pin = el('div', {
+        position:'absolute', top:'10px', bottom:'10px', width:'3px',
+        background:'var(--red)', borderRadius:'99px',
+        transform:'translateX(-50%)',
+        boxShadow:'0 0 8px var(--red)',
+        transition:'background .15s, box-shadow .15s'
+    });
+    track.appendChild(pin);
     trackWrap.appendChild(track);
     viewport.appendChild(trackWrap);
 
-    // Target zone
-    const targetWidth = Math.max(6, 30 - level * 0.25);
-    const targetLeft  = Math.floor(Math.random() * (70 - targetWidth)) + 15;
-
-    const targetEl = document.createElement('div');
-    targetEl.className = 'doctor-target';
-    targetEl.style.left  = targetLeft + '%';
-    targetEl.style.width = targetWidth + '%';
-    track.appendChild(targetEl);
-
-    // Pulse pin
-    const pin = document.createElement('div');
-    pin.className = 'doctor-pin';
-    track.appendChild(pin);
-
-    // ── Hint ───────────────────────────────
-    const hint = document.createElement('div');
-    hint.className = 'doctor-tap-hint';
-    hint.textContent = '↓ Нажми в любом месте ↓';
+    // ── Подсказка ─────────────────────────────────
+    const hint = el('div', {
+        fontSize:'14px', color:'var(--tx2)',
+        fontWeight:'600', textAlign:'center',
+        minHeight:'22px', letterSpacing:'.3px'
+    });
+    hint.textContent = '↓ Нажмите в любом месте ↓';
     viewport.appendChild(hint);
 
-    // ── Stats ──────────────────────────────
-    const stats = document.createElement('div');
-    stats.style.cssText = 'display:flex;gap:16px;justify-content:center;';
-    stats.innerHTML = `
-        <div style="text-align:center;">
-            <div style="font-size:10px;letter-spacing:1.5px;color:var(--text-3);font-weight:700;">СКОРОСТЬ</div>
-            <div style="font-size:18px;font-weight:800;color:var(--red);">${(2 + level * 0.12).toFixed(1)}×</div>
+    // ── Параметры уровня ──────────────────────────
+    const info = el('div', {
+        display:'flex', gap:'20px', justifyContent:'center',
+        background:'var(--s2)', border:'1px solid var(--b)',
+        borderRadius:'var(--r)', padding:'10px 24px',
+        width:'100%', maxWidth:'280px'
+    });
+    info.innerHTML = `
+        <div style="text-align:center">
+            <div style="font-size:9px;letter-spacing:1.5px;color:var(--tx3);font-weight:700;text-transform:uppercase;">СКОРОСТЬ</div>
+            <div style="font-size:20px;font-weight:800;color:var(--red);margin-top:2px;">${speed.toFixed(1)}×</div>
         </div>
-        <div style="text-align:center;">
-            <div style="font-size:10px;letter-spacing:1.5px;color:var(--text-3);font-weight:700;">ЗОНА</div>
-            <div style="font-size:18px;font-weight:800;color:var(--green);">${Math.round(targetWidth)}%</div>
+        <div style="width:1px;background:var(--b)"></div>
+        <div style="text-align:center">
+            <div style="font-size:9px;letter-spacing:1.5px;color:var(--tx3);font-weight:700;text-transform:uppercase;">ЗОНА</div>
+            <div style="font-size:20px;font-weight:800;color:var(--green);margin-top:2px;">${Math.round(zoneW)}%</div>
         </div>
     `;
-    viewport.appendChild(stats);
+    viewport.appendChild(info);
 
-    // ── Animation ──────────────────────────
+    // ── Анимация ─────────────────────────────────
     let pos = 0, dir = 1;
-    const speed = 2 + level * 0.12;
+    let lastTime = performance.now();
 
-    _loop = setInterval(() => {
-        pos += speed * dir;
-        if (pos >= 100 || pos <= 0) {
-            dir *= -1;
-            // Chaos mode on high levels
-            if (level > 65 && Math.random() > 0.88) dir *= -1;
-        }
+    function frame(ts) {
+        const dt = Math.min(ts - lastTime, 50); lastTime = ts;
+        pos += speed * dir * dt / 16;
+        if (pos >= 100) { pos = 100; dir = -1; }
+        if (pos <= 0)   { pos = 0;   dir = 1;  }
+        // chaos at high levels
+        if (level > 60 && Math.random() > .994) dir *= -1;
         pin.style.left = pos + '%';
-    }, 16);
+        _raf = requestAnimationFrame(frame);
+    }
+    _raf = requestAnimationFrame(frame);
 
-    // ── Click handler ──────────────────────
-    let tapped = false;
-    const tapHandler = (e) => {
-        if (tapped) return;
-        const inZone = pos >= targetLeft && pos <= targetLeft + targetWidth;
+    // ── Тап ──────────────────────────────────────
+    viewport.addEventListener('click', () => {
+        if (_tapped) return;
+        const inZone = pos >= zoneL && pos <= zoneL + zoneW;
+
         if (inZone) {
-            tapped = true;
-            clearInterval(_loop);
-            _loop = null;
+            _tapped = true;
+            cancelAnimationFrame(_raf); _raf = null;
             hint.textContent = '✓ ПОПАДАНИЕ!';
             hint.style.color = 'var(--green)';
-            pin.style.background     = 'var(--green)';
-            pin.style.boxShadow      = '0 0 10px var(--green), 0 0 20px var(--green-glow)';
-            targetEl.style.background = 'rgba(52,211,153,0.35)';
-            targetEl.style.borderColor = 'var(--green)';
-            setTimeout(() => onWin(), 400);
+            hint.style.fontWeight = '800';
+            pin.style.background  = 'var(--green)';
+            pin.style.boxShadow   = '0 0 10px var(--green)';
+            zone.style.background = 'rgba(62,176,119,.35)';
+            if (navigator.vibrate) navigator.vibrate([30, 20, 60]);
+            setTimeout(() => onWin(), 380);
         } else {
-            if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
-            track.classList.add('doctor-miss');
-            hint.textContent = '✗ МИМО — попробуй ещё';
+            if (navigator.vibrate) navigator.vibrate(80);
+            track.classList.add('doc-shake');
+            hint.textContent = '✗ Мимо — попробуйте ещё';
             hint.style.color = 'var(--red)';
-            pin.style.boxShadow = '0 0 16px var(--red), 0 0 30px var(--red-glow)';
+            pin.style.boxShadow = '0 0 14px var(--red)';
             setTimeout(() => {
-                track.classList.remove('doctor-miss');
-                pin.style.boxShadow = '0 0 10px var(--red), 0 0 20px var(--red-glow)';
-                hint.textContent = '↓ Нажми ещё раз ↓';
-                hint.style.color = 'var(--text-2)';
-            }, 500);
+                track.classList.remove('doc-shake');
+                if (!_tapped) {
+                    hint.textContent = '↓ Нажмите ещё раз ↓';
+                    hint.style.color = 'var(--tx2)';
+                    pin.style.boxShadow = '0 0 8px var(--red)';
+                }
+            }, 450);
         }
-    };
+    });
+}
 
-    viewport.addEventListener('click', tapHandler);
-    viewport._tapHandler = tapHandler;
+function el(tag, styles) {
+    const d = document.createElement(tag);
+    Object.assign(d.style, styles);
+    return d;
 }
 
 export function destroy() {
-    if (_loop) { clearInterval(_loop); _loop = null; }
+    if (_raf) { cancelAnimationFrame(_raf); _raf = null; }
+    _tapped = false;
 }
 
