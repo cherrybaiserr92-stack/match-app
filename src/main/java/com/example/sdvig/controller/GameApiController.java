@@ -53,12 +53,16 @@ public class GameApiController {
     }
 
     @PostMapping("/auth/widget")
-    public ResponseEntity<?> authWidget(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<?> authWidget(@RequestBody Map<String, Object> payload) {
         try {
             if (!authService.validateWidgetAuth(payload)) {
                 return ResponseEntity.status(401).body("Invalid widget signature");
             }
-            return processUser(payload.get("id"), payload.get("username"), payload.get("first_name"));
+            return processUser(
+                String.valueOf(payload.get("id")),
+                payload.get("username") != null ? String.valueOf(payload.get("username")) : null,
+                payload.get("first_name") != null ? String.valueOf(payload.get("first_name")) : null
+            );
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Server error: " + e.getMessage());
         }
@@ -226,4 +230,3 @@ public class GameApiController {
         return ResponseEntity.ok(p);
     }
 }
-
