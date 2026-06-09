@@ -1,341 +1,227 @@
 /* ═══════════════════════════════════════════════
-   СДВИГ · Card Design System
-   Physical paper · Rubber stamps · Type variants
+   СДВИГ · card-design.css  v4
+   Notepad + Spring coil · Lock/Unlock mechanic
 ═══════════════════════════════════════════════ */
 
-/* ── Card type color tokens ──────────────────── */
-.case-card { --ct: #a87030; --ct-bg: rgba(168,112,48,.08); }
+/* ── Type accent tokens ─────────────────────── */
+.case-card{--ct:#a87030;--ctbg:rgba(168,112,48,.07)}
+.ct-crime        {--ct:#8b2020;--ctbg:rgba(139,32,32,.07)}
+.ct-evidence     {--ct:#7a5020;--ctbg:rgba(122,80,32,.07)}
+.ct-suspect      {--ct:#1e3a6a;--ctbg:rgba(30,58,106,.07)}
+.ct-witness      {--ct:#2a6040;--ctbg:rgba(42,96,64,.07)}
+.ct-testimony    {--ct:#3d4a5c;--ctbg:rgba(61,74,92,.06)}
+.ct-mystery      {--ct:#4a2d6a;--ctbg:rgba(74,45,106,.07)}
+.ct-action       {--ct:#6a3010;--ctbg:rgba(106,48,16,.08)}
+.ct-revelation   {--ct:#7a5c20;--ctbg:rgba(122,92,32,.07)}
+.ct-briefing     {--ct:#2d3d4a;--ctbg:rgba(45,61,74,.06)}
+.ct-ending       {--ct:#6a5010;--ctbg:rgba(106,80,16,.06)}
+.ct-ending_bad   {--ct:#3d3530;--ctbg:rgba(61,53,48,.05)}
+.ct-ending_partial{--ct:#2d5a4a;--ctbg:rgba(45,90,74,.06)}
 
-.ct-crime        { --ct: #8b2020; --ct-bg: rgba(139,32,32,.07); }
-.ct-evidence     { --ct: #7a5020; --ct-bg: rgba(122,80,32,.07); }
-.ct-suspect      { --ct: #1e3a6a; --ct-bg: rgba(30,58,106,.07); }
-.ct-witness      { --ct: #2a6040; --ct-bg: rgba(42,96,64,.07); }
-.ct-testimony    { --ct: #3d4a5c; --ct-bg: rgba(61,74,92,.06); }
-.ct-mystery      { --ct: #4a2d6a; --ct-bg: rgba(74,45,106,.07); }
-.ct-action       { --ct: #6a3010; --ct-bg: rgba(106,48,16,.08); }
-.ct-revelation   { --ct: #7a5c20; --ct-bg: rgba(122,92,32,.07); }
-.ct-briefing     { --ct: #2d3d4a; --ct-bg: rgba(45,61,74,.06); }
-.ct-ending       { --ct: #6a5010; --ct-bg: rgba(106,80,16,.06); }
-.ct-ending_bad   { --ct: #3d3530; --ct-bg: rgba(61,53,48,.05); }
-.ct-ending_partial { --ct: #2d5a4a; --ct-bg: rgba(45,90,74,.06); }
+/* ── Main card ──────────────────────────────── */
+.case-card{
+    position:absolute;
+    width:calc(100% - 28px);max-width:360px;
+    min-height:390px;
 
-/* ── Main case card ───────────────────────────── */
-.case-card {
-    position: absolute;
-    width: calc(100% - 28px);
-    max-width: 360px;
-    min-height: 380px;
-
-    /* Paper surface */
-    background-color: var(--paper);
+    /* Paper */
+    background-color:var(--paper);
     background-image:
-        /* Subtle horizontal ruling like writing paper */
         repeating-linear-gradient(
-            180deg,
-            transparent 0px, transparent 23px,
-            rgba(0,0,0,.022) 23px, rgba(0,0,0,.022) 24px
+            180deg,transparent 0,transparent 27px,
+            rgba(0,0,0,.035) 27px,rgba(0,0,0,.035) 28px
         );
 
-    /* Physical paper borders */
-    border: 1px solid var(--ink-5);
-    border-top: 3px solid var(--ct);
-    border-radius: 0 0 var(--r-lg) var(--r-lg);
+    /* Notebook tab cut top-left */
+    clip-path:polygon(20px 0%,100% 0%,100% 100%,0% 100%,0% 20px);
 
-    /* Paper shadow — resting on desk */
+    /* Top accent — card type colour */
+    border:1px solid var(--ink5);
+    border-top:3px solid var(--ct);
+
+    /* 3-D elevation shadow */
     box-shadow:
-        0 1px 2px rgba(0,0,0,.06),
-        0 4px 12px rgba(0,0,0,.08),
-        0 20px 50px rgba(0,0,0,.10),
-        3px 0 6px rgba(0,0,0,.03);
+        0 1px 2px rgba(0,0,0,.07),
+        0 4px 14px rgba(0,0,0,.10),
+        0 28px 60px rgba(0,0,0,.18),
+        0 2px 0 rgba(255,255,255,.55) inset;
 
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    cursor: grab;
-    touch-action: none;
-    transform-origin: 50% 100%;
-    will-change: transform;
-    z-index: 10;
+    display:flex;flex-direction:column;
+    padding:0;
+    cursor:grab;touch-action:none;
+    transform-origin:50% 100%;
+    will-change:transform;
+    z-index:10;
 
-    /* Slight random lean — physical papers don't sit perfectly straight */
-    transform: rotate(-0.4deg);
-
-    transition: box-shadow .25s ease;
+    /* Gentle float animation */
+    animation:notebookFloat 5s ease-in-out infinite;
 }
-.case-card:active { cursor: grabbing; }
+.case-card:active{cursor:grabbing;animation:none}
 
-/* Drag state borders */
-.case-card.tilt-left  { border-top-color: var(--deny);    box-shadow: 0 4px 16px rgba(0,0,0,.10), 0 20px 50px rgba(0,0,0,.10), -8px 4px 24px rgba(139,32,32,.12); }
-.case-card.tilt-right { border-top-color: var(--approve); box-shadow: 0 4px 16px rgba(0,0,0,.10), 0 20px 50px rgba(0,0,0,.10),  8px 4px 24px rgba(42,96,64,.12); }
-
-/* Card entry animation */
-.case-card.entering {
-    animation: cardLand .45s cubic-bezier(.2,.8,.3,1) forwards;
-}
-@keyframes cardLand {
-    from {
-        opacity: 0;
-        transform: translateY(-24px) rotate(-1.5deg) scale(.97);
-        box-shadow: 0 20px 60px rgba(0,0,0,.15);
-    }
-    to {
-        opacity: 1;
-        transform: rotate(-0.4deg);
-        box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.08), 0 20px 50px rgba(0,0,0,.10);
-    }
+@keyframes notebookFloat{
+    0%  {transform:rotate(-.5deg) translateY(0)}
+    30% {transform:rotate(.25deg) translateY(-3px)}
+    60% {transform:rotate(-.2deg) translateY(-1px)}
+    80% {transform:rotate(.15deg) translateY(-4px)}
+    100%{transform:rotate(-.5deg) translateY(0)}
 }
 
-/* ── "СЕКРЕТНО" watermark ─────────────────────── */
-.case-card::before {
-    content: 'СЕКРЕТНО';
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%) rotate(-28deg);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 46px; font-weight: 800; letter-spacing: 6px;
-    color: rgba(168,112,48,.055);
-    pointer-events: none;
-    white-space: nowrap;
-    text-transform: uppercase;
-    z-index: 0;
-    user-select: none;
+/* Drag states — suspend float + colour border */
+.case-card.tilt-left {
+    animation:none;
+    border-top-color:var(--no);
+    box-shadow:0 4px 16px rgba(0,0,0,.10),0 28px 60px rgba(0,0,0,.18),-10px 4px 28px rgba(139,32,32,.14);
+}
+.case-card.tilt-right{
+    animation:none;
+    border-top-color:var(--ok);
+    box-shadow:0 4px 16px rgba(0,0,0,.10),0 28px 60px rgba(0,0,0,.18), 10px 4px 28px rgba(42,96,64,.14);
 }
 
-/* ── Stamps ───────────────────────────────────── */
-.stamp-wrap {
-    position: absolute; inset: 0; border-radius: inherit;
-    display: flex; align-items: center; justify-content: center;
-    pointer-events: none; z-index: 30;
-    transition: opacity .12s ease;
+/* Entry animation */
+.case-card.card-enter{
+    animation:cardEnter .45s cubic-bezier(.2,.8,.3,1) forwards;
 }
-.stamp-left  { align-items: center; padding-right: 50px; }
-.stamp-right { align-items: center; padding-left: 50px; }
-
-.stamp {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    padding: 7px 16px;
-    border: 3px solid;
-    border-radius: var(--r-xs);
-    /* SVG filter for ink imperfection feel */
-    filter: url(#ink-rough);
-}
-.stamp-approve-text {
-    color: var(--approve);
-    border-color: var(--approve);
-    background: var(--approve-d);
-    transform: rotate(-11deg);
-}
-.stamp-deny-text {
-    color: var(--deny);
-    border-color: var(--deny);
-    background: var(--deny-d);
-    transform: rotate(9deg);
+@keyframes cardEnter{
+    from{opacity:0;transform:rotate(-1.5deg) translateY(-28px) scale(.96)}
+    to  {opacity:1;transform:rotate(-.5deg)}
 }
 
-/* Stamp landing animation */
-@keyframes stampLand {
-    0%  { transform: scale(1.8) rotate(-25deg); opacity: 0; }
-    55% { transform: scale(.97) rotate(-11deg); opacity: 1; }
-    70% { transform: scale(1.03) rotate(-12deg); }
-    100%{ transform: scale(1) rotate(-11deg); opacity: 1; }
+/* ── SHAKE (locked swipe attempt) ───────────── */
+.case-card.shaking{
+    animation:cardShake .5s ease!important;
 }
-.stamp-approve-text.landing {
-    animation: stampLand .38s cubic-bezier(.2,.8,.3,1) forwards;
-}
-@keyframes stampLandDeny {
-    0%  { transform: scale(1.8) rotate(22deg); opacity: 0; }
-    55% { transform: scale(.97) rotate(9deg); opacity: 1; }
-    70% { transform: scale(1.03) rotate(10deg); }
-    100%{ transform: scale(1) rotate(9deg); opacity: 1; }
-}
-.stamp-deny-text.landing {
-    animation: stampLandDeny .38s cubic-bezier(.2,.8,.3,1) forwards;
+@keyframes cardShake{
+    0%,100%{transform:rotate(-.5deg) translateX(0)}
+    12%{transform:rotate(-.5deg) translateX(-10px)}
+    25%{transform:rotate(-.5deg) translateX(10px)}
+    40%{transform:rotate(-.5deg) translateX(-7px)}
+    55%{transform:rotate(-.5deg) translateX(7px)}
+    70%{transform:rotate(-.5deg) translateX(-4px)}
+    85%{transform:rotate(-.5deg) translateX(4px)}
 }
 
-/* ── Card internal layout ─────────────────────── */
-.card-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px 0;
-    position: relative; z-index: 1;
+/* ── UNLOCK RIPPLE ──────────────────────────── */
+.case-card.just-unlocked{
+    animation:unlockRipple .65s ease-out,notebookFloat 5s ease-in-out .7s infinite!important;
 }
-.card-act {
-    font-family: 'Courier Prime', monospace;
-    font-size: 10px; letter-spacing: 2px;
-    color: var(--ct); font-weight: 700; text-transform: uppercase;
-}
-.card-type-badge {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 10px; letter-spacing: 1.5px; font-weight: 700;
-    text-transform: uppercase;
-    padding: 2px 8px;
-    border: 1px solid var(--ct);
-    border-radius: 2px;
-    color: var(--ct);
-    background: var(--ct-bg);
-}
-.card-num {
-    font-family: 'Courier Prime', monospace;
-    font-size: 11px; color: var(--ink-3); letter-spacing: 1px;
+@keyframes unlockRipple{
+    0% {box-shadow:0 0 0 0 rgba(168,112,48,.5),0 4px 14px rgba(0,0,0,.1),0 28px 60px rgba(0,0,0,.18)}
+    50%{box-shadow:0 0 0 22px rgba(168,112,48,0),0 4px 14px rgba(0,0,0,.1),0 28px 60px rgba(0,0,0,.18)}
+    100%{box-shadow:0 1px 2px rgba(0,0,0,.07),0 4px 14px rgba(0,0,0,.10),0 28px 60px rgba(0,0,0,.18),0 2px 0 rgba(255,255,255,.55) inset}
 }
 
-/* Accent divider under head */
-.card-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--ink-5) 20%, var(--ink-5) 80%, transparent);
-    margin: 10px 14px 0;
+/* ── "СЕКРЕТНО" watermark ─────────────────────*/
+.case-card::before{
+    content:'СЕКРЕТНО';position:absolute;top:50%;left:50%;
+    transform:translate(-50%,-50%) rotate(-28deg);
+    font-family:'DM Sans',sans-serif;font-size:44px;font-weight:800;
+    letter-spacing:6px;color:rgba(168,112,48,.05);
+    pointer-events:none;white-space:nowrap;text-transform:uppercase;z-index:0;
 }
 
-.card-body {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 12px; padding: 16px 16px 8px;
-    position: relative; z-index: 1;
-}
-.card-case-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 17px; font-weight: 600; color: var(--ink);
-    text-align: center; letter-spacing: .3px;
-    font-style: italic;
-}
-.card-icon-wrap {
-    width: 64px; height: 64px;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--ct-bg);
-    border: 1px solid rgba(168,112,48,.15);
-    border-radius: var(--r);
-}
-.card-icon-wrap .card-emoji {
-    font-size: 32px; line-height: 1;
-    animation: iconIdle 4s ease-in-out infinite;
-}
-@keyframes iconIdle {
-    0%,100% { transform: none; }
-    50%      { transform: translateY(-2px); }
-}
-.card-text {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 16px; line-height: 1.7; text-align: center;
-    color: var(--ink-2); font-weight: 400;
-    position: relative; z-index: 1;
+/* ── Red margin line ────────────────────────── */
+.case-card::after{
+    content:'';position:absolute;left:40px;top:64px;bottom:50px;
+    width:1px;background:rgba(180,50,50,.16);pointer-events:none;z-index:1;
 }
 
-/* ── Hint + Actions area ──────────────────────── */
-.card-actions-area {
-    padding: 10px 14px 14px;
-    display: flex; flex-direction: column; gap: 10px;
-    position: relative; z-index: 1;
+/* ── Stamps ─────────────────────────────────── */
+.stamp-wrap{
+    position:absolute;inset:0;border-radius:inherit;
+    display:flex;align-items:center;justify-content:center;
+    pointer-events:none;z-index:30;transition:opacity .12s ease;
+}
+.stamp-left {padding-right:55px}
+.stamp-right{padding-left:55px}
+.stamp{
+    font-family:'DM Sans',sans-serif;font-size:18px;font-weight:800;
+    letter-spacing:4px;text-transform:uppercase;
+    padding:7px 14px;border:3px solid;border-radius:3px;
+}
+.stamp-approve-text{color:var(--ok);border-color:var(--ok);background:rgba(42,96,64,.12);transform:rotate(-11deg)}
+.stamp-deny-text   {color:var(--no);border-color:var(--no);background:rgba(139,32,32,.12);transform:rotate(9deg)}
+
+@keyframes stampLandA{0%{transform:scale(1.9)rotate(-26deg);opacity:0}55%{transform:scale(.97)rotate(-11deg);opacity:1}70%{transform:scale(1.04)rotate(-12deg)}100%{transform:scale(1)rotate(-11deg);opacity:1}}
+@keyframes stampLandD{0%{transform:scale(1.9)rotate(23deg);opacity:0}55%{transform:scale(.97)rotate(9deg);opacity:1}70%{transform:scale(1.04)rotate(10deg)}100%{transform:scale(1)rotate(9deg);opacity:1}}
+.stamp-approve-text.landing{animation:stampLandA .38s cubic-bezier(.2,.8,.3,1) forwards}
+.stamp-deny-text.landing   {animation:stampLandD .38s cubic-bezier(.2,.8,.3,1) forwards}
+
+/* ── CARD HEAD ──────────────────────────────── */
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 0;position:relative;z-index:1}
+.card-act {font-family:'Courier Prime',monospace;font-size:10px;letter-spacing:2px;color:var(--ct);font-weight:700;text-transform:uppercase}
+.card-type-badge{font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:1.5px;font-weight:700;text-transform:uppercase;padding:2px 8px;border:1px solid var(--ct);border-radius:2px;color:var(--ct);background:var(--ctbg)}
+.card-num {font-family:'Courier Prime',monospace;font-size:11px;color:var(--ink3);letter-spacing:1px}
+.card-divider{height:1px;background:linear-gradient(90deg,transparent,var(--ink5) 20%,var(--ink5) 80%,transparent);margin:10px 14px 0}
+
+/* ── CARD BODY ──────────────────────────────── */
+.card-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:14px 16px 8px;position:relative;z-index:1}
+.card-case-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);text-align:center;letter-spacing:.3px;font-style:italic}
+.card-icon-box{width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:var(--ctbg);border:1px solid rgba(168,112,48,.15);border-radius:var(--r)}
+.card-emoji{font-size:32px;line-height:1;animation:iconIdle 4s ease-in-out infinite}
+@keyframes iconIdle{0%,100%{transform:none}50%{transform:translateY(-2px)}}
+.card-text{
+    font-family:'Cormorant Garamond',serif;
+    font-size:17px;line-height:1.72;text-align:center;
+    color:var(--ink2);font-weight:400;
+    position:relative;z-index:1;
 }
 
-/* Hint locked state */
-.hint-locked-panel {
-    background: var(--paper-3);
-    border: 1px dashed var(--ink-4);
-    border-radius: var(--r-lg);
-    padding: 12px;
-    display: flex; align-items: center; gap: 12px;
+/* ── SPRING COIL ────────────────────────────── */
+.notebook-coil-wrap{
+    position:absolute;top:-4px;left:14px;right:14px;height:22px;
+    z-index:15;pointer-events:none;
+    filter:drop-shadow(0 1.5px 2px rgba(0,0,0,.2));
 }
-.hlp-icon { display: flex; align-items: center; flex-shrink: 0; }
-.hlp-icon svg { width: 20px; height: 20px; stroke: var(--ink-3); }
-.hlp-body { flex: 1; }
-.hlp-title { font-size: 12px; font-weight: 700; color: var(--ink-2); letter-spacing: .3px; }
-.hlp-sub   { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
-.hlp-btn {
-    background: var(--br); border: none; border-radius: var(--r);
-    padding: 7px 12px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px; font-weight: 600; color: #fff;
-    cursor: pointer; transition: transform .1s, background .15s; white-space: nowrap;
-    box-shadow: 0 2px 8px var(--br-dim);
-    flex-shrink: 0;
-}
-.hlp-btn:active { transform: scale(.93); background: var(--br-l); }
+.notebook-coil-wrap svg{width:100%;height:22px}
 
-/* Hint revealed state */
-.hint-revealed-panel {
-    background: #fef9ee;
-    border: 1px solid rgba(168,112,48,.35);
-    border-left: 3px solid var(--br);
-    border-radius: var(--r);
-    padding: 10px 12px;
-    display: flex; gap: 10px; align-items: flex-start;
-    animation: hintReveal .35s ease;
-}
-@keyframes hintReveal {
-    from { opacity: 0; transform: translateY(-8px); max-height: 0; }
-    to   { opacity: 1; transform: none; max-height: 200px; }
-}
-.hrp-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-.hrp-text {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 14px; line-height: 1.6; color: var(--ink-2);
-    font-style: italic;
-}
+/* ── CARD ACTIONS AREA ──────────────────────── */
+.card-actions-area{padding:10px 14px 14px;display:flex;flex-direction:column;gap:10px;position:relative;z-index:1}
 
-/* Action buttons row */
-.action-row {
-    display: flex; gap: 8px;
+/* LOCKED state */
+.lock-panel{
+    background:var(--paper3);border:1px dashed var(--ink4);border-radius:var(--rl);
+    padding:12px 14px;display:flex;align-items:center;gap:12px;
 }
-.action-btn {
-    flex: 1; display: flex; align-items: center; justify-content: center;
-    gap: 6px; padding: 11px 10px;
-    border: 1.5px solid; border-radius: var(--r-lg);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px; font-weight: 700;
-    letter-spacing: .5px; text-transform: uppercase;
-    cursor: pointer; transition: transform .1s, box-shadow .15s;
-    position: relative; background: var(--paper);
+.lp-icon{display:flex;align-items:center;flex-shrink:0}
+.lp-icon svg{width:20px;height:20px;stroke:var(--ink3)}
+.lp-body{flex:1}
+.lp-title{font-size:12px;font-weight:700;color:var(--ink2);letter-spacing:.3px}
+.lp-sub  {font-size:11px;color:var(--ink3);margin-top:2px}
+.btn-play-gems{
+    background:var(--br);border:none;border-radius:var(--rl);
+    padding:13px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;
+    color:#fff;cursor:pointer;width:100%;
+    box-shadow:0 4px 16px var(--brdim);transition:transform .12s,background .15s;
+    display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px;
 }
-.action-btn:active { transform: scale(.95); }
-.action-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+.btn-play-gems:active{transform:scale(.96);background:var(--brl)}
+.btn-play-gems svg{width:20px;height:20px;stroke:#fff;flex-shrink:0}
 
-.action-deny {
-    border-color: rgba(139,32,32,.35);
-    color: var(--deny);
+/* Hint revealed */
+.hint-revealed-panel{
+    background:#fef9ee;border:1px solid rgba(168,112,48,.35);
+    border-left:3px solid var(--br);border-radius:var(--r);
+    padding:10px 12px;display:flex;gap:10px;align-items:flex-start;
+    animation:hintReveal .32s ease;
 }
-.action-deny:active { box-shadow: 0 2px 12px rgba(139,32,32,.15); background: var(--deny-d); }
+@keyframes hintReveal{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.hrp-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.hrp-text{font-family:'Cormorant Garamond',serif;font-size:15px;line-height:1.65;color:var(--ink2);font-style:italic}
 
-.action-approve {
-    border-color: rgba(42,96,64,.35);
-    color: var(--approve);
+/* Swipe indicator (replaces buttons) */
+.swipe-indicator{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 14px 12px;border-top:1px dashed var(--ink5);
+    font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;
+    letter-spacing:1px;text-transform:uppercase;
+    user-select:none;-webkit-user-select:none;
 }
-.action-approve:active { box-shadow: 0 2px 12px rgba(42,96,64,.15); background: var(--approve-d); }
-
-/* Cost chip on paid actions */
-.cost-chip {
-    position: absolute; top: -8px; right: -2px;
-    background: var(--br); color: #fff;
-    font-size: 9px; font-weight: 800;
-    padding: 2px 5px; border-radius: 99px;
-    font-family: 'DM Sans', sans-serif; letter-spacing: .5px;
-    box-shadow: 0 1px 4px var(--br-dim);
-}
-
-/* Free badge after hint unlocked */
-.free-chip {
-    position: absolute; top: -8px; right: -2px;
-    background: var(--approve); color: #fff;
-    font-size: 9px; font-weight: 800;
-    padding: 2px 5px; border-radius: 99px;
-    font-family: 'DM Sans', sans-serif; letter-spacing: .5px;
-}
-
-/* SVG filter for stamp ink rough effect */
-.svg-filters {
-    position: absolute; width: 0; height: 0; overflow: hidden;
-}
-
-/* ── Card entry from top (new card appears) ─────── */
-.case-card.slide-in {
-    animation: cardIn .38s cubic-bezier(.2,.8,.3,1) forwards;
-}
-@keyframes cardIn {
-    from { opacity: 0; transform: translateY(-20px) rotate(-1deg) scale(.96); }
-    to   { opacity: 1; transform: rotate(-0.4deg); }
-}
+.si-deny   {color:var(--no);opacity:.8}
+.si-approve{color:var(--ok);opacity:.8}
+.si-center {color:var(--ink4);display:flex;align-items:center}
+.si-center svg{width:16px;height:16px;stroke:var(--ink4)}
+.si-locked {color:var(--ink3);font-size:11px;letter-spacing:1px;
+    display:flex;align-items:center;gap:6px;margin:0 auto}
+.si-locked svg{width:14px;height:14px;stroke:var(--ink3)}
 
