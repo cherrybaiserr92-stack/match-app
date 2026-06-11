@@ -101,7 +101,7 @@ async function runSplash(){
 
     // Decide next screen
     if(TG?.initData?.length>0){setSplash('Telegram…');webappAuth();}
-    else showScreen('login-screen');
+    else{showScreen('login-screen');initLogin();}
 
     await wait(120);
     flash.style.transition='opacity .5s ease';flash.style.opacity='0';
@@ -115,6 +115,44 @@ function showScreen(id){
 }
 
 // ── Auth ───────────────────────────────────────
+function initLogin(){
+  const status = document.getElementById('tg-status');
+  const gb = document.getElementById('guest-btn');
+  if(gb){ gb.style.pointerEvents='auto'; gb.disabled=false; }
+
+  const oidcWrap = document.getElementById('oidc-btn-wrap');
+  const widgetArea = document.getElementById('tg-widget-area');
+
+  if(OIDC_CLIENT_ID) {
+      if(oidcWrap) oidcWrap.classList.remove('hidden');
+      if(widgetArea) widgetArea.classList.add('hidden');
+      if(status) status.textContent = '';
+  } else {
+      const BOT = window.SDVIG_BOT_USERNAME || 'sdvig_game_bot';
+      if(widgetArea && BOT) {
+          if(status) status.textContent='';
+          const sc=document.createElement('script');
+          sc.src='https://telegram.org/js/telegram-widget.js?22';
+          sc.async=true;
+          sc.setAttribute('data-telegram-login',BOT);
+          sc.setAttribute('data-size','large');
+          sc.setAttribute('data-radius','12');
+          sc.setAttribute('data-request-access','write');
+          sc.setAttribute('data-onauth','onTelegramAuth(user)');
+          widgetArea.innerHTML=''; widgetArea.appendChild(sc);
+      } else {
+          if(status) status.textContent='Войдите через Telegram (в приложении) или как гость.';
+      }
+  }
+}
+
+window.onTelegramAuth=function(user){
+  fetch('/api/game/auth/widget',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(user)})
+  .then(r=>{if(!r.ok)throw 0;return r.json();})
+  .then(onLogin)
+  .catch(()=>{toast('💡','Ошибка входа','Попробуйте как гость');});
+};
+
 function webappAuth(){
     fetch('/api/game/auth/webapp',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({initData:TG.initData,initDataUnsafe:TG.initDataUnsafe})})
@@ -407,6 +445,7 @@ function openCardGame(){
     modal.classList.remove('hidden','closing');back.classList.remove('hidden');
     const vp=tg('hm-vp');vp.innerHTML='';
     if(gameDestroy){try{gameDestroy();}catch(e){}gameDestroy=null;}
+    if(window.BgFx) BgFx.pause();
     import('./games/detective.js').then(mod=>{
         gameDestroy=mod.destroy;
         mod.initGame(vp,level,onCardGameWon,true);
@@ -415,6 +454,7 @@ function openCardGame(){
 window.openCardGame=openCardGame;
 
 function onCardGameWon(){
+    if(window.BgFx) BgFx.resume();
     cardLocked=false;closeHintGame();Sound.unlock();vib([30,20,30,20,80]);
     tg('main-card').classList.add('unlocked');
     setTimeout(()=>tg('main-card').classList.remove('unlocked'),800);
@@ -426,6 +466,7 @@ function onCardGameWon(){
 
 function closeHintGame(){
     const m=tg('hint-modal'),b=tg('hm-back');
+    if(window.BgFx) BgFx.resume();
     m.classList.add('closing');setTimeout(()=>{m.classList.add('hidden');b.classList.add('hidden');},240);
     if(gameDestroy){try{gameDestroy();}catch(e){}gameDestroy=null;}
     tg('hm-vp').innerHTML='';
@@ -439,6 +480,7 @@ function launchGame(type){
     tg('win-badge').classList.add('hidden');
     const vp=tg('game-vp');vp.innerHTML='';
     if(gameDestroy){try{gameDestroy();}catch(e){}gameDestroy=null;}
+    if(window.BgFx) BgFx.pause();
     import('./games/detective.js').then(mod=>{
         gameDestroy=mod.destroy;
         mod.initGame(vp,user?.detectiveLvl||1,()=>{
@@ -452,6 +494,7 @@ function launchGame(type){
 window.launchGame=launchGame;
 function closeGame(){
     if(gameDestroy){try{gameDestroy();}catch(e){}gameDestroy=null;}
+    if(window.BgFx) BgFx.resume();
     tg('gvp-wrap').classList.add('hidden');tg('game-vp').innerHTML='';tg('win-badge').classList.add('hidden');
 }
 window.closeGame=closeGame;

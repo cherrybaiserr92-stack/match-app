@@ -3,26 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0a0806">
-    <title>СДВИГ</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <meta name="tg-client-id" content=""> <title>СДВИГ</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="card-design.css">
-    <!-- onTelegramAuth stub before any widget script -->
+    
     <script>
         window.__tgP=null;window.__tgH=null;
         function onTelegramAuth(u){window.__tgH?window.__tgH(u):(window.__tgP=u);}
+        window.SDVIG_BOT_USERNAME = "sdvig_game_bot"; // ВАЖНО: ИМЯ ТВОЕГО БОТА БЕЗ @
     </script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 </head>
 <body>
 
-<!-- ═══ SPLASH ════════════════════════════════ -->
+<div id="bg-fx" style="position:fixed;inset:0;z-index:0;pointer-events:none!important;touch-action:none!important"></div>
+
 <div id="splash-screen" class="screen active">
     <div class="splash-flash" id="splash-flash"></div>
     <div class="splash-content">
@@ -39,7 +37,6 @@
     </div>
 </div>
 
-<!-- ═══ LOGIN ═════════════════════════════════ -->
 <div id="login-screen" class="screen">
     <div class="login-wrap">
         <div class="login-head">
@@ -50,28 +47,15 @@
             <p class="lc-label">Доступ к системе</p>
             <p class="lc-hint">Войдите чтобы открыть дело</p>
 
-            <!-- Telegram OIDC / Widget -->
-            <div id="tg-widget-area" class="tg-widget-area">
-                <script src="https://telegram.org/js/telegram-widget.js?22"
-                    data-telegram-login="sdvig_game_bot"
-                    data-size="large" data-radius="8"
-                    data-onauth="onTelegramAuth"
-                    data-request-access="write"></script>
-                <p id="tg-tip" class="tg-tip hidden">
-                    Кнопка не появилась?
-                    <a href="https://t.me/BotFather" target="_blank">@BotFather</a> → /setdomain
-                </p>
-            </div>
+            <div class="tg-widget-area" id="tg-widget-area"></div>
+            <div class="tg-tip" id="tg-status">Загрузка способов входа…</div>
 
-            <!-- Telegram OIDC button (if client-id is configured) -->
-            <div id="oidc-btn-wrap" class="hidden">
-                <button class="btn btn-amber" onclick="oidcLogin()">
-                    Войти через Telegram
-                </button>
+            <div id="oidc-btn-wrap" class="hidden" style="width:100%">
+                <button class="btn btn-amber" onclick="oidcLogin()">Войти через Telegram</button>
             </div>
 
             <div class="lc-divider"><span>или</span></div>
-            <button class="btn btn-glass-amber" onclick="guestLogin()">Войти как гость</button>
+            <button id="guest-btn" class="btn btn-glass-amber" onclick="guestLogin()">Войти как гость</button>
             <p style="font-size:11px;color:var(--tx3);text-align:center">Прогресс сохраняется на устройстве</p>
             <div class="lc-divider"><span>скоро</span></div>
             <button class="btn btn-outline" disabled>ВКонтакте</button>
@@ -82,9 +66,7 @@
     </div>
 </div>
 
-<!-- ═══ MAIN ══════════════════════════════════ -->
 <div id="main-screen" class="screen">
-
     <header class="topbar">
         <div class="tb-left">
             <div class="tb-emblem">С</div>
@@ -92,15 +74,9 @@
         </div>
         <div class="tb-right">
             <div class="topbar-stats">
-                <div class="stat-pill sp-en" id="sp-energy">
-                    <span id="ic-en"></span><span id="hud-en">100</span>
-                </div>
-                <div class="stat-pill sp-cr" id="sp-cred">
-                    <span id="ic-cr"></span><span id="hud-cr">0</span>
-                </div>
-                <div class="stat-pill sp-rk" id="sp-rank">
-                    <span id="ic-rk"></span><span>R<span id="hud-rk">1</span></span>
-                </div>
+                <div class="stat-pill sp-en" id="sp-energy"><span id="ic-en"></span><span id="hud-en">100</span></div>
+                <div class="stat-pill sp-cr" id="sp-cred"><span id="ic-cr"></span><span id="hud-cr">0</span></div>
+                <div class="stat-pill sp-rk" id="sp-rank"><span id="ic-rk"></span><span>R<span id="hud-rk">1</span></span></div>
             </div>
             <button class="snd-btn" id="snd-btn" onclick="toggleSound()">🔊</button>
         </div>
@@ -109,43 +85,22 @@
     <div class="xp-band"><div id="xp-fill" class="xp-fill" style="width:0%"></div></div>
 
     <div class="tab-area">
-
-        <!-- ─ ДЕЛА ─────────────────────────── -->
         <div class="tab-pane active" id="tab-cases">
             <div class="swipe-zone" id="swipe-zone">
-                <!-- Parallax background -->
                 <div class="parallax-bg" id="parallax-bg"></div>
-                <!-- Rain canvas (injected by JS) -->
-
-                <!-- Card stack -->
-                <div class="scard sc3"></div>
-                <div class="scard sc2"></div>
-                <div class="scard sc1"></div>
-
-                <!-- Main card -->
+                <div class="scard sc3"></div><div class="scard sc2"></div><div class="scard sc1"></div>
                 <div id="main-card" class="case-card">
-                    <!-- Stamps -->
-                    <div class="stamp-wrap sw-r" id="s-ok"  style="opacity:0"><div class="stamp stamp-ok">ОДОБРЕНО</div></div>
-                    <div class="stamp-wrap sw-l" id="s-no"  style="opacity:0"><div class="stamp stamp-no">ОТКЛОНЕНО</div></div>
-                    <div class="stamp-wrap sw-u" id="s-sp"  style="opacity:0"><div class="stamp stamp-spec">ОСОБЫЙ ПРИЁМ</div></div>
-
-                    <div class="cc-head">
-                        <span class="cc-type"  id="cc-type">ДЕЛО</span>
-                        <span class="cc-badge" id="cc-badge">•</span>
-                    </div>
-
+                    <div class="stamp-wrap sw-r" id="s-ok" style="opacity:0"><div class="stamp stamp-ok">ОДОБРЕНО</div></div>
+                    <div class="stamp-wrap sw-l" id="s-no" style="opacity:0"><div class="stamp stamp-no">ОТКЛОНЕНО</div></div>
+                    <div class="stamp-wrap sw-u" id="s-sp" style="opacity:0"><div class="stamp stamp-spec">ОСОБЫЙ ПРИЁМ</div></div>
+                    <div class="cc-head"><span class="cc-type" id="cc-type">ДЕЛО</span><span class="cc-badge" id="cc-badge">•</span></div>
                     <div class="cc-body">
-                        <div class="cc-icon-wrap">
-                            <span class="cc-icon" id="cc-icon">🔍</span>
-                        </div>
+                        <div class="cc-icon-wrap"><span class="cc-icon" id="cc-icon">🔍</span></div>
                         <h2 class="cc-title" id="cc-title"></h2>
-                        <p  class="cc-text"  id="cc-text">Загружаем дело…</p>
+                        <p class="cc-text" id="cc-text">Загружаем дело…</p>
                     </div>
-
                     <div class="cc-actions" id="cc-actions"></div>
                 </div>
-
-                <!-- Result -->
                 <div id="result-overlay" class="result-overlay hidden">
                     <div class="ro-stamp" id="ro-stamp">РЕЗУЛЬТАТ</div>
                     <p class="ro-text" id="ro-text"></p>
@@ -159,31 +114,19 @@
             </div>
         </div>
 
-        <!-- ─ ИГРЫ ──────────────────────────── -->
         <div class="tab-pane" id="tab-games">
-            <div class="pane-head">
-                <h2 class="pane-title">Арсенал</h2>
-            </div>
+            <div class="pane-head"><h2 class="pane-title">Арсенал</h2></div>
             <div class="game-row" onclick="launchGame('detective')">
-                <div class="gr-stripe gr-gem"></div>
-                <span class="gr-icon">💎</span>
+                <div class="gr-stripe gr-gem"></div><span class="gr-icon">💎</span>
                 <div class="gr-info">
                     <div class="gr-name">Самоцветы</div>
                     <div class="gr-desc">Match-3 · ограниченные ходы · бустеры</div>
-                    <div class="gr-prog">
-                        <div class="gr-bar"><div id="det-bar" class="gr-fill" style="width:1%"></div></div>
-                        <span class="gr-lvl">Ур. <span id="det-lvl">1</span></span>
-                    </div>
-                </div>
-                <span class="gr-arrow">›</span>
+                    <div class="gr-prog"><div class="gr-bar"><div id="det-bar" class="gr-fill" style="width:1%"></div></div><span class="gr-lvl">Ур. <span id="det-lvl">1</span></span></div>
+                </div><span class="gr-arrow">›</span>
             </div>
-
-            <!-- Game viewport (full-screen overlay) -->
             <div id="gvp-wrap" class="gvp-wrap hidden">
                 <div class="gvp-bar">
-                    <button class="back-btn" onclick="closeGame()">
-                        <span id="back-ic"></span> Выход
-                    </button>
+                    <button class="back-btn" onclick="closeGame()"><span id="back-ic"></span> Выход</button>
                     <span id="gvp-title" class="gvp-title"></span>
                     <div id="win-badge" class="win-badge hidden">WIN ✓</div>
                 </div>
@@ -191,21 +134,15 @@
             </div>
         </div>
 
-        <!-- ─ КАРТА ──────────────────────────── -->
-        <div class="tab-pane" id="tab-map">
-            <div class="progress-map" id="progress-map">
-                <!-- Filled by JS -->
-            </div>
-        </div>
+        <div class="tab-pane" id="tab-map"><div class="progress-map" id="progress-map"></div></div>
 
-        <!-- ─ АГЕНТ ──────────────────────────── -->
         <div class="tab-pane" id="tab-profile">
             <div class="profile-hero">
                 <div class="profile-av" id="pr-av">?</div>
                 <div class="profile-info">
                     <div class="profile-name" id="pr-name">Агент</div>
                     <div class="profile-arch" id="pr-arch">🔍 Детектив</div>
-                    <div class="profile-id"   id="pr-id">ID —</div>
+                    <div class="profile-id" id="pr-id">ID —</div>
                 </div>
             </div>
             <div class="stats-row" style="margin-top:14px">
@@ -216,148 +153,57 @@
             </div>
             <div class="sec-head">Навыки</div>
             <div class="skill-list" style="display:flex;flex-direction:column;gap:8px;padding:0 16px">
-                <div class="skill-row">
-                    <span class="sk-icon">🧠</span>
-                    <div class="sk-body">
-                        <div class="sk-name">Проницательность</div>
-                        <div class="sk-desc">+XP за дело · 3+ открывает особый приём</div>
-                        <div class="sk-bar"><div id="sk1-fill" class="sk-fill"></div></div>
-                    </div>
-                    <div class="sk-side">
-                        <span class="sk-lv" id="sk1-lv">Lv.1</span>
-                        <button class="up-btn" onclick="upgradeSkill(1)"><span id="sk1-c">50💎</span></button>
-                    </div>
-                </div>
-                <div class="skill-row">
-                    <span class="sk-icon">⚙️</span>
-                    <div class="sk-body">
-                        <div class="sk-name">Технологии</div>
-                        <div class="sk-desc">−Энергия за дело</div>
-                        <div class="sk-bar"><div id="sk2-fill" class="sk-fill"></div></div>
-                    </div>
-                    <div class="sk-side">
-                        <span class="sk-lv" id="sk2-lv">Lv.1</span>
-                        <button class="up-btn" onclick="upgradeSkill(2)"><span id="sk2-c">50💎</span></button>
-                    </div>
-                </div>
+                <div class="skill-row"><span class="sk-icon">🧠</span><div class="sk-body"><div class="sk-name">Проницательность</div><div class="sk-desc">+XP за дело</div><div class="sk-bar"><div id="sk1-fill" class="sk-fill"></div></div></div><div class="sk-side"><span class="sk-lv" id="sk1-lv">Lv.1</span><button class="up-btn" onclick="upgradeSkill(1)"><span id="sk1-c">50💎</span></button></div></div>
+                <div class="skill-row"><span class="sk-icon">⚙️</span><div class="sk-body"><div class="sk-name">Технологии</div><div class="sk-desc">−Энергия за дело</div><div class="sk-bar"><div id="sk2-fill" class="sk-fill"></div></div></div><div class="sk-side"><span class="sk-lv" id="sk2-lv">Lv.1</span><button class="up-btn" onclick="upgradeSkill(2)"><span id="sk2-c">50💎</span></button></div></div>
             </div>
             <div class="sec-head">Достижения</div>
             <div id="ach-grid" class="ach-grid"></div>
         </div>
 
-        <!-- ─ МАГАЗИН ────────────────────────── -->
         <div class="tab-pane" id="tab-shop">
             <div class="pane-head"><h2 class="pane-title">Снаряжение</h2></div>
             <div class="shop-grid">
-                <div class="shop-item" id="sh-coffee" onclick="buyCoffee()">
-                    <div class="si-icon">☕</div>
-                    <div class="si-name">Кофе</div>
-                    <div class="si-desc">+35 ⚡ энергии</div>
-                    <div class="si-price" id="sh-coffee-p">40 💎</div>
-                </div>
-                <div class="shop-item shop-locked">
-                    <div class="si-icon">🔮</div>
-                    <div class="si-name">Нейроусилитель</div>
-                    <div class="si-desc">×2 XP · 5 дел</div>
-                    <div class="si-price si-soon">Скоро</div>
-                </div>
-                <div class="shop-item shop-locked">
-                    <div class="si-icon">🎯</div>
-                    <div class="si-name">Особый приём</div>
-                    <div class="si-desc">+1 доп. вариант</div>
-                    <div class="si-price si-soon">Скоро</div>
-                </div>
-                <div class="shop-item shop-locked">
-                    <div class="si-icon">⚡</div>
-                    <div class="si-name">Реактор</div>
-                    <div class="si-desc">+100 макс. ⚡</div>
-                    <div class="si-price si-soon">Скоро</div>
-                </div>
+                <div class="shop-item" id="sh-coffee" onclick="buyCoffee()"><div class="si-icon">☕</div><div class="si-name">Кофе</div><div class="si-desc">+35 ⚡ энергии</div><div class="si-price" id="sh-coffee-p">40 💎</div></div>
+                <div class="shop-item shop-locked"><div class="si-icon">🔮</div><div class="si-name">Нейроусилитель</div><div class="si-desc">×2 XP · 5 дел</div><div class="si-price si-soon">Скоро</div></div>
             </div>
         </div>
+    </div>
 
-    </div><!-- /tab-area -->
-
-    <!-- Floating bottom nav -->
     <nav class="bottom-nav">
-        <button class="nb active" data-tab="cases"   onclick="switchTab('cases')">
-            <span class="nb-icon" id="ni-cases"></span>
-            <span class="nb-lbl">Дела</span>
-        </button>
-        <button class="nb" data-tab="games" onclick="switchTab('games')">
-            <span class="nb-icon" id="ni-games"></span>
-            <span class="nb-lbl">Игры</span>
-        </button>
-        <button class="nb" data-tab="map"   onclick="switchTab('map')">
-            <span class="nb-icon" id="ni-map"></span>
-            <span class="nb-lbl">Карта</span>
-        </button>
-        <button class="nb" data-tab="profile" onclick="switchTab('profile')">
-            <span class="nb-icon" id="ni-profile"></span>
-            <span class="nb-lbl">Агент</span>
-            <span id="ach-badge" class="nb-badge hidden">!</span>
-        </button>
-        <button class="nb" data-tab="shop" onclick="switchTab('shop')">
-            <span class="nb-icon" id="ni-shop"></span>
-            <span class="nb-lbl">Магазин</span>
-        </button>
+        <button class="nb active" data-tab="cases" onclick="switchTab('cases')"><span class="nb-icon" id="ni-cases"></span><span class="nb-lbl">Дела</span></button>
+        <button class="nb" data-tab="games" onclick="switchTab('games')"><span class="nb-icon" id="ni-games"></span><span class="nb-lbl">Игры</span></button>
+        <button class="nb" data-tab="map" onclick="switchTab('map')"><span class="nb-icon" id="ni-map"></span><span class="nb-lbl">Карта</span></button>
+        <button class="nb" data-tab="profile" onclick="switchTab('profile')"><span class="nb-icon" id="ni-profile"></span><span class="nb-lbl">Агент</span><span id="ach-badge" class="nb-badge hidden">!</span></button>
+        <button class="nb" data-tab="shop" onclick="switchTab('shop')"><span class="nb-icon" id="ni-shop"></span><span class="nb-lbl">Магазин</span></button>
     </nav>
+</div>
 
-</div><!-- /main-screen -->
-
-<!-- ═══ HINT SHEET (Match-3 gate) ════════════ -->
 <div id="hint-modal" class="hint-modal hidden">
-    <div class="hm-head">
-        <div class="hm-title">
-            <span id="hm-ic"></span>
-            <span id="hm-title">Самоцветы</span>
-        </div>
-        <button class="hm-close" onclick="closeHintGame()">Пропустить</button>
-    </div>
+    <div class="hm-head"><div class="hm-title"><span id="hm-ic"></span><span id="hm-title">Самоцветы</span></div><button class="hm-close" onclick="closeHintGame()">Пропустить</button></div>
     <div id="hm-vp" class="hm-vp"></div>
-    <div class="hm-foot">
-        <p class="hm-foot-text">Пройди испытание — разблокируй свайп</p>
-    </div>
+    <div class="hm-foot"><p class="hm-foot-text">Пройди испытание — разблокируй свайп</p></div>
 </div>
 <div id="hm-back" class="modal-bg hidden" style="z-index:399" onclick="closeHintGame()"></div>
 
-<!-- ═══ TOAST ═════════════════════════════════ -->
-<div id="toast" class="toast hidden">
-    <span class="toast-icon" id="t-icon">💡</span>
-    <div>
-        <div class="toast-title" id="t-title">УВЕДОМЛЕНИЕ</div>
-        <div class="toast-desc"  id="t-desc"></div>
-    </div>
-</div>
+<div id="toast" class="toast hidden"><span class="toast-icon" id="t-icon">💡</span><div><div class="toast-title" id="t-title">УВЕДОМЛЕНИЕ</div><div class="toast-desc" id="t-desc"></div></div></div>
 
-<!-- ═══ DAILY ════════════════════════════════ -->
 <div id="daily-modal" class="modal-bg hidden">
     <div class="daily-card">
-        <div class="daily-icon">🎁</div>
-        <h2 class="daily-h">Ежедневный бонус</h2>
-        <p class="daily-streak">Серия: <span id="dd-days">1</span> дн. 🔥</p>
+        <div class="daily-icon">🎁</div><h2 class="daily-h">Ежедневный бонус</h2><p class="daily-streak">Серия: <span id="dd-days">1</span> дн. 🔥</p>
         <div class="daily-week" id="dd-week"></div>
-        <div class="daily-chips">
-            <div class="dc-chip">+50 💎</div>
-            <div class="dc-chip">+30 ⚡</div>
-        </div>
+        <div class="daily-chips"><div class="dc-chip">+50 💎</div><div class="dc-chip">+30 ⚡</div></div>
         <button class="btn btn-amber" onclick="claimDaily()">Забрать</button>
     </div>
 </div>
 
-<!-- ═══ ERROR ════════════════════════════════ -->
 <div id="error-screen" class="screen">
-    <div class="err-c">
-        <div class="err-icon">⚠️</div>
-        <h2 class="err-title">Ошибка системы</h2>
-        <p class="err-msg" id="err-msg"></p>
-        <button class="btn btn-amber" onclick="location.reload()">Перезагрузить</button>
-    </div>
+    <div class="err-c"><div class="err-icon">⚠️</div><h2 class="err-title">Ошибка системы</h2><p class="err-msg" id="err-msg"></p><button class="btn btn-amber" onclick="location.reload()">Перезагрузить</button></div>
 </div>
 
 <script src="icons.js"></script>
 <script src="sound.js"></script>
+<script src="phaser-bg.js"></script>
+<script src="games/match3.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
-
