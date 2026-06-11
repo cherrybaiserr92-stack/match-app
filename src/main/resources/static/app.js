@@ -1,762 +1,745 @@
+/* ═══════════════════════════════════════════════
+   СДВИГ · app.js  v5 · Dark Glass
+═══════════════════════════════════════════════ */
 'use strict';
-// ═══════════════════════════════════════════════
-//  СДВИГ · app.js v5
-// ═══════════════════════════════════════════════
-const tg=$=>document.getElementById($);
-const TG=window.Telegram?.WebApp??null;
 
-// ── State ──────────────────────────────────────
-let user=null,scenarios=null,card=null,cardId='act1_scene1';
-let cardLocked=true,swipeDir=null,activeTab='cases';
-let gameDestroy=null,dailyClaimed=false;
+/* ── глобальное состояние ──────────────────────── */
+const App = {
+  user:null,
+  guest:false,
+  token:null,
+  profile:null,
+  scenario:null,
+  deck:[],
+  cardIndex:0,
+  swipeUnlocked:false,
+  currentCard:null,
+  pendingSwipe:null,
+  tab:'cases'
+};
 
-const ACH=[
-    {id:'r5', check:p=>p.rank>=5,           icon:'🏅',title:'АГЕНТ В ДЕЛЕ', desc:'Ранг 5'},
-    {id:'r10',check:p=>p.rank>=10,          icon:'🏆',title:'ЭЛИТА',        desc:'Ранг 10'},
-    {id:'c10',check:p=>(p.totalCases||0)>=10,icon:'📂',title:'ДЕТЕКТИВ',    desc:'10 дел'},
-    {id:'c50',check:p=>(p.totalCases||0)>=50,icon:'🗃️',title:'АРХИВАРИУС',  desc:'50 дел'},
-    {id:'s3', check:p=>(p.streak||0)>=3,    icon:'🔥',title:'НА СЕРИИ',    desc:'3 дня подряд'},
-    {id:'sk1',check:p=>p.skill1>=3,         icon:'🧠',title:'ПРОНИЦАТЕЛЬ',  desc:'Проницательность Lv.3'},
-];
-const earned=new Set(JSON.parse(localStorage.getItem('sdvig_ach')||'[]'));
+const DEFAULT_PROFILE = {
+  level:1, xp:0, energy:5, maxEnergy:5, credits:0,
+  casesSolved:0, streak:0, prestige:0, mapNode:0,
+  skills:{ insight:1, tech:1, charisma:1, nerve:1 },
+  achievements:[], dailyStreak:0, lastDaily:null, sound:true
+};
 
-// ── OIDC config (from meta or backend) ────────
-const OIDC_CLIENT_ID = document.querySelector('meta[name="tg-client-id"]')?.content || '';
+/* ── DOM helpers ───────────────────────────────── */
+const $  = s=>document.querySelector(s);
+const $$ = s=>Array.from(document.querySelectorAll(s));
+const el = (tag,cls,html)=>{ const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; };
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const vibrate=ms=>{ try{ navigator.vibrate&&navigator.vibrate(ms);}catch(e){} };
 
-// ── Boot ───────────────────────────────────────
-document.addEventListener('DOMContentLoaded',async()=>{
-    if(TG)try{TG.expand();TG.ready();}catch(e){}
+function lsGet(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return d;} }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
 
-    // Install auth handler
-    window.__tgH = u=>{showScreen('splash-screen');widgetAuth(u);};
-    if(window.__tgP){window.__tgH(window.__tgP);window.__tgP=null;}
-
-    // Show OIDC button if configured
-    if(OIDC_CLIENT_ID) tg('oidc-btn-wrap')?.classList.remove('hidden');
-
-    // Widget tip after 6s
-    setTimeout(()=>{
-        const a=tg('tg-widget-area'),tip=tg('tg-tip');
-        if(a&&tip&&!a.querySelector('iframe'))tip.classList.remove('hidden');
-    },6000);
-
-    injectIcons();
-    await runSplash();
-});
-
-// ── Icons ──────────────────────────────────────
-function injectIcons(){
-    setIcon(tg('ic-en'),  'bolt');
-    setIcon(tg('ic-cr'),  'diamond');
-    setIcon(tg('ic-rk'),  'shield');
-    setIcon(tg('ni-cases'),  'folder');
-    setIcon(tg('ni-games'),  'gamepad');
-    setIcon(tg('ni-map'),    'search');
-    setIcon(tg('ni-profile'),'badge');
-    setIcon(tg('ni-shop'),   'bag');
-    setIcon(tg('back-ic'),   'arrowLeft');
-    setIcon(tg('hm-ic'),     'lock');
-}
-
-// ── Cinematic splash ───────────────────────────
-async function runSplash(){
-    const fill=tg('spl-fill'),emb=tg('spl-emblem'),titleEl=tg('spl-title');
-    const flash=tg('splash-flash');
-
-    await wait(180);
-    emb.classList.add('show');
-    Sound.splashImpact();
-    await wait(580);
-
-    // Letter-by-letter title
-    for(const[i,ch] of [...'СДВИГ'].entries()){
-        const s=document.createElement('span');
-        s.className='stl';s.textContent=ch;titleEl.appendChild(s);
-        await wait(10);s.classList.add('in');s.style.animationDelay='0s';
-        await wait(72);
-    }
-    await wait(200);
-
-    // Load bar
-    setSplash('Загрузка сценариев…');
-    for(const[w,ms] of [[25,200],[60,250],[85,300],[99,180]]){
-        fill.style.width=w+'%'; await wait(ms);
-    }
-    fill.style.width='100%';
-    await wait(220);
-
-    // 3 pulses
-    Sound.splashImpact();
-    for(let i=0;i<3;i++){
-        emb.classList.add('pulse-once');
-        emb.style.boxShadow='0 0 0 20px rgba(200,134,10,0),0 12px 40px rgba(0,0,0,.5)';
-        await wait(380);emb.classList.remove('pulse-once');await wait(80);
-    }
-    await wait(120);
-
-    // Cinematic exit — flash
-    Sound.splashExit();
-    flash.style.opacity='1';
-    await wait(280);
-
-    // Decide next screen
-    if(TG?.initData?.length>0){setSplash('Telegram…');webappAuth();}
-    else{showScreen('login-screen');initLogin();}
-
-    await wait(120);
-    flash.style.transition='opacity .5s ease';flash.style.opacity='0';
-}
-function setSplash(t){const e=tg('spl-text');if(e)e.textContent=t;}
-
-// ── Screen ─────────────────────────────────────
+/* ── экраны ────────────────────────────────────── */
 function showScreen(id){
-    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-    tg(id).classList.add('active');
+  $$('.screen').forEach(s=>s.classList.remove('active'));
+  const t=$('#'+id); if(t) t.classList.add('active');
 }
 
-// ── Auth ───────────────────────────────────────
-function initLogin(){
-  const status = document.getElementById('tg-status');
-  const gb = document.getElementById('guest-btn');
-  if(gb){ gb.style.pointerEvents='auto'; gb.disabled=false; }
+/* ── toast ─────────────────────────────────────── */
+let toastTimer=null;
+function toast(title,desc,icon){
+  const t=$('#toast');
+  $('#toast-icon').textContent=icon||'✦';
+  $('#toast-title').textContent=title||'';
+  $('#toast-desc').textContent=desc||'';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
+}
 
-  const oidcWrap = document.getElementById('oidc-btn-wrap');
-  const widgetArea = document.getElementById('tg-widget-area');
+function fatal(msg){
+  $('#error-msg').textContent=msg||'Не удалось загрузить данные.';
+  showScreen('error-screen');
+}
 
-  if(OIDC_CLIENT_ID) {
-      if(oidcWrap) oidcWrap.classList.remove('hidden');
-      if(widgetArea) widgetArea.classList.add('hidden');
-      if(status) status.textContent = '';
-  } else {
-      const BOT = window.SDVIG_BOT_USERNAME || 'sdvig_game_bot';
-      if(widgetArea && BOT) {
-          if(status) status.textContent='';
-          const sc=document.createElement('script');
-          sc.src='https://telegram.org/js/telegram-widget.js?22';
-          sc.async=true;
-          sc.setAttribute('data-telegram-login',BOT);
-          sc.setAttribute('data-size','large');
-          sc.setAttribute('data-radius','12');
-          sc.setAttribute('data-request-access','write');
-          sc.setAttribute('data-onauth','onTelegramAuth(user)');
-          widgetArea.innerHTML=''; widgetArea.appendChild(sc);
-      } else {
-          if(status) status.textContent='Войдите через Telegram (в приложении) или как гость.';
-      }
+/* ═══════════════════════════════════════════════
+   SPLASH → кинематографичный переход → LOGIN
+═══════════════════════════════════════════════ */
+const SPLASH_BG = '/img/splash.jpg';   // фон №1 (экран загрузки)
+const LOGIN_BG  = '/img/login.jpg';    // фон №2 (экран входа)
+
+const wait = ms=>new Promise(r=>setTimeout(r,ms));
+
+async function runSplash(){
+  // фоны (если файлов нет — просто не покажутся, без ошибок)
+  document.documentElement.style.setProperty('--splash-img',`url('${SPLASH_BG}')`);
+  document.documentElement.style.setProperty('--login-img',`url('${LOGIN_BG}')`);
+
+  const emblem=$('#splash-emblem');
+  const titleRow=$('#splash-title');
+  const fill=$('#splash-fill');
+  const status=$('#splash-status');
+
+  // буквы СДВИГ
+  'СДВИГ'.split('').forEach(ch=>{ const s=el('span','title-letter',ch); titleRow.appendChild(s); });
+
+  await wait(120);
+  emblem.classList.add('visible');
+  Sound.splashImpact();
+
+  await wait(380);
+  $$('.title-letter').forEach((l,i)=>setTimeout(()=>l.classList.add('in'),i*90));
+
+  // прогресс загрузки — плавный, без «лагов»
+  const steps=[
+    [22,'Загрузка дел'],
+    [48,'Сбор улик'],
+    [74,'Калибровка'],
+    [100,'Готово']
+  ];
+  for(const [w,txt] of steps){
+    await wait(360);
+    fill.style.width=w+'%';
+    status.textContent=txt;
+    if(w<100){ emblem.classList.add('pulse'); setTimeout(()=>emblem.classList.remove('pulse'),220); }
+  }
+
+  await wait(300);
+
+  // параллельно грузим всё нужное, пока идёт переход
+  const ready = preload();
+
+  // кинематографичная вспышка + уход эмблемы (без explode)
+  Sound.transition();
+  const flash=$('#splash-flash');
+  flash.style.transition='opacity .35s ease';
+  flash.style.opacity='0.9';
+  await wait(180);
+
+  await ready.catch(()=>{});           // дождались данных
+  decideEntry();                        // показываем login/main под вспышкой
+  flash.style.opacity='0';
+  await wait(380);
+}
+
+/* предзагрузка: профиль из кэша, сценарий */
+async function preload(){
+  await loadScenario().catch(()=>{});
+}
+
+/* куда заходим после сплэша */
+function decideEntry(){
+  // 1) Telegram Mini App
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if(tg && tg.initData && tg.initData.length>0){
+    tg.ready(); tg.expand();
+    return tgWebAppLogin(tg);
+  }
+  // 2) сохранённая сессия
+  const saved=lsGet('sdvig_session',null);
+  if(saved && saved.profile){
+    App.user=saved.user||null; App.guest=!!saved.guest; App.token=saved.token||null;
+    App.profile=normalizeProfile(saved.profile);
+    enterMain(); return;
+  }
+  // 3) экран входа
+  showScreen('login-screen');
+  initLogin();
+}
+
+/* ═══════════════════════════════════════════════
+   AUTH (Вариант A: Telegram Mini App + гость)
+═══════════════════════════════════════════════ */
+async function tgWebAppLogin(tg){
+  showScreen('login-screen');
+  $('#tg-status').textContent='Вход через Telegram…';
+  try{
+    const res=await fetch('/api/auth/webapp',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ initData: tg.initData })
+    });
+    if(!res.ok) throw new Error('auth '+res.status);
+    const data=await res.json();
+    App.user=data.user; App.token=data.token; App.guest=false;
+    App.profile=normalizeProfile(data.profile);
+    persistSession();
+    enterMain();
+  }catch(e){
+    // не вышло — даём гостя, чтобы не блокировать
+    $('#tg-status').textContent='Telegram недоступен — используйте гостевой вход';
+    initLogin();
   }
 }
 
-window.onTelegramAuth=function(user){
-  fetch('/api/game/auth/widget',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(user)})
-  .then(r=>{if(!r.ok)throw 0;return r.json();})
-  .then(onLogin)
-  .catch(()=>{toast('💡','Ошибка входа','Попробуйте как гость');});
-};
-
-function webappAuth(){
-    fetch('/api/game/auth/webapp',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({initData:TG.initData,initDataUnsafe:TG.initDataUnsafe})})
-    .then(r=>{if(!r.ok)throw 0;return r.json();}).then(onLogin)
-    .catch(()=>showError('Ошибка WebApp-авторизации.\nПроверьте токен бота в Railway.'));
+function initLogin(){
+  const area=$('#tg-widget-area');
+  const status=$('#tg-status');
+  // в обычном браузере виджет Mini App работать не будет — честно показываем гостя
+  if(!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)){
+    status.innerHTML='Откройте игру в Telegram для входа через профиль, '+
+      'или продолжите как гость.';
+  }
+  // кнопка ГОСТЬ — рабочая (без перекрытий: splash-flash не ловит клики)
+  const gb=$('#guest-btn');
+  gb.onclick=()=>{ Sound.tap(); guestLogin(); };
 }
-
-function widgetAuth(u){
-    const p={};for(const[k,v] of Object.entries(u))p[k]=String(v);
-    fetch('/api/game/auth/widget',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})
-    .then(r=>{if(!r.ok)return r.text().then(t=>{throw t;});return r.json();}).then(onLogin)
-    .catch(e=>showError(typeof e==='string'?e:'Ошибка виджета.\n@BotFather → /setdomain'));
-}
-
-function oidcLogin(){
-    const state=Math.random().toString(36).slice(2);
-    sessionStorage.setItem('oidc_state',state);
-    const redirect=encodeURIComponent(location.origin+'/auth/oidc-callback');
-    const url=`https://id.telegram.org/auth?response_type=code&client_id=${OIDC_CLIENT_ID}&redirect_uri=${redirect}&scope=userinfo&state=${state}`;
-    const popup=window.open(url,'TgOIDC','width=520,height=580,popup=1');
-    window.addEventListener('message',function h(e){
-        if(e.data?.type!=='tg_oidc')return;
-        window.removeEventListener('message',h);
-        popup?.close();
-        if(e.data.error)return showError('OIDC ошибка: '+e.data.error);
-        if(e.data.state!==state)return showError('Ошибка состояния OIDC');
-        showScreen('splash-screen');setSplash('Авторизация…');
-        fetch('/api/game/auth/oidc',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({code:e.data.code})})
-        .then(r=>{if(!r.ok)throw 0;return r.json();}).then(onLogin)
-        .catch(()=>showError('Ошибка OIDC авторизации'));
-    });
-}
-window.oidcLogin=oidcLogin;
 
 function guestLogin(){
-    Sound.click();
-    let gid=localStorage.getItem('sdvig_gid');
-    if(!gid){gid='g'+Date.now();localStorage.setItem('sdvig_gid',gid);}
-    showScreen('splash-screen');setSplash('Гостевой вход…');
-    fetch('/api/game/auth/guest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({deviceId:gid})})
-    .then(r=>{if(!r.ok)throw 0;return r.json();}).then(onLogin)
-    .catch(()=>{
-        // Full offline fallback
-        onLogin({providerId:'guest:'+gid,firstName:'Гость',username:'guest',
-            energy:100,credits:150,rank:1,xp:0,skill1:1,skill2:1,
-            detectiveLvl:1,totalCases:0,streak:0,archetype:'detective'});
-    });
-}
-window.guestLogin=guestLogin;
-
-function showError(m){tg('err-msg').textContent=m;showScreen('error-screen');}
-
-// ── Login success ──────────────────────────────
-async function onLogin(profile){
-    user=profile;
-    await Sound.init();
-    updateHUD(profile);updateProfile(profile);renderAchGrid();
-    showScreen('main-screen');
-    initSwipe();initParallax();initRain();
-    await loadScenarios();
-    loadCard(cardId);
-    checkDailyBonus();
-    updateShopAfford();
-    vib(30);
+  App.guest=true; App.user={ id:'guest', name:'Гость', firstName:'Гость' };
+  App.token=null;
+  // профиль из кэша или новый
+  const cached=lsGet('sdvig_guest_profile',null);
+  App.profile=normalizeProfile(cached||{...DEFAULT_PROFILE});
+  persistSession();
+  enterMain();
 }
 
-// ── Sound toggle ───────────────────────────────
-function toggleSound(){
-    const on=Sound.toggle();
-    tg('snd-btn').textContent=on?'🔊':'🔇';
-}
-window.toggleSound=toggleSound;
-
-// ── Scenarios ──────────────────────────────────
-async function loadScenarios(){
-    if(scenarios)return;
-    try{const r=await fetch('/scenarios/detective.json');scenarios=await r.json();}
-    catch{scenarios={cards:{}};}
-}
-function getCard(id){return scenarios?.cards?.[id]??null;}
-
-// ── Card load ──────────────────────────────────
-function loadCard(id){
-    const c=getCard(id);if(!c){loadCard('act1_scene1');return;}
-    card=c;cardId=id;cardLocked=!c.isEnding;
-
-    const el=tg('main-card');
-    el.className='case-card card-in ct-'+(c.type||'evidence');
-    tg('s-ok').style.opacity='0';tg('s-no').style.opacity='0';tg('s-sp').style.opacity='0';
-    tg('result-overlay').classList.add('hidden');
-
-    tg('cc-type').textContent=fmtType(c.type);
-    tg('cc-badge').textContent=c.actTitle||(c.act?'АКТ '+c.act:'');
-    tg('cc-icon').textContent=c.icon||'🔍';
-    tg('cc-title').textContent=c.title||'';
-
-    // Ink reveal on text
-    const tx=tg('cc-text');
-    tx.style.animation='none';tx.textContent=c.text||'';
-    void tx.offsetWidth;
-    tx.style.animation='';
-
-    renderActions();
-    Sound.cardLoad();vib(15);
+function normalizeProfile(p){
+  const n={...DEFAULT_PROFILE,...(p||{})};
+  n.skills={...DEFAULT_PROFILE.skills,...(p&&p.skills||{})};
+  n.achievements=Array.isArray(p&&p.achievements)?p.achievements:[];
+  return n;
 }
 
-function fmtType(t){
-    return ({crime:'ПРЕСТУПЛЕНИЕ',evidence:'УЛИКА',suspect:'ПОДОЗРЕВАЕМЫЙ',
-        witness:'СВИДЕТЕЛЬ',testimony:'ПОКАЗАНИЯ',mystery:'ТАЙНА',
-        action:'ОПЕРАЦИЯ',revelation:'ПРОРЫВ',briefing:'СВОДКА',
-        ending:'ФИНАЛ',ending_bad:'ФИНАЛ',chase:'ПОГОНЯ'}[t]||(t||'ДЕЛО').toUpperCase());
+function persistSession(){
+  const sess={ user:App.user, guest:App.guest, token:App.token, profile:App.profile };
+  lsSet('sdvig_session',sess);
+  if(App.guest) lsSet('sdvig_guest_profile',App.profile);
 }
 
-// ── Actions panel ──────────────────────────────
-function renderActions(){
-    const a=tg('cc-actions');
-    const hasSpecial=(user?.skill1||1)>=3&&card?.specialOption;
-
-    if(cardLocked){
-        a.innerHTML=`
-            <div class="lock-panel">
-                <div class="lp-icon">${icon('lock')}</div>
-                <div class="lp-body">
-                    <div class="lp-title">Свайп заблокирован</div>
-                    <div class="lp-sub">Пройди Самоцветы чтобы принять решение</div>
-                </div>
-            </div>
-            <button class="btn-play" onclick="openCardGame()">
-                ${icon('gamepad')} Играть в Самоцветы
-            </button>
-            <div class="swipe-locked">${icon('lock')} Свайп недоступен</div>`;
-    } else {
-        const hint=card?.hint;
-        a.innerHTML=`
-            ${hint?`<div class="hint-panel"><span class="hp-icon">💡</span><p class="hp-text">${hint}</p></div>`:''}
-            <div class="swipe-hint">
-                <span class="sh-no">← ${card?.leftOption||'ОТКЛОНИТЬ'}</span>
-                <span class="sh-mid">${icon('lockOpen')}</span>
-                <span class="sh-ok">${card?.rightOption||'ОДОБРИТЬ'} →</span>
-            </div>
-            ${hasSpecial?`<div class="sh-up">↑ ОСОБЫЙ ПРИЁМ (−10⚡)</div>`:''}`;
-    }
+/* сохранение профиля (сервер для авторизованных, локально для гостя) */
+let saveTimer=null;
+function saveProfile(){
+  persistSession();
+  if(App.guest||!App.token) return;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    fetch('/api/profile',{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+App.token},
+      body:JSON.stringify(App.profile)
+    }).catch(()=>{});
+  },800);
 }
 
-// ── Swipe engine ───────────────────────────────
-function initSwipe(){
-    const el=tg('main-card');
-    let sx=0,sy=0,cx=0,cy=0,dragging=false,lx=0,vel=0,lt=0;
+/* ═══════════════════════════════════════════════
+   ВХОД В ИГРУ
+═══════════════════════════════════════════════ */
+function enterMain(){
+  showScreen('main-screen');
+  if(window.BgFx) BgFx.init();
+  Icons.paint();
+  buildDeck();
+  renderCard();
+  renderHUD();
+  renderMap();
+  renderGameList();
+  renderProfile();
+  renderShop();
+  bindNav();
+  bindSoundBtn();
+  checkDaily();
+}
 
-    const start=e=>{
-        if(!tg('result-overlay').classList.contains('hidden'))return;
-        dragging=true;sx=gx(e);sy=gy(e);lx=sx;lt=Date.now();
-        el.style.transition='none';el.style.animationPlayState='paused';
+/* ── навигация ─────────────────────────────────── */
+function bindNav(){
+  $$('.nb').forEach(b=>{
+    b.onclick=()=>{
+      const tab=b.dataset.tab; if(tab===App.tab) return;
+      Sound.nav(); vibrate(8);
+      App.tab=tab;
+      $$('.nb').forEach(x=>x.classList.toggle('active',x===b));
+      $$('.tab-pane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
+      if(tab==='map') renderMap();
+      if(tab==='profile') renderProfile();
     };
-    const move=e=>{
-        if(!dragging)return;e.preventDefault();
-        cx=gx(e);cy=gy(e);
-        const now=Date.now();vel=(cx-lx)/Math.max(1,now-lt);lx=cx;lt=now;
-        const dx=cx-sx,dy=cy-sy;
-        const rot=dx/18;
-        el.style.transform=`rotate(${rot}deg) translateX(${dx}px) translateY(${Math.min(0,dy*.3)}px)`;
-        const r=Math.min(1,Math.abs(dx)/80);
-        const ru=Math.min(1,Math.max(0,-dy-40)/60);
-
-        if(dy<-40&&Math.abs(dx)<60){
-            // Swipe UP
-            el.classList.remove('tilt-l','tilt-r');el.classList.add('tilt-u');
-            tg('s-sp').style.opacity=ru;tg('s-ok').style.opacity='0';tg('s-no').style.opacity='0';
-        } else if(dx<-28){
-            el.classList.add('tilt-l');el.classList.remove('tilt-r','tilt-u');
-            tg('s-no').style.opacity=r;tg('s-ok').style.opacity='0';tg('s-sp').style.opacity='0';
-        } else if(dx>28){
-            el.classList.add('tilt-r');el.classList.remove('tilt-l','tilt-u');
-            tg('s-ok').style.opacity=r;tg('s-no').style.opacity='0';tg('s-sp').style.opacity='0';
-        } else {
-            el.classList.remove('tilt-l','tilt-r','tilt-u');
-            tg('s-ok').style.opacity='0';tg('s-no').style.opacity='0';tg('s-sp').style.opacity='0';
-        }
-    };
-    const end=()=>{
-        if(!dragging)return;dragging=false;
-        el.style.animationPlayState='running';
-        const dx=cx-sx,dy=cy-sy,T=85,V=0.36;
-        el.style.transition='transform .3s ease';
-        if(dy<-100&&Math.abs(dx)<80)      flyCard('up');
-        else if(dx<-T||vel<-V)            flyCard('left');
-        else if(dx>T||vel>V)              flyCard('right');
-        else resetCardPos();
-    };
-
-    el.addEventListener('touchstart',start,{passive:true});
-    el.addEventListener('mousedown',start);
-    window.addEventListener('touchmove',move,{passive:false});
-    window.addEventListener('mousemove',move);
-    window.addEventListener('touchend',end);
-    window.addEventListener('mouseup',end);
-}
-const gx=e=>e.touches?e.touches[0].clientX:e.clientX;
-const gy=e=>e.touches?e.touches[0].clientY:e.clientY;
-
-function resetCardPos(){
-    const el=tg('main-card');
-    el.style.transform='rotate(-.4deg)';
-    el.classList.remove('tilt-l','tilt-r','tilt-u');
-    tg('s-ok').style.opacity='0';tg('s-no').style.opacity='0';tg('s-sp').style.opacity='0';
+  });
 }
 
-function flyCard(dir){
-    if(cardLocked){
-        const el=tg('main-card');
-        el.classList.add('shake');setTimeout(()=>el.classList.remove('shake'),600);
-        resetCardPos();Sound.locked();vib([80,40,80]);
-        toast('🎮','ЗАБЛОКИРОВАНО','Сначала пройди Самоцветы!');
-        return;
-    }
-    const hasSpecial=(user?.skill1||1)>=3&&card?.specialOption;
-    if(dir==='up'&&!hasSpecial){resetCardPos();return;}
-
-    // Dust particles
-    spawnDust(dir);
-
-    // Stamp animation
-    const sMap={left:'s-no',right:'s-ok',up:'s-sp'};
-    const sEl=tg(sMap[dir]);
-    if(sEl){sEl.style.opacity='1';sEl.querySelector('.stamp')?.classList.add('land');}
-
-    if(dir==='left')Sound.swipeL();else Sound.swipeR();
-    vib(25);swipeDir=dir;
-
-    const el=tg('main-card');
-    setTimeout(()=>{
-        el.style.transition='transform .38s cubic-bezier(.55,0,1,.45),opacity .38s ease';
-        if(dir==='left') el.style.transform='translateX(-160vw) rotate(-25deg)';
-        else if(dir==='right')el.style.transform='translateX(160vw) rotate(25deg)';
-        else el.style.transform='translateY(-140vh) scale(.8)';
-        el.style.opacity='0';
-        sendChoice(dir);
-    },100);
+function bindSoundBtn(){
+  const btn=$('#sound-btn');
+  btn.textContent=Sound.isOn()?'🔊':'🔇';
+  btn.onclick=()=>{ const on=Sound.toggle(); btn.textContent=on?'🔊':'🔇'; if(on)Sound.tap(); };
 }
 
-function sendChoice(dir){
-    if(!user||!card)return;
-    const extra=dir==='up'?'&special=true':'';
-    fetch(`/api/game/choice?providerId=${enc(user.providerId)}&direction=${dir==='up'?'up':dir}${extra}`,{method:'POST'})
-    .then(r=>{if(!r.ok)return r.text().then(t=>{toast('⚡','Ошибка',t);throw 0;});return r.json();})
-    .then(data=>{
-        user=data.profile;updateHUD(user);
-        const ok=dir==='right'||dir==='up';
-        const rs=tg('ro-stamp');
-        rs.textContent=dir==='up'?'ОСОБЫЙ ПРИЁМ':ok?'ОДОБРЕНО':'ОТКЛОНЕНО';
-        rs.className='ro-stamp '+(ok?'ok':'no');
-        tg('ro-text').textContent=dir==='up'?(card.specialResult||card.rightResult||''):ok?(card.rightResult||''):(card.leftResult||'');
-        tg('rw-xp').textContent=data.xpGained;
-        tg('rw-cr').textContent=data.creditsGained;
-        tg('rw-en').textContent=data.energyLost;
-        setTimeout(()=>{
-            tg('result-overlay').classList.remove('hidden');
-            if(ok)launchConfetti();
-            checkAch(data.profile);
-        },280);
-        vib([30,20,60]);
-    })
-    .catch(()=>{
-        const el=tg('main-card');
-        el.style.transition='transform .35s ease';el.style.transform='rotate(-.4deg)';
-        el.style.opacity='1';el.classList.remove('tilt-l','tilt-r','tilt-u');
-    });
+/* ── HUD ───────────────────────────────────────── */
+function renderHUD(){
+  const p=App.profile;
+  $('#hud-energy').textContent=p.energy;
+  $('#hud-credits').textContent=p.credits;
+  const need=xpNeeded(p.level);
+  $('#xp-fill').style.width=clamp(p.xp/need*100,0,100)+'%';
+  $('#xp-info').textContent=`УР ${p.level} · ${p.xp}/${need}`;
+}
+function xpNeeded(lvl){ return 100+(lvl-1)*60; }
+
+function addXP(n){
+  const p=App.profile; p.xp+=n;
+  let need=xpNeeded(p.level), leveled=false;
+  while(p.xp>=need){ p.xp-=need; p.level++; leveled=true; need=xpNeeded(p.level); }
+  if(leveled){ Sound.levelUp(); vibrate([10,40,10]);
+    toast('Новый уровень','Уровень '+p.level,'⬆️');
+    p.maxEnergy=5+Math.floor((p.level-1)/3); p.energy=p.maxEnergy; }
+  renderHUD(); saveProfile();
+}
+function addCredits(n){ App.profile.credits=Math.max(0,App.profile.credits+n); if(n>0)Sound.coin(); renderHUD(); saveProfile(); }
+function addEnergy(n){ const p=App.profile; p.energy=clamp(p.energy+n,0,p.maxEnergy); renderHUD(); saveProfile(); }
+
+/* ═══════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded',()=>{
+  $('#sound-btn'); // noop
+  runSplash().catch(err=>{ console.error(err); decideEntry(); });
+});
+
+/* ═══════════════════════════════════════════════
+   СЦЕНАРИЙ + КОЛОДА
+═══════════════════════════════════════════════ */
+async function loadScenario(){
+  if(App.scenario) return App.scenario;
+  const res=await fetch('/scenarios/detective.json');
+  if(!res.ok) throw new Error('scenario '+res.status);
+  App.scenario=await res.json();
+  return App.scenario;
+}
+
+function buildDeck(){
+  const sc=App.scenario;
+  if(!sc||!sc.cards){ App.deck=[]; return; }
+  App.deck=sc.cards.slice();
+  App.cardIndex=App.profile.mapNode % App.deck.length;
+}
+
+/* ═══════════════════════════════════════════════
+   РЕНДЕР КАРТОЧКИ ДЕЛА
+═══════════════════════════════════════════════ */
+function renderCard(){
+  const zone=$('#swipe-zone');
+  zone.querySelector('.case-card')?.remove();
+  if(!App.deck.length){ return; }
+
+  const c=App.deck[App.cardIndex];
+  App.currentCard=c; App.swipeUnlocked=false;
+
+  const type=c.type||'evidence';
+  const card=el('div','case-card card-enter ct-'+type);
+  card.innerHTML=`
+    <div class="stamp-wrap stamp-left"><div class="stamp stamp-deny-text">${c.leftStamp||'ОТКАЗ'}</div></div>
+    <div class="stamp-wrap stamp-right"><div class="stamp stamp-approve-text">${c.rightStamp||'ПРИНЯТЬ'}</div></div>
+    <div class="stamp-wrap stamp-up"><div class="stamp stamp-special-text">СПЕЦ</div></div>
+    <div class="card-head">
+      <span class="card-act">Дело №${(App.cardIndex+1).toString().padStart(3,'0')}</span>
+      <span class="card-type-badge">${typeLabel(type)}</span>
+    </div>
+    <div class="card-divider"></div>
+    <div class="card-body">
+      <div class="card-icon-box">${c.icon||'🗂'}</div>
+      <div class="card-case-title">${c.title||'Без названия'}</div>
+      <div class="card-text">${c.text||''}</div>
+    </div>
+    <div class="card-actions-area" id="card-actions"></div>
+  `;
+  zone.appendChild(card);
+  renderCardActions(card,c);
+  bindSwipe(card,c);
+  Sound.tap();
+}
+
+function typeLabel(t){
+  return ({crime:'Преступление',suspect:'Подозреваемый',evidence:'Улика',
+           witness:'Свидетель',revelation:'Озарение',ending:'Финал'})[t]||'Улика';
+}
+
+function renderCardActions(card,c){
+  const a=card.querySelector('#card-actions');
+  if(App.swipeUnlocked){
+    a.innerHTML=`
+      <div class="swipe-indicator swipe-unlocked">
+        <span class="si-deny">◄ ${c.leftLabel||'Отказать'}</span>
+        <span class="si-center">${Icons.get('arrows')}</span>
+        <span class="si-approve">${c.rightLabel||'Принять'} ►</span>
+      </div>
+      ${c.special?`<span class="si-special">▲ Свайп вверх — спецприём</span>`:''}`;
+  }else{
+    a.innerHTML=`
+      <button class="btn-play-gems" id="play-gems">${Icons.get('gem')}<span>Найти улики</span></button>
+      <div class="swipe-indicator"><span class="si-locked">${Icons.get('lock')} Свайп заблокирован</span></div>`;
+    a.querySelector('#play-gems').onclick=()=>{ Sound.tap(); openHintGame(c); };
+  }
+}
+
+/* разблокировка свайпа после мини-игры */
+function unlockSwipe(){
+  App.swipeUnlocked=true;
+  vibrate(20); Sound.booster();
+  const card=$('#swipe-zone .case-card');
+  if(card){ renderCardActions(card,App.currentCard);
+    const hint=App.currentCard.hint;
+    if(hint){ const hp=el('div','hint-revealed-panel',
+      `<span class="hrp-icon">🔍</span><span class="hrp-text">${hint}</span>`);
+      card.querySelector('.card-body').appendChild(hp); } }
+}
+
+/* ═══════════════════════════════════════════════
+   СВАЙПЫ (left / right / up = спецприём)
+═══════════════════════════════════════════════ */
+function bindSwipe(card,c){
+  let sx=0,sy=0,dx=0,dy=0,drag=false;
+  const TH=90, UPTH=110;
+
+  const start=(x,y)=>{ if(!App.swipeUnlocked){ return; } drag=true; sx=x; sy=y; dx=dy=0; card.style.transition='none'; };
+  const move=(x,y)=>{
+    if(!drag) return;
+    dx=x-sx; dy=y-sy;
+    const rot=dx/18;
+    card.style.transform=`translate(-50%,-50%) translate(${dx}px,${dy*0.4}px) rotate(${rot}deg)`;
+    card.classList.toggle('tilt-left',dx<-30);
+    card.classList.toggle('tilt-right',dx>30);
+    card.classList.toggle('tilt-up',c.special&&dy<-40&&Math.abs(dx)<60);
+    setStampOpacity(card,dx,dy,c);
+    if(Math.abs(dx)>TH||(c.special&&dy<-UPTH)) vibrate(6);
+  };
+  const end=()=>{
+    if(!drag) return; drag=false;
+    card.style.transition='transform .35s cubic-bezier(.4,0,.2,1), opacity .35s ease';
+    if(c.special && dy<-UPTH && Math.abs(dx)<70){ flySpecial(card,c); return; }
+    if(dx>TH){ flyOut(card,'right',c); return; }
+    if(dx<-TH){ flyOut(card,'left',c); return; }
+    // вернуть на место
+    card.style.transform=`translate(-50%,-50%) rotate(-.4deg)`;
+    card.className='case-card ct-'+(c.type||'evidence');
+    resetStamps(card);
+  };
+
+  card.addEventListener('pointerdown',e=>{ start(e.clientX,e.clientY); card.setPointerCapture?.(e.pointerId); });
+  card.addEventListener('pointermove',e=>move(e.clientX,e.clientY));
+  card.addEventListener('pointerup',end);
+  card.addEventListener('pointercancel',end);
+}
+
+function setStampOpacity(card,dx,dy,c){
+  const l=card.querySelector('.stamp-left'), r=card.querySelector('.stamp-right'), u=card.querySelector('.stamp-up');
+  l.style.opacity=clamp(-dx/90,0,1); r.style.opacity=clamp(dx/90,0,1);
+  u.style.opacity=c.special?clamp(-dy/110,0,1):0;
+}
+function resetStamps(card){ card.querySelectorAll('.stamp-wrap').forEach(s=>s.style.opacity=0); }
+
+function flyOut(card,dir,c){
+  const off=dir==='right'?window.innerWidth:-window.innerWidth;
+  card.style.transform=`translate(-50%,-50%) translate(${off}px,40px) rotate(${dir==='right'?22:-22}deg)`;
+  card.style.opacity='0';
+  Sound.swipe(dir); vibrate(12);
+  spawnTrail(dir);
+  setTimeout(()=>resolveChoice(c,dir==='right'?'right':'left'),320);
+}
+function flySpecial(card,c){
+  card.style.transform=`translate(-50%,-50%) translateY(-${window.innerHeight}px) rotate(-3deg)`;
+  card.style.opacity='0';
+  Sound.special(); vibrate([10,30,10]);
+  setTimeout(()=>resolveChoice(c,'special'),320);
+}
+
+/* ═══════════════════════════════════════════════
+   РЕЗУЛЬТАТ ВЫБОРА + каскад улик
+═══════════════════════════════════════════════ */
+function resolveChoice(c,dir){
+  const branch = dir==='special' ? (c.special||c.right) : (dir==='right'?c.right:c.left);
+  if(!branch){ nextCard(); return; }
+
+  // каскад: промежуточная карточка-вопрос
+  if(branch.followup){
+    const fc=branch.followup; fc.type=fc.type||'revelation'; fc._followOf=c;
+    App.deck.splice(App.cardIndex+1,0,fc);
+  }
+
+  applyOutcome(branch);
+  showResultOverlay(branch,dir);
+}
+
+function applyOutcome(b){
+  const o=b.outcome||b; const p=App.profile;
+  if(o.xp) addXP(o.xp);
+  if(o.credits) addCredits(o.credits);
+  if(o.energy) addEnergy(o.energy);
+  if(o.prestige){ p.prestige+=o.prestige; }
+  if(o.skill && p.skills[o.skill]!=null) p.skills[o.skill]+=(o.skillUp||1);
+  if(o.solved){ p.casesSolved++; p.streak++; advanceMap(); }
+  saveProfile();
+}
+
+function showResultOverlay(b,dir){
+  const card=el('div','case-card ct-revelation');
+  const o=b.outcome||b;
+  const ok=dir!=='left';
+  card.innerHTML=`<div class="result-overlay">
+      <div class="ro-stamp-text">${ok?'УЛИКА ПОЛУЧЕНА':'ВЕРСИЯ ОТКЛОНЕНА'}</div>
+      <div class="ro-text">${b.result||b.text||''}</div>
+      <div class="ro-rewards">
+        ${o.xp?`<span class="ro-chip ro-xp">+${o.xp} XP</span>`:''}
+        ${o.credits?`<span class="ro-chip ro-cr">+${o.credits} ◈</span>`:''}
+        ${o.prestige?`<span class="ro-chip ro-xp">+${o.prestige} престиж</span>`:''}
+      </div>
+      <button class="btn btn-bronze" id="ro-next" style="max-width:200px">Дальше</button>
+    </div>`;
+  $('#swipe-zone').appendChild(card);
+  if(ok){ Sound.approve(); if(o.solved) confetti(); } else Sound.deny();
+  card.querySelector('#ro-next').onclick=()=>{ Sound.tap(); card.remove(); nextCard(); };
 }
 
 function nextCard(){
-    tg('result-overlay').classList.add('hidden');
-    const dir=swipeDir==='up'?'right':swipeDir;
-    const nid=dir==='right'?card?.rightNext:card?.leftNext;
-    const el=tg('main-card');
-    el.style.transition='none';el.style.opacity='0';
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        el.style.transition='opacity .25s ease';el.style.opacity='1';
-        loadCard(nid&&getCard(nid)?nid:'act1_scene1');
-    }));
-}
-window.nextCard=nextCard;
-
-// ── Card game gate ─────────────────────────────
-function openCardGame(){
-    Sound.click();
-    const level=Math.max(1,((card?.act||1)-1)*2+1);
-    tg('hm-title').textContent='💎 Самоцветы';
-    const modal=tg('hint-modal'),back=tg('hm-back');
-    modal.classList.remove('hidden','closing');back.classList.remove('hidden');
-    const vp=tg('hm-vp');vp.innerHTML='';
-    if(gameDestroy){try{gameDestroy();}catch(e){}gameDestroy=null;}
-    if(window.BgFx) BgFx.pause();
-    import('./games/detective.js').then(mod=>{
-        gameDestroy=mod.destroy;
-        mod.initGame(vp,level,onCardGameWon,true);
-    }).catch(()=>{vp.innerHTML='<p style="color:var(--no);padding:24px;text-align:center">⚠️ Ошибка загрузки</p>';});
-}
-window.openCardGame=openCardGame;
-
-function onCardGameWon(){
-    if(window.BgFx) BgFx.resume();
-    cardLocked=false;closeHintGame();Sound.unlock();vib([30,20,30,20,80]);
-    tg('main-card').classList.add('unlocked');
-    setTimeout(()=>tg('main-card').classList.remove('unlocked'),800);
-    renderActions();
-    toast('🔓','РАЗБЛОКИРОВАНО','Теперь прими решение — свайп влево или вправо');
-    fetch(`/api/game/advance-level?providerId=${enc(user.providerId)}&gameType=detective`,{method:'POST'})
-    .then(r=>r.ok?r.json():null).then(p=>{if(p){user=p;updateHUD(p);}}).catch(()=>{});
+  App.cardIndex=(App.cardIndex+1)%App.deck.length;
+  App.profile.mapNode=App.cardIndex;
+  saveProfile();
+  renderCard();
 }
 
-function closeHintGame(){
-    const m=tg('hint-modal'),b=tg('hm-back');
-    if(window.BgFx) BgFx.resume();
-    m.classList.add('closing');setTimeout(()=>{m.classList.add('hidden');b.classList.add('hidden');},240);
-    if(gameDestroy){try{gameDestroy();}catch(e){}gameDestroy=null;}
-    tg('hm-vp').innerHTML='';
+/* ═══════════════════════════════════════════════
+   КОНФЕТТИ (золотые улики)
+═══════════════════════════════════════════════ */
+function confetti(){
+  const colors=['#ffcf6b','#f0a93a','#6be0ff','#35d49b'];
+  for(let i=0;i<28;i++){
+    const c=el('div','confetti');
+    c.style.left=(40+Math.random()*20)+'vw';
+    c.style.top='40vh';
+    c.style.background=colors[i%colors.length];
+    document.body.appendChild(c);
+    const ang=Math.random()*Math.PI*2, dist=120+Math.random()*200;
+    const ax=Math.cos(ang)*dist, ay=Math.sin(ang)*dist-200;
+    c.animate([
+      {transform:'translate(0,0) rotate(0)',opacity:1},
+      {transform:`translate(${ax}px,${ay+window.innerHeight*0.5}px) rotate(${720*Math.random()}deg)`,opacity:0}
+    ],{duration:1100+Math.random()*600,easing:'cubic-bezier(.2,.7,.3,1)'}).onfinish=()=>c.remove();
+  }
 }
-window.closeHintGame=closeHintGame;
-
-// ── Games tab ──────────────────────────────────
-function launchGame(type){
-    tg('gvp-wrap').classList.remove('hidden');
-    tg('gvp-title').textContent='💎 Самоцветы';
-    tg('win-badge').classList.add('hidden');
-    const vp=tg('game-vp');vp.innerHTML='';
-    if(gameDestroy){try{gameDestroy();}catch(e){}gameDestroy=null;}
-    if(window.BgFx) BgFx.pause();
-    import('./games/detective.js').then(mod=>{
-        gameDestroy=mod.destroy;
-        mod.initGame(vp,user?.detectiveLvl||1,()=>{
-            tg('win-badge').classList.remove('hidden');Sound.win3();vib([30,20,30,20,100]);
-            toast('🏆','УРОВЕНЬ ПРОЙДЕН','+50 XP');
-            fetch(`/api/game/advance-level?providerId=${enc(user.providerId)}&gameType=detective`,{method:'POST'})
-            .then(r=>r.ok?r.json():null).then(p=>{if(p){user=p;updateHUD(p);}}).catch(()=>{});
-        },false);
-    }).catch(()=>{vp.innerHTML='<p style="color:var(--no);text-align:center;padding:32px">⚠️ Ошибка</p>';});
-}
-window.launchGame=launchGame;
-function closeGame(){
-    if(gameDestroy){try{gameDestroy();}catch(e){}gameDestroy=null;}
-    if(window.BgFx) BgFx.resume();
-    tg('gvp-wrap').classList.add('hidden');tg('game-vp').innerHTML='';tg('win-badge').classList.add('hidden');
-}
-window.closeGame=closeGame;
-
-// ── HUD ────────────────────────────────────────
-function updateHUD(p){
-    tg('hud-en').textContent=p.energy;
-    tg('hud-cr').textContent=p.credits;
-    tg('hud-rk').textContent=p.rank;
-    const xpMax=p.rank*150;
-    tg('xp-fill').style.width=Math.min(100,(p.xp/xpMax)*100)+'%';
-    const dl=p.detectiveLvl||1;
-    tg('det-lvl').textContent=dl;tg('det-bar').style.width=Math.min(100,dl)+'%';
+function spawnTrail(dir){
+  const zone=$('#swipe-zone'); const r=zone.getBoundingClientRect();
+  for(let i=0;i<8;i++){ const t=el('div','swipe-trail');
+    const sz=4+Math.random()*8; t.style.width=t.style.height=sz+'px';
+    t.style.background='rgba(240,169,58,'+(0.3+Math.random()*0.3)+')';
+    t.style.left=(r.width/2+(dir==='right'?40:-40)+Math.random()*30-15)+'px';
+    t.style.top=(r.height/2+Math.random()*60-30)+'px';
+    zone.appendChild(t);
+    t.animate([{opacity:.8,transform:'scale(1)'},{opacity:0,transform:'scale(0) translateY(20px)'}],
+      {duration:500+Math.random()*300}).onfinish=()=>t.remove(); }
 }
 
-// ── Profile ────────────────────────────────────
-function updateProfile(p){
-    const n=p.firstName||p.username||'Агент';
-    tg('pr-av').textContent=n[0].toUpperCase();
-    tg('pr-name').textContent=n;
-    tg('pr-id').textContent='ID '+(p.providerId||'—').replace(/^(tg:|guest:)/,'');
-    tg('pr-arch').textContent=({detective:'🔍 Детектив',doctor:'⚕️ Медик',hacker:'💻 Хакер'}[p.archetype]||'🔍 Детектив');
-    tg('ps-rk').textContent=p.rank;tg('ps-cr').textContent=p.credits;
-    tg('ps-cs').textContent=p.totalCases||0;tg('ps-st').textContent=p.streak||0;
-    const s1=p.skill1||1,s2=p.skill2||1;
-    tg('sk1-lv').textContent='Lv.'+s1;tg('sk1-c').textContent=(s1*50)+'💎';
-    tg('sk2-lv').textContent='Lv.'+s2;tg('sk2-c').textContent=(s2*50)+'💎';
-    tg('sk1-fill').style.width=Math.min(100,s1*10)+'%';
-    tg('sk2-fill').style.width=Math.min(100,s2*10)+'%';
-}
+/* ═══════════════════════════════════════════════
+   КАРТА ПРОГРЕССА
+═══════════════════════════════════════════════ */
+const CHAPTERS=[
+  {title:'Глава I · Пропавший экспонат', levels:5},
+  {title:'Глава II · Тень музея',        levels:6},
+  {title:'Глава III · Ночной свидетель', levels:6},
+  {title:'Глава IV · Двойная игра',      levels:7},
+  {title:'Глава V · Финал',              levels:6}
+];
 
-function renderAchGrid(){
-    const g=tg('ach-grid');if(!g)return;
-    g.innerHTML=ACH.map(d=>{
-        const ok=earned.has(d.id);
-        return `<div class="ach-b ${ok?'earned':'locked'}">
-            <div class="ach-icon">${ok?d.icon:'❓'}</div>
-            <div class="ach-lbl">${ok?d.title:'???'}</div>
-        </div>`;
-    }).join('');
-}
+function totalLevels(){ return CHAPTERS.reduce((s,c)=>s+c.levels,0); }
 
-// ── Progress map ───────────────────────────────
-function renderProgressMap(){
-    const container=tg('progress-map');
-    if(!container||!scenarios)return;
-    const cards=Object.values(scenarios.cards||{});
-    const chapters=[
-        {id:'act1',label:'Акт I · Место преступления',color:'#ef4444',cards:cards.filter(c=>c.act===1)},
-        {id:'act2',label:'Акт II · Подозреваемые',    color:'#c8860a',cards:cards.filter(c=>c.act===2)},
-        {id:'act3',label:'Акт III · Заказчик',         color:'#a855f7',cards:cards.filter(c=>c.act===3)},
-        {id:'act4',label:'Акт IV · Развязка',          color:'#fbbf24',cards:cards.filter(c=>c.act===4)},
-    ].filter(ch=>ch.cards.length>0);
+function renderMap(){
+  const inner=$('#map-inner'); const svg=$('#map-path');
+  inner.querySelectorAll('.map-node,.map-chapter').forEach(e=>e.remove());
 
-    let html='<div style="padding-bottom:40px">';
-    let levelNum=1;
-    for(const ch of chapters){
-        html+=`<div class="map-scene">
-            <div class="map-chapter-label" style="border-color:${ch.color}40;color:${ch.color}">${ch.label}</div>
-        </div>
-        <div class="map-levels">`;
-        for(const c of ch.cards){
-            const isCurrent=c.id===cardId;
-            const isDone=cardHistory?.includes(c.id)||false;
-            const isLocked=false;
-            const cls=isCurrent?'current':isDone?'done':isLocked?'locked':'';
-            html+=`<div class="map-level-row">
-                <div class="map-node ${cls}" onclick="jumpToCard('${c.id}')" title="${c.title||''}">
-                    <div class="map-node-num">${levelNum}</div>
-                    <div class="map-node-icon">${isCurrent?'▶':isDone?'★':c.icon||'○'}</div>
-                </div>
-            </div>
-            ${levelNum<ch.cards.length?'<div class="map-connector"></div>':''}`;
-            levelNum++;
-        }
-        html+='</div><div style="height:12px"></div>';
+  const total=totalLevels();
+  const W=inner.clientWidth||window.innerWidth;
+  const rowH=120, padTop=40;
+  const H=padTop+total*rowH+120;
+  inner.style.height=H+'px';
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+
+  const cur=App.profile.mapNode||0;
+  let idx=0, pts=[], pathD='';
+
+  CHAPTERS.forEach((ch,ci)=>{
+    // заголовок главы
+    const chY=padTop+idx*rowH;
+    const unlocked = idx<=cur;
+    const head=el('div','map-chapter'+(unlocked?'':' mc-locked'),
+      `<div class="mc-title">${ch.title}</div><div class="mc-sub">${ch.levels} уровней</div>`);
+    head.style.left='50%'; head.style.top=(chY)+'px';
+    inner.appendChild(head);
+
+    for(let l=0;l<ch.levels;l++){
+      const y=padTop+ (idx+0.6+l)*rowH + (l===0?40:0);
+      const x=W*(0.5+0.30*Math.sin(idx*0.9));
+      pts.push({x,y});
+      const state = idx<cur?'done':idx===cur?'current':'locked';
+      const node=el('div','map-node '+state);
+      if(state==='locked') node.innerHTML=Icons.get('lock');
+      else node.textContent=(idx+1);
+      node.style.left=x+'px'; node.style.top=y+'px';
+      if(state!=='locked'){
+        node.onclick=()=>{ Sound.tap(); vibrate(8);
+          if(state==='current'){ goToTab('cases'); }
+          else toast('Пройдено','Уровень '+(idx+1)+' завершён','✓'); };
+      }else{
+        node.onclick=()=>{ Sound.error(); vibrate(15); toast('Закрыто','Пройдите предыдущие уровни','🔒'); };
+      }
+      inner.appendChild(node);
+      idx++;
     }
-    html+='</div>';
-    container.innerHTML=html;
+  });
+
+  // извилистый путь
+  pts.forEach((p,i)=>{ pathD+= i===0?`M ${p.x} ${p.y}`:` L ${p.x} ${p.y}`; });
+  svg.innerHTML=`
+    <path d="${pathD}" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="6" stroke-linecap="round"/>
+    <path d="${pathD}" fill="none" stroke="url(#mg)" stroke-width="4" stroke-linecap="round"
+          stroke-dasharray="${(cur/total)*100000}" pathLength="100000"/>
+    <defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffcf6b"/><stop offset="1" stop-color="#b3741c"/></linearGradient></defs>`;
 }
 
-function jumpToCard(id){
-    if(!getCard(id))return;
-    switchTab('cases');
-    setTimeout(()=>loadCard(id),200);
-}
-window.jumpToCard=jumpToCard;
+function advanceMap(){ App.profile.mapNode=Math.min(totalLevels()-1,(App.profile.mapNode||0)+1); }
+function goToTab(t){ $('.nb[data-tab="'+t+'"]')?.click(); }
 
-// ── Tabs ───────────────────────────────────────
-function switchTab(name){
-    if(activeTab===name)return;
-    if(activeTab==='games')closeGame();
-    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
-    document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
-    tg('tab-'+name).classList.add('active');
-    document.querySelector(`[data-tab="${name}"]`)?.classList.add('active');
-    activeTab=name;Sound.click();vib(10);
-    if(name==='profile'){updateProfile(user);renderAchGrid();tg('ach-badge').classList.add('hidden');}
-    if(name==='map')renderProgressMap();
-    if(name==='shop')updateShopAfford();
-}
-window.switchTab=switchTab;
+/* ═══════════════════════════════════════════════
+   ПРОФИЛЬ
+═══════════════════════════════════════════════ */
+const SKILLS=[
+  {k:'insight', icon:'🧠', name:'Проницательность', desc:'Видеть скрытое'},
+  {k:'tech',    icon:'🔬', name:'Технологии',       desc:'Анализ улик'},
+  {k:'charisma',icon:'🎭', name:'Харизма',          desc:'Разговорить свидетеля'},
+  {k:'nerve',   icon:'🔥', name:'Хладнокровие',     desc:'Спецприёмы'}
+];
+const ACHIEVEMENTS=[
+  {k:'first',  icon:'🎖', title:'Первое дело'},
+  {k:'streak5',icon:'🔥', title:'Серия 5'},
+  {k:'gem500', icon:'💎', title:'Магнат'},
+  {k:'lvl10',  icon:'⭐', title:'Ветеран'},
+  {k:'special',icon:'⚡', title:'Спецагент'},
+  {k:'map1',   icon:'🗺', title:'Глава I'}
+];
 
-// ── Skills ─────────────────────────────────────
-function upgradeSkill(n){
-    if(!user)return;Sound.click();
-    fetch(`/api/game/upgrade-skill?providerId=${enc(user.providerId)}&skillNum=${n}`,{method:'POST'})
-    .then(r=>{if(!r.ok)return r.text().then(t=>{toast('💎','Мало кредитов',t);throw 0;});return r.json();})
-    .then(p=>{user=p;updateHUD(p);updateProfile(p);vib([20,20,40]);
-        toast('🧠','НАВЫК',n===1?'Проницательность Lv.'+p.skill1:'Технологии Lv.'+p.skill2);})
-    .catch(()=>{});
-}
-window.upgradeSkill=upgradeSkill;
+function renderProfile(){
+  const p=App.profile, u=App.user||{};
+  const name=u.firstName||u.name||'Агент';
+  $('#prof-av').textContent=(name[0]||'С').toUpperCase();
+  $('#prof-name').textContent=name;
+  $('#prof-arch').textContent=archetype(p);
+  $('#prof-id').textContent='#'+String(u.id||'000000').slice(-6).padStart(6,'0');
+  $('#st-cases').textContent=p.casesSolved;
+  $('#st-streak').textContent=p.streak;
+  $('#st-prestige').textContent=p.prestige;
+  $('#st-lvl').textContent=p.level;
 
-// ── Shop ───────────────────────────────────────
-function buyCoffee(){
-    if(!user)return;Sound.click();
-    fetch(`/api/game/buy-coffee?providerId=${enc(user.providerId)}`,{method:'POST'})
-    .then(r=>{if(!r.ok)return r.text().then(t=>{toast('☕','Мало кредитов',t);throw 0;});return r.json();})
-    .then(p=>{user=p;updateHUD(p);updateProfile(p);updateShopAfford();toast('☕','КОФЕ','+35 ⚡');vib(30);})
-    .catch(()=>{});
-}
-window.buyCoffee=buyCoffee;
-function updateShopAfford(){
-    if(!user)return;
-    const el=tg('sh-coffee');if(!el)return;
-    el.classList.toggle('cant-afford',user.credits<40);
-    const pr=tg('sh-coffee-p');if(pr)pr.textContent=user.credits>=40?'40 💎':'40 💎 (нет)';
-}
+  const sl=$('#skill-list'); sl.innerHTML='';
+  SKILLS.forEach(s=>{
+    const lv=p.skills[s.k]||1; const cost=lv*40;
+    const row=el('div','skill-row',`
+      <div class="sk-icon">${s.icon}</div>
+      <div class="sk-body"><div class="sk-name">${s.name}</div><div class="sk-desc">${s.desc}</div>
+        <div class="sk-bar"><div class="sk-fill" style="width:${clamp(lv/10*100,5,100)}%"></div></div></div>
+      <div class="sk-side"><div class="sk-lv">ур ${lv}</div>
+        <button class="up-btn" ${p.credits<cost?'disabled':''}>+${cost}◈</button></div>`);
+    row.querySelector('.up-btn').onclick=()=>{
+      if(App.profile.credits<cost) return;
+      addCredits(-cost); App.profile.skills[s.k]=lv+1;
+      Sound.booster(); vibrate(10); toast('Навык повышен',s.name+' ур '+(lv+1),'⬆️');
+      renderProfile();
+    };
+    sl.appendChild(row);
+  });
 
-// ── Daily bonus ────────────────────────────────
-function checkDailyBonus(){
-    if(!user)return;
-    fetch('/api/game/daily-bonus?providerId='+enc(user.providerId))
-    .then(r=>r.ok?r.json():null)
-    .then(d=>{if(!d||!d.available)return;buildWeek(d.streak||1);tg('dd-days').textContent=d.streak||1;tg('daily-modal').classList.remove('hidden');})
-    .catch(()=>{});
+  const ag=$('#ach-grid'); ag.innerHTML='';
+  ACHIEVEMENTS.forEach(a=>{
+    const earned=p.achievements.includes(a.k);
+    ag.appendChild(el('div','ach-cell'+(earned?' earned':''),
+      `<div class="ach-ico">${a.icon}</div><div class="ach-title">${a.title}</div>`));
+  });
 }
-function buildWeek(s){
-    const w=tg('dd-week');if(!w)return;w.innerHTML='';
-    for(let i=1;i<=7;i++){
-        const d=document.createElement('div');d.className='dw-dot';
-        if(i<(s%7||(s>=7?8:0)))d.classList.add('done');
-        if(i===(s%7||7))d.classList.add('today');
-        d.textContent=i;w.appendChild(d);
-    }
+function archetype(p){
+  const m=Math.max(...Object.values(p.skills));
+  const k=Object.keys(p.skills).find(x=>p.skills[x]===m);
+  return ({insight:'Аналитик',tech:'Криминалист',charisma:'Переговорщик',nerve:'Силовик'})[k]||'Новичок';
 }
-function claimDaily(){
-    if(!user||dailyClaimed)return;dailyClaimed=true;Sound.click();
-    tg('daily-modal').classList.add('hidden');
-    fetch('/api/game/daily-bonus/claim?providerId='+enc(user.providerId),{method:'POST'})
-    .then(r=>r.ok?r.json():null)
-    .then(d=>{if(!d)return;user=d.profile;updateHUD(user);updateProfile(user);
-        toast('🎁','БОНУС',`+50💎 · +30⚡`);vib([30,20,30,20,80]);})
-    .catch(()=>{});
-}
-window.claimDaily=claimDaily;
+function unlockAch(k){ if(!App.profile.achievements.includes(k)){ App.profile.achievements.push(k);
+  Sound.win(); toast('Достижение',ACHIEVEMENTS.find(a=>a.k===k)?.title||'','🏆'); saveProfile(); } }
 
-// ── Achievements ───────────────────────────────
-function checkAch(p){
-    let found=false;
-    for(const d of ACH){
-        if(!earned.has(d.id)&&d.check(p)){
-            earned.add(d.id);localStorage.setItem('sdvig_ach',JSON.stringify([...earned]));
-            if(!found){setTimeout(()=>toast(d.icon,d.title,d.desc),600);found=true;}
-            const b=tg('ach-badge');if(b){b.textContent='!';b.classList.remove('hidden');}
-        }
-    }
-}
-
-// ── Toast ──────────────────────────────────────
-let _tt=null;
-function toast(ic,title,desc){
-    const el=tg('toast');
-    tg('t-icon').textContent=ic;tg('t-title').textContent=title;tg('t-desc').textContent=desc;
-    el.classList.remove('hidden','out');clearTimeout(_tt);
-    _tt=setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.classList.add('hidden'),300);},3200);
-    vib(18);
+/* ═══════════════════════════════════════════════
+   МАГАЗИН
+═══════════════════════════════════════════════ */
+const SHOP=[
+  {k:'energy', icon:'⚡', name:'Энергия', desc:'+3 энергии', price:30,
+    buy(){ addEnergy(3); }},
+  {k:'hint',   icon:'🔍', name:'Подсказка', desc:'Открыть свайп', price:50,
+    buy(){ if(!App.swipeUnlocked) unlockSwipe(); }},
+  {k:'shuffle',icon:'🔀', name:'Перетасовка', desc:'Сменить дело', price:20,
+    buy(){ nextCard(); }},
+  {k:'booster',icon:'💥', name:'Бустер-бомба', desc:'Для аркады', price:40,
+    buy(){ App.profile.boosters=(App.profile.boosters||0)+1; saveProfile(); }}
+];
+function renderShop(){
+  const g=$('#shop-grid'); g.innerHTML='';
+  SHOP.forEach(it=>{
+    const item=el('div','shop-item',`
+      <div class="si-icon">${it.icon}</div>
+      <div class="si-name">${it.name}</div>
+      <div class="si-desc">${it.desc}</div>
+      <div class="si-price">${it.price} ◈</div>`);
+    item.onclick=()=>{
+      if(App.profile.credits<it.price){ Sound.error(); toast('Мало кредитов','Нужно '+it.price+' ◈','✗'); return; }
+      addCredits(-it.price); it.buy(); Sound.coin(); vibrate(10);
+      toast('Куплено',it.name,'🛍'); renderShop();
+    };
+    g.appendChild(item);
+  });
 }
 
-// ── Visual Effects ─────────────────────────────
-
-// Rain
-let _rainRAF=null;
-function initRain(){
-    const zone=tg('swipe-zone');if(!zone)return;
-    const canvas=document.createElement('canvas');
-    canvas.className='rain-canvas';
-    zone.insertBefore(canvas,zone.firstChild);
-    const ctx=canvas.getContext('2d');
-    const drops=[];
-    function resize(){canvas.width=zone.clientWidth;canvas.height=zone.clientHeight;}
-    resize();window.addEventListener('resize',resize);
-    for(let i=0;i<70;i++)drops.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,s:2+Math.random()*3,l:8+Math.random()*12});
-    function frame(){
-        if(_rainRAF===null)return;
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        ctx.strokeStyle='rgba(180,200,240,.45)';ctx.lineWidth=.7;
-        for(const d of drops){
-            ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-.8,d.y+d.l);ctx.stroke();
-            d.y+=d.s;if(d.y>canvas.height){d.y=-d.l;d.x=Math.random()*canvas.width;}
-        }
-        _rainRAF=requestAnimationFrame(frame);
-    }
-    _rainRAF=requestAnimationFrame(frame);
+/* ═══════════════════════════════════════════════
+   ЕЖЕДНЕВНЫЙ БОНУС
+═══════════════════════════════════════════════ */
+function checkDaily(){
+  const p=App.profile; const today=new Date().toDateString();
+  if(p.lastDaily===today) return;
+  const yest=new Date(Date.now()-864e5).toDateString();
+  p.dailyStreak = (p.lastDaily===yest)?(p.dailyStreak+1):1;
+  p.lastDaily=today;
+  const reward=20+Math.min(p.dailyStreak,7)*10;
+  setTimeout(()=>showDaily(p.dailyStreak,reward),700);
+  addCredits(reward); saveProfile();
+}
+function showDaily(streak,reward){
+  const bg=$('#daily-modal');
+  const days=Array.from({length:7},(_,i)=>`<div class="dw-day${i<streak?' done':''}">${i+1}</div>`).join('');
+  bg.innerHTML=`<div class="daily-card">
+    <div class="daily-icon">🎁</div>
+    <div class="daily-h">Ежедневный бонус</div>
+    <div class="daily-streak">Серия входов: ${streak} ${streak>=7?'🔥':''}</div>
+    <div class="daily-week">${days}</div>
+    <div class="daily-chips"><span class="dc-chip">+${reward} ◈</span></div>
+    <button class="btn btn-bronze" id="daily-ok" style="max-width:220px">Забрать</button>
+  </div>`;
+  bg.classList.remove('hidden'); Sound.daily();
+  bg.querySelector('#daily-ok').onclick=()=>{ Sound.coin(); vibrate(10); bg.classList.add('hidden'); };
+  bg.onclick=e=>{ if(e.target===bg) bg.classList.add('hidden'); };
 }
 
-// Parallax
-function initParallax(){
-    const bg=tg('parallax-bg');if(!bg)return;
-    if(window.DeviceOrientationEvent){
-        window.addEventListener('deviceorientation',e=>{
-            const rx=(e.beta||0)/90*12,ry=(e.gamma||0)/90*12;
-            bg.style.transform=`translate(${ry*.5}px,${rx*.5}px)`;
-        });
-    }
+/* ═══════════════════════════════════════════════
+   HINT GAME (match-3) — мост к match3.js
+═══════════════════════════════════════════════ */
+function openHintGame(card){
+  const modal=$('#hint-modal');
+  modal.classList.remove('hidden');
+  const mission = card.mission || pickMission();
+  $('#hint-footer').textContent=mission.label;
+  if(window.Match3){
+    Match3.start($('#hint-vp'), {
+      mission,
+      boosters:App.profile.boosters||0,
+      onWin:()=>{ modal.classList.add('hidden'); unlockSwipe(); },
+      onLose:()=>{ /* остаётся закрытым */ }
+    });
+  }
+  $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); Match3&&Match3.stop(); };
+}
+function pickMission(){
+  const M=[
+    {type:'score', target:600, moves:14, label:'Набери 600 очков за 14 ходов'},
+    {type:'color', color:0, target:12, moves:16, label:'Собери 12 красных улик'},
+    {type:'clear', target:20, moves:18, label:'Очисти 20 ячеек'},
+    {type:'combo', target:3,  moves:15, label:'Сделай 3 каскада подряд'}
+  ];
+  return M[Math.floor(Math.random()*M.length)];
 }
 
-// Dust particles on swipe
-function spawnDust(dir){
-    const zone=tg('swipe-zone');if(!zone)return;
-    const rect=zone.getBoundingClientRect();
-    const cx=rect.width/2,cy=rect.height*.55;
-    for(let i=0;i<10;i++){
-        const p=document.createElement('div');
-        p.className='dust';
-        const ang=(dir==='left'?Math.PI:dir==='up'?-Math.PI/2:0)+(Math.random()-.5)*1.8;
-        const dist=25+Math.random()*40;
-        Object.assign(p.style,{left:cx+'px',top:cy+'px'});
-        zone.appendChild(p);
-        requestAnimationFrame(()=>{
-            p.style.transform=`translate(${Math.cos(ang)*dist}px,${Math.sin(ang)*dist}px) scale(.4)`;
-            p.style.opacity='0';
-        });
-        setTimeout(()=>p.remove(),450);
-    }
-}
-
-// Confetti
-function launchConfetti(){
-    const cols=['#c8860a','#e8a030','#ffd700','#ffed4a','#ffffff','#a855f7'];
-    for(let i=0;i<60;i++){
-        const p=document.createElement('div');
-        p.className='confetti-p';
-        const col=cols[Math.floor(Math.random()*cols.length)];
-        const dur=1.4+Math.random()*.8;
-        const delay=Math.random()*.5;
-        Object.assign(p.style,{
-            left:Math.random()*100+'%',
-            width:(4+Math.random()*7)+'px',height:(4+Math.random()*7)+'px',
-            background:col,
-            animationDuration:dur+'s',animationDelay:delay+'s',
-            transform:`rotate(${Math.random()*360}deg)`,
-            borderRadius:Math.random()>.5?'50%':'2px',
-        });
-        document.body.appendChild(p);
-        setTimeout(()=>p.remove(),(delay+dur)*1000+100);
-    }
-}
-
-// ── Utils ──────────────────────────────────────
-function enc(s){return encodeURIComponent(s||'');}
-function vib(p){try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
-function wait(ms){return new Promise(r=>setTimeout(r,ms));}
-
+/* ── главная вкладка-переход для кнопки карты ── */
+window.goToTab=goToTab;
