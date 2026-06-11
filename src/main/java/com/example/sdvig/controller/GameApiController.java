@@ -3,6 +3,7 @@ package com.example.sdvig.controller;
 import com.example.sdvig.model.PlayerProfile;
 import com.example.sdvig.repository.PlayerProfileRepository;
 import com.example.sdvig.service.TelegramAuthService;
+import com.example.sdvig.service.TelegramOIDCService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,183 +16,218 @@ import java.util.UUID;
 @RequestMapping("/api/game")
 public class GameApiController {
 
-    private final TelegramAuthService     authService;
-    private final PlayerProfileRepository profileRepo;
+    private final TelegramAuthService     auth;
+    private final TelegramOIDCService     oidc;
+    private final PlayerProfileRepository repo;
     private final Random                  rng = new Random();
 
-    public GameApiController(TelegramAuthService authService,
-                             PlayerProfileRepository profileRepo) {
-        this.authService = authService;
-        this.profileRepo = profileRepo;
+    public GameApiController(TelegramAuthService auth,
+                             TelegramOIDCService oidc,
+                             PlayerProfileRepository repo) {
+        this.auth = auth;
+        this.oidc = oidc;
+        this.repo = repo;
     }
 
-    // ── Auth: Telegram WebApp ──────────────────
+    // ────────────────────────────────────────────
+    //  Auth endpoints
+    // ────────────────────────────────────────────
 
     @PostMapping("/auth/webapp")
     public ResponseEntity<?> authWebApp(@RequestBody Map<String, Object> payload) {
         try {
-            String initData = (String) payload.get("initData");
-            if (!authService.validateWebAppInitData(initData))
-                return ResponseEntity.status(401).body("Invalid WebApp signature.");
+            String initData = str(payload.get("initData"));
+            if (!auth.validateWebAppInitData(initData))
+                return err(401, "Invalid WebApp signature");
 
             @SuppressWarnings("unchecked")
             var unsafe = (Map<String, Object>) payload.get("initDataUnsafe");
-            if (unsafe == null || !unsafe.containsKey("user"))
-                return ResponseEntity.status(400).body("User data missing");
+            if (unsafe == null) return err(400, "Missing initDataUnsafe");
 
             @SuppressWarnings("unchecked")
             var u = (Map<String, Object>) unsafe.get("user");
-            return doLogin("tg:" + u.get("id"), str(u.get("username")), str(u.get("first_name")));
+            if (u == null) return err(400, "Missing user");
+
+            return login("tg:" + u.get("id"), str(u.get("username")), str(u.get("first_name")));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Server error: " + e.getMessage());
+            return err(500, "WebApp auth error: " + e.getMessage());
         }
     }
-
-    // ── Auth: Telegram Widget ──────────────────
 
     @PostMapping("/auth/widget")
     public ResponseEntity<?> authWidget(@RequestBody Map<String, Object> payload) {
         try {
-            if (!authService.validateWidgetAuth(payload))
-                return ResponseEntity.status(401).body("Invalid widget signature");
-            return doLogin("tg:" + payload.get("id"),
-                    str(payload.get("username")), str(payload.get("first_name")));
+            if (!auth.validateWidgetAuth(payload))
+                return err(401, "Invalid widget signature");
+            return login("tg:" + payload.get("id"),
+                         str(payload.get("username")),
+                         str(payload.get("first_name")));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Server error: " + e.getMessage());
+            return err(500, "Widget auth error: " + e.getMessage());
         }
     }
 
-    // ── Auth: Guest ───────────────────────────
+    /** Telegram OpenID Connect — exchange code for profile */
+    @PostMapping("/auth/oidc")
+    public ResponseEntity<?> authOIDC(@RequestBody Map<String, String> payload) {
+        String code = payload.getOrDefault("code", "").trim();
+        if (code.isBlank()) return err(400, "Missing code");
+        try {
+            Map<String, Object> info = oidc.exchangeCode(code);
+            String tgId = str(info.get("id") != null ? info.get("id") : info.get("sub"));
+            if (tgId == null || tgId.isBlank()) return err(400, "No user id in OIDC response");
+            return login("tg:" + tgId,
+                         str(info.get("username")),
+                         str(info.get("first_name")));
+        } catch (Exception e) {
+            return err(500, "OIDC error: " + e.getMessage());
+        }
+    }
 
+    /** Guest / offline login via device fingerprint */
     @PostMapping("/auth/guest")
     public ResponseEntity<?> authGuest(@RequestBody Map<String, String> payload) {
-        String deviceId = payload.getOrDefault("deviceId", UUID.randomUUID().toString());
-        // sanitise – only alphanum + dash
-        deviceId = deviceId.replaceAll("[^a-zA-Z0-9\\-]", "").substring(0, Math.min(deviceId.length(), 64));
-        return doLogin("guest:" + deviceId, "Гость", "Гость");
+        String raw = payload.getOrDefault("deviceId", UUID.randomUUID().toString());
+        String deviceId = raw.replaceAll("[^a-zA-Z0-9\\-_]", "")
+                             .substring(0, Math.min(raw.length(), 64));
+        if (deviceId.isBlank()) deviceId = UUID.randomUUID().toString().replace("-", "");
+        return login("guest:" + deviceId, "Гость", "Гость");
     }
 
     // ── Shared login helper ───────────────────
 
-    private ResponseEntity<?> doLogin(String pid, String username, String firstName) {
-        PlayerProfile p = profileRepo.findByProviderId(pid).orElseGet(() -> {
+    private ResponseEntity<?> login(String pid, String username, String firstName) {
+        PlayerProfile p = repo.findByProviderId(pid).orElseGet(() -> {
             PlayerProfile np = new PlayerProfile();
             np.setProviderId(pid);
-            np.setCredits(150); // starter credits
+            np.setCredits(150);     // starter pack
+            np.setEnergy(100);
             return np;
         });
-        if (username  != null) p.setUsername(username);
-        if (firstName != null) p.setFirstName(firstName);
-        profileRepo.save(p);
+        if (username  != null && !username.isBlank())  p.setUsername(username);
+        if (firstName != null && !firstName.isBlank()) p.setFirstName(firstName);
+        repo.save(p);
         return ResponseEntity.ok(p);
     }
 
-    private String str(Object o) { return o == null ? null : String.valueOf(o); }
-
-    // ── Choice ────────────────────────────────
+    // ────────────────────────────────────────────
+    //  Game endpoints
+    // ────────────────────────────────────────────
 
     @PostMapping("/choice")
-    public ResponseEntity<?> makeChoice(@RequestParam String providerId,
-                                        @RequestParam String direction) {
-        PlayerProfile p = profileRepo.findByProviderId(providerId).orElse(null);
-        if (p == null) return ResponseEntity.badRequest().body("Profile not found");
-        if (p.getEnergy() < 5)
-            return ResponseEntity.badRequest().body("Нет энергии — нужен кофе ☕");
+    public ResponseEntity<?> choice(
+            @RequestParam String providerId,
+            @RequestParam String direction,
+            @RequestParam(defaultValue = "false") boolean special) {
 
-        int energyCost    = Math.max(3, 12 - p.getSkill2());
-        int baseXp        = 15 + rng.nextInt(10);
-        int xpGained      = baseXp + p.getSkill1() * 4;
-        int creditsGained = 10 + rng.nextInt(15);
+        PlayerProfile p = find(providerId);
+        if (p == null) return err(400, "Profile not found");
+
+        // Special move (swipe up) requires skill1 >= 3 and costs more energy
+        int energyCost = special
+            ? Math.max(8, 18 - p.getSkill2())
+            : Math.max(3, 12 - p.getSkill2());
+
+        if (p.getEnergy() < energyCost)
+            return err(400, "Нет энергии — нужен кофе ☕ (" + energyCost + " ⚡)");
+
+        int xpBase   = special ? 25 + rng.nextInt(10) : 15 + rng.nextInt(10);
+        int xpGained = xpBase + p.getSkill1() * 4;
+        int crGained = special ? 15 + rng.nextInt(20) : 10 + rng.nextInt(15);
 
         p.setEnergy(Math.max(0, p.getEnergy() - energyCost));
         p.setXp(p.getXp() + xpGained);
-        p.setCredits(p.getCredits() + creditsGained);
+        p.setCredits(p.getCredits() + crGained);
         p.setTotalCases(p.getTotalCases() + 1);
 
+        // Rank up
         int req = p.getRank() * 150;
         if (p.getXp() >= req) { p.setXp(p.getXp() - req); p.setRank(p.getRank() + 1); }
 
-        profileRepo.save(p);
+        repo.save(p);
         return ResponseEntity.ok(Map.of(
             "profile",        p,
             "xpGained",       xpGained,
-            "creditsGained",  creditsGained,
+            "creditsGained",  crGained,
             "energyLost",     energyCost
         ));
     }
 
-    // ── Upgrade skill ─────────────────────────
-
     @PostMapping("/upgrade-skill")
     public ResponseEntity<?> upgradeSkill(@RequestParam String providerId,
-                                          @RequestParam int skillNum) {
-        PlayerProfile p = profileRepo.findByProviderId(providerId).orElse(null);
-        if (p == null) return ResponseEntity.badRequest().body("Profile not found");
+                                           @RequestParam int skillNum) {
+        PlayerProfile p = find(providerId);
+        if (p == null) return err(400, "Profile not found");
         int cur  = skillNum == 1 ? p.getSkill1() : p.getSkill2();
         int cost = 50 * cur;
-        if (p.getCredits() < cost)
-            return ResponseEntity.badRequest().body("Нужно " + cost + " 💎");
+        if (p.getCredits() < cost) return err(400, "Нужно " + cost + " 💎");
         p.setCredits(p.getCredits() - cost);
         if (skillNum == 1) p.setSkill1(cur + 1); else p.setSkill2(cur + 1);
-        profileRepo.save(p);
+        repo.save(p);
         return ResponseEntity.ok(p);
     }
-
-    // ── Buy coffee ────────────────────────────
 
     @PostMapping("/buy-coffee")
     public ResponseEntity<?> buyCoffee(@RequestParam String providerId) {
-        PlayerProfile p = profileRepo.findByProviderId(providerId).orElse(null);
-        if (p == null) return ResponseEntity.badRequest().body("Profile not found");
-        if (p.getCredits() < 40) return ResponseEntity.badRequest().body("Нужно 40 💎");
+        PlayerProfile p = find(providerId);
+        if (p == null) return err(400, "Profile not found");
+        if (p.getCredits() < 40) return err(400, "Нужно 40 💎");
         p.setCredits(p.getCredits() - 40);
         p.setEnergy(Math.min(100, p.getEnergy() + 35));
-        profileRepo.save(p);
+        repo.save(p);
         return ResponseEntity.ok(p);
     }
 
-    // ── Daily bonus ───────────────────────────
-
     @GetMapping("/daily-bonus")
     public ResponseEntity<?> checkDaily(@RequestParam String providerId) {
-        PlayerProfile p = profileRepo.findByProviderId(providerId).orElse(null);
-        if (p == null) return ResponseEntity.badRequest().body("Profile not found");
+        PlayerProfile p = find(providerId);
+        if (p == null) return err(400, "Profile not found");
         String today = LocalDate.now().toString();
-        String last  = p.getLastDailyBonus() == null ? "" : p.getLastDailyBonus();
-        return ResponseEntity.ok(Map.of("available", !today.equals(last), "streak", p.getStreak()));
+        boolean avail = !today.equals(p.getLastDailyBonus());
+        return ResponseEntity.ok(Map.of("available", avail, "streak", p.getStreak()));
     }
 
     @PostMapping("/daily-bonus/claim")
     public ResponseEntity<?> claimDaily(@RequestParam String providerId) {
-        PlayerProfile p = profileRepo.findByProviderId(providerId).orElse(null);
-        if (p == null) return ResponseEntity.badRequest().body("Profile not found");
+        PlayerProfile p = find(providerId);
+        if (p == null) return err(400, "Profile not found");
         String today = LocalDate.now().toString();
         if (today.equals(p.getLastDailyBonus()))
-            return ResponseEntity.badRequest().body("Бонус уже получен сегодня");
-        String yesterday = LocalDate.now().minusDays(1).toString();
-        int streak = yesterday.equals(p.getLastDailyBonus()) ? p.getStreak() + 1 : 1;
+            return err(400, "Бонус уже получен сегодня");
+        String yest = LocalDate.now().minusDays(1).toString();
+        int streak = yest.equals(p.getLastDailyBonus()) ? p.getStreak() + 1 : 1;
         p.setCredits(p.getCredits() + 50);
         p.setEnergy(Math.min(100, p.getEnergy() + 30));
         p.setStreak(streak);
         p.setLastDailyBonus(today);
-        profileRepo.save(p);
+        repo.save(p);
         return ResponseEntity.ok(Map.of("profile", p));
     }
 
-    // ── Advance game level ────────────────────
-
     @PostMapping("/advance-level")
     public ResponseEntity<?> advanceLevel(@RequestParam String providerId,
-                                          @RequestParam String gameType) {
-        PlayerProfile p = profileRepo.findByProviderId(providerId).orElse(null);
-        if (p == null) return ResponseEntity.badRequest().body("Profile not found");
+                                           @RequestParam String gameType) {
+        PlayerProfile p = find(providerId);
+        if (p == null) return err(400, "Profile not found");
         if ("detective".equals(gameType))
             p.setDetectiveLvl(Math.min(100, p.getDetectiveLvl() + 1));
         p.setXp(p.getXp() + 50);
         int req = p.getRank() * 150;
         if (p.getXp() >= req) { p.setXp(p.getXp() - req); p.setRank(p.getRank() + 1); }
-        profileRepo.save(p);
+        repo.save(p);
         return ResponseEntity.ok(p);
     }
+
+    // ── Helpers ──────────────────────────────
+
+    private PlayerProfile find(String pid) {
+        return repo.findByProviderId(pid).orElse(null);
+    }
+
+    private ResponseEntity<String> err(int status, String msg) {
+        return ResponseEntity.status(status).body(msg);
+    }
+
+    private String str(Object o) { return o == null ? null : String.valueOf(o); }
 }
 

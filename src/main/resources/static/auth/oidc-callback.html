@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Авторизация…</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#070508;display:flex;align-items:center;justify-content:center}
+.wrap{text-align:center;color:rgba(255,255,255,.7);font-family:-apple-system,sans-serif;padding:32px}
+.ring{width:48px;height:48px;border-radius:50%;border:3px solid rgba(200,134,10,.2);border-top-color:#c8860a;animation:spin .9s linear infinite;margin:0 auto 20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+p{font-size:14px;letter-spacing:.5px}
+.err{color:#ef4444;font-size:13px;margin-top:12px;display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+    <div class="ring"></div>
+    <p>Проверяем данные…</p>
+    <div class="err" id="err"></div>
+</div>
+<script>
+(function(){
+    try {
+        var p = new URLSearchParams(location.search);
+        var code  = p.get('code');
+        var state = p.get('state');
+        var error = p.get('error');
+        var edesc = p.get('error_description');
+
+        if (window.opener && !window.opener.closed) {
+            // Popup flow — post to parent and close
+            window.opener.postMessage(
+                {type:'tg_oidc', code:code, state:state, error:error},
+                window.opener.location.origin
+            );
+            document.querySelector('p').textContent = 'Готово! Закрываем окно…';
+            setTimeout(function(){ window.close(); }, 800);
+        } else {
+            // Redirect flow (no popup) — stash in sessionStorage and go to root
+            if (error) {
+                sessionStorage.setItem('tg_oidc_error', edesc || error);
+            } else {
+                sessionStorage.setItem('tg_oidc_code',  code  || '');
+                sessionStorage.setItem('tg_oidc_state', state || '');
+            }
+            document.querySelector('p').textContent = 'Перенаправляем…';
+            setTimeout(function(){ location.href = '/'; }, 500);
+        }
+    } catch(e) {
+        var errEl = document.getElementById('err');
+        errEl.style.display = 'block';
+        errEl.textContent = 'Ошибка: ' + e.message;
+    }
+})();
+</script>
+</body>
+</html>
+
