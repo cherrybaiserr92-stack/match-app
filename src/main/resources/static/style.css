@@ -393,3 +393,21 @@ body{
 
 /* ── Scrollbars (subtle) ────────────────────── */
 .tab-pane::-webkit-scrollbar,.map-scroll::-webkit-scrollbar{width:0;height:0}
+
+/* ═══════════ HOTFIX: pointer-events audit ═══════════ */
+#bg-fx, #bg-fx *{ pointer-events:none !important; }
+.splash-flash{ pointer-events:none !important; }
+.splash-photo,.login-photo{ pointer-events:none !important; }
+#login-screen::after{ pointer-events:none !important; }
+/* активный экран и его содержимое — кликабельны */
+.screen{ pointer-events:none; }
+.screen.active{ pointer-events:auto; }
+.screen:not(.active){ pointer-events:none !important; }
+/* кнопки/виджет всегда поверх и кликабельны */
+.btn,.nb,.sound-btn,.up-btn,.shop-item,.game-row,.map-node,
+.hm-close,.back-btn,#guest-btn,#tg-browser-btn,#tg-widget-area,#tg-widget-area *{
+  pointer-events:auto !important; position:relative; z-index:5;
+}
+.login-wrap{ position:relative; z-index:5; }
+/* tab-area не должна перекрывать nav */
+.bottom-nav{ z-index:60 !important; }

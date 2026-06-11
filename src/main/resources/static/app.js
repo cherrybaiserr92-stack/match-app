@@ -168,17 +168,40 @@ async function tgWebAppLogin(tg){
 }
 
 function initLogin(){
-  const area=$('#tg-widget-area');
   const status=$('#tg-status');
-  // в обычном браузере виджет Mini App работать не будет — честно показываем гостя
-  if(!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)){
-    status.innerHTML='Откройте игру в Telegram для входа через профиль, '+
-      'или продолжите как гость.';
-  }
-  // кнопка ГОСТЬ — рабочая (без перекрытий: splash-flash не ловит клики)
   const gb=$('#guest-btn');
-  gb.onclick=()=>{ Sound.tap(); guestLogin(); };
+  // ГОСТЬ — всегда рабочий
+  if(gb){ gb.style.pointerEvents='auto'; gb.disabled=false;
+    gb.onclick=()=>{ Sound.tap(); guestLogin(); }; }
+
+  // Telegram Login Widget для обычного браузера
+  const BOT = window.SDVIG_BOT_USERNAME || '';   // имя бота без @
+  const area=$('#tg-widget-area');
+  if(area && BOT){
+    status.textContent='';
+    const sc=document.createElement('script');
+    sc.src='https://telegram.org/js/telegram-widget.js?22';
+    sc.async=true;
+    sc.setAttribute('data-telegram-login',BOT);
+    sc.setAttribute('data-size','large');
+    sc.setAttribute('data-radius','12');
+    sc.setAttribute('data-request-access','write');
+    sc.setAttribute('data-onauth','onTelegramAuth(user)');
+    area.innerHTML=''; area.appendChild(sc);
+  } else {
+    status.textContent='Войдите через Telegram (в приложении) или как гость.';
+  }
 }
+
+// callback от Telegram Login Widget (браузер)
+window.onTelegramAuth=function(user){
+  fetch('/api/auth/widget',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(user)})
+    .then(r=>{ if(!r.ok) throw 0; return r.json(); })
+    .then(data=>{ App.user=data.user; App.token=data.token; App.guest=false;
+      App.profile=normalizeProfile(data.profile); persistSession(); enterMain(); })
+    .catch(()=>{ toast('Ошибка входа','Попробуйте как гость','✗'); });
+};
 
 function guestLogin(){
   App.guest=true; App.user={ id:'guest', name:'Гость', firstName:'Гость' };
@@ -721,15 +744,16 @@ function openHintGame(card){
   modal.classList.remove('hidden');
   const mission = card.mission || pickMission();
   $('#hint-footer').textContent=mission.label;
+  if(window.BgFx) BgFx.pause();
   if(window.Match3){
     Match3.start($('#hint-vp'), {
       mission,
       boosters:App.profile.boosters||0,
-      onWin:()=>{ modal.classList.add('hidden'); unlockSwipe(); },
+      onWin:()=>{ modal.classList.add('hidden'); if(window.BgFx)BgFx.resume(); unlockSwipe(); },
       onLose:()=>{ /* остаётся закрытым */ }
     });
   }
-  $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); Match3&&Match3.stop(); };
+  $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); if(window.BgFx)BgFx.resume(); Match3&&Match3.stop(); };
 }
 function pickMission(){
   const M=[
