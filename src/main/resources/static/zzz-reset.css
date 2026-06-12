@@ -1,0 +1,41 @@
+/* zzz-reset.css — грузится ПОСЛЕДНИМ, перебивает всё */
+
+/* 1. Любой фоновый/оверлейный слой не ловит клики */
+#bg-fx, #bg-fx *,
+.splash-flash,
+.splash-photo,
+.login-photo,
+#splash-screen,
+#splash-screen *{
+  pointer-events:none !important;
+}
+
+/* 2. Splash прячем жёстко, если он не активен по логике */
+#splash-screen:not(.active){
+  display:none !important;
+}
+
+/* 3. Канвас Phaser-фона — никогда не перехватывает */
+#bg-fx canvas{ pointer-events:none !important; }
+
+/* 4. Логин и его кнопки — всегда кликабельны и поверх */
+#login-screen{ pointer-events:auto !important; z-index:50 !important; }
+#login-screen .login-photo,
+#login-screen::after{ pointer-events:none !important; }
+.login-wrap, .login-card,
+#guest-btn, #tg-browser-btn, #tg-widget-area, #tg-widget-area *{
+  position:relative !important;
+  z-index:9999 !important;
+  pointer-events:auto !important;
+}
+
+/* 5. Нижняя навигация и её кнопки */
+.bottom-nav{ pointer-events:auto !important; z-index:9000 !important; }
+.bottom-nav *{ pointer-events:auto !important; }
+
+/* 6. Любой брошенный arcade-overlay, если игра не идёт — убрать */
+#arcade-overlay:empty{ display:none !important; }
+
+/* 7. Активный экран кликабелен, неактивные — нет */
+.screen.active{ pointer-events:auto !important; }
+.screen:not(.active){ pointer-events:none !important; }
