@@ -411,3 +411,51 @@ body{
 .login-wrap{ position:relative; z-index:5; }
 /* tab-area не должна перекрывать nav */
 .bottom-nav{ z-index:60 !important; }
+
+/* ========== UPGRADE: layout + arcade ========== */
+html,body{width:100%;height:100%;overflow:hidden}
+body{position:fixed;inset:0}
+
+#bg-fx{position:fixed!important;inset:0!important;z-index:0!important;pointer-events:none!important}
+#bg-fx canvas{pointer-events:none!important;touch-action:none!important}
+
+.screen{position:fixed!important;inset:0!important;padding-top:0!important}
+.screen:not(.active){pointer-events:none!important}
+.screen.active{pointer-events:auto!important}
+
+.topbar{position:fixed!important;top:0;left:0;right:0;z-index:70!important}
+.xp-band{position:fixed!important;top:54px;left:0;right:0;z-index:69!important}
+.tab-area{position:fixed!important;top:86px!important;left:0;right:0;
+  bottom:calc(var(--navh) + var(--safeb))!important;z-index:30!important;overflow:hidden!important}
+.tab-pane{position:absolute!important;inset:0!important;overflow-y:auto!important;
+  padding:16px 14px 24px!important;-webkit-overflow-scrolling:touch}
+.bottom-nav{position:fixed!important;left:0;right:0;bottom:0;z-index:120!important;pointer-events:auto!important}
+.bottom-nav *{pointer-events:auto!important}
+.nb{min-height:60px}
+
+#login-screen{z-index:40!important}
+.login-wrap,.login-card,#guest-btn,#tg-browser-btn,#tg-widget-area,#tg-widget-area *{
+  position:relative!important;z-index:80!important;pointer-events:auto!important}
+.login-photo,.splash-photo,#login-screen::after,.splash-flash{pointer-events:none!important}
+
+/* arcade overlay */
+#arcade-overlay{
+  position:fixed;inset:0;z-index:9999;
+  display:flex;flex-direction:column;
+  background:radial-gradient(800px 600px at 50% 0%, #11161f, #06080c);
+  padding-top:var(--safet);padding-bottom:var(--safeb);
+}
+.arc-bar{
+  flex:0 0 auto;height:52px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px;background:rgba(16,20,28,.85);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.arc-close{
+  border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;
+  color:#ffcf6b;background:rgba(255,255,255,.06);
+  border:1px solid rgba(240,169,58,.35);border-radius:10px;padding:8px 14px;
+}
+.arc-title{font-weight:700;font-size:15px;color:#f2f5fb}
+.arc-stage{flex:1 1 auto;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.arc-stage canvas{max-width:100%!important;max-height:100%!important}
