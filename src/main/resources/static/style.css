@@ -338,33 +338,64 @@ body::before{
 .shop-price{ margin-top:10px; padding:8px; border-radius:var(--r); background:var(--acc-dim);
   color:var(--acc-2); font-weight:800; font-size:13px; border:1px solid rgba(240,169,58,.3); }
 
-/* ═══ MAP ═══ */
+/* ═══ MAP — доска расследования ═══ */
 .map-scroll{ position:absolute; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
   background:
-    radial-gradient(circle at 20% 10%, rgba(200,134,10,.06), transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(107,224,255,.05), transparent 40%),
-    repeating-linear-gradient(0deg, transparent, transparent 38px, rgba(255,255,255,.018) 38px, rgba(255,255,255,.018) 39px),
-    repeating-linear-gradient(90deg, transparent, transparent 38px, rgba(255,255,255,.018) 38px, rgba(255,255,255,.018) 39px),
-    linear-gradient(180deg, #0c1016, #070a0e);
+    radial-gradient(140% 50% at 50% 0%, rgba(120,72,30,.18), transparent 60%),
+    repeating-linear-gradient(28deg, rgba(120,80,40,.04) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(-28deg, rgba(120,80,40,.035) 0 2px, transparent 2px 5px),
+    radial-gradient(circle at 30% 12%, rgba(150,95,45,.10), transparent 45%),
+    linear-gradient(180deg, #1a120a, #0d0906);
 }
 .map-inner{ position:relative; width:100%; }
 .map-path-svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; }
-.map-chapter{ position:absolute; transform:translate(-50%,-50%); z-index:2; text-align:center; white-space:nowrap; }
-.mc-title{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:15px; color:var(--acc-2); }
-.mc-sub{ font-size:11px; color:var(--ink3); }
-.mc-locked .mc-title{ color:var(--ink4); }
+.map-zone{ pointer-events:none; }
+
+/* табличка района — как приколотая записка */
+.map-chapter{ position:absolute; transform:translate(-50%,0); z-index:3; text-align:center; white-space:nowrap;
+  background:linear-gradient(180deg,#fdf6e3,#e8dcc0); color:#2a2012;
+  padding:8px 18px; border-radius:6px; box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.6);
+  transform:translate(-50%,0) rotate(-1.2deg); }
+.map-chapter::before{ content:''; position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+  width:11px; height:11px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ff8a7a, #c0301c);
+  box-shadow:0 2px 4px rgba(0,0,0,.5); }
+.mc-dist{ font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; opacity:.7; }
+.mc-title{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:13px; color:#2a2012; }
+.mc-locked{ filter:grayscale(.7) brightness(.7); }
+
+/* узел-уровень — кружок-жетон, приколотый к доске */
 .map-node{ position:absolute; transform:translate(-50%,-50%); z-index:2;
-  width:54px; height:54px; border-radius:50%; cursor:pointer;
+  width:56px; height:56px; border-radius:50%; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
-  font-family:'Unbounded',sans-serif; font-weight:700; font-size:18px;
-  background:var(--glass-2); border:2px solid var(--glass-line); color:var(--ink3);
+  background:radial-gradient(circle at 38% 30%, #2a3142, #141823);
+  border:2.5px solid var(--glass-line); color:var(--ink3);
+  box-shadow:0 6px 16px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12);
   transition:transform .15s ease; }
-.map-node:active{ transform:translate(-50%,-50%) scale(.92); }
-.map-node.done{ border-color:var(--acc); color:var(--acc-2); background:var(--acc-dim); }
-.map-node.current{ border-color:var(--acc-2); color:var(--acc-2); box-shadow:0 0 24px var(--acc-glow);
+.mn-num{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:18px; }
+.map-node:active{ transform:translate(-50%,-50%) scale(.9); }
+.map-node.done{ border-color:var(--nt,#c8860a); color:#fff;
+  background:radial-gradient(circle at 38% 30%, #2a3142, #10141d);
+  background:radial-gradient(circle at 38% 30%, color-mix(in srgb, var(--nt,#c8860a) 40%, #1a2030), #10141d); }
+.map-node.current{ border-color:#fff; color:#fff; transform:translate(-50%,-50%) scale(1.12);
+  background:radial-gradient(circle at 38% 30%, var(--nt,#ffcf6b), #b3741c);
+  box-shadow:0 0 0 4px rgba(255,207,107,.3), 0 8px 22px rgba(0,0,0,.55);
+  box-shadow:0 0 0 4px color-mix(in srgb, var(--nt,#ffcf6b) 30%, transparent), 0 8px 22px rgba(0,0,0,.55);
   animation:nodePulse 1.8s ease-in-out infinite; }
-@keyframes nodePulse{ 50%{ box-shadow:0 0 36px var(--acc-glow); } }
+@keyframes nodePulse{ 50%{ box-shadow:0 0 0 10px transparent, 0 8px 22px rgba(0,0,0,.55); } }
+.map-node.locked{ background:radial-gradient(circle at 38% 30%, #1a1e28, #0e1119); }
 .map-node.locked [data-ico]{ width:20px; height:20px; color:var(--ink4); }
+.map-node.milestone{ width:66px; height:66px; border-radius:18px; }
+.map-node.milestone .mn-num{ font-size:20px; }
+/* звёзды под пройденным узлом */
+.mn-stars{ position:absolute; bottom:-15px; left:50%; transform:translateX(-50%);
+  font-size:11px; color:#ffcf6b; letter-spacing:1px; text-shadow:0 1px 3px rgba(0,0,0,.6); white-space:nowrap; }
+/* булавка-аватар на текущем уровне */
+.mn-pin{ position:absolute; top:-26px; left:50%; transform:translateX(-50%);
+  width:30px; height:30px; border-radius:50%; background:var(--glass-2); border:2px solid #fff;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,.5); }
+.mn-pin [data-ico]{ width:16px; height:16px; color:#fff; }
+.mn-pin::after{ content:''; position:absolute; bottom:-7px; left:50%; transform:translateX(-50%);
+  border:5px solid transparent; border-top-color:#fff; }
 
 /* ═══ TOAST ═══ */
 .toast{

@@ -1,12 +1,11 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-#  СДВИГ · deploy.sh — фикс свайпа, толстая рамка, колода,
-#  глубокие фоны карточек, инструменты ниже
+#  СДВИГ · deploy.sh — карта как доска расследования (красная нить)
 # ═══════════════════════════════════════════════════════════════
 set -e
 S="src/main/resources/static"
 echo ""
-echo "🎴  СДВИГ — карточки, колода, глубокие фоны…"
+echo "🗺  СДВИГ — карта-доска расследования…"
 echo ""
 echo "  ✦ $S/style.css"
 mkdir -p $(dirname "$S/style.css")
@@ -351,33 +350,64 @@ body::before{
 .shop-price{ margin-top:10px; padding:8px; border-radius:var(--r); background:var(--acc-dim);
   color:var(--acc-2); font-weight:800; font-size:13px; border:1px solid rgba(240,169,58,.3); }
 
-/* ═══ MAP ═══ */
+/* ═══ MAP — доска расследования ═══ */
 .map-scroll{ position:absolute; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
   background:
-    radial-gradient(circle at 20% 10%, rgba(200,134,10,.06), transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(107,224,255,.05), transparent 40%),
-    repeating-linear-gradient(0deg, transparent, transparent 38px, rgba(255,255,255,.018) 38px, rgba(255,255,255,.018) 39px),
-    repeating-linear-gradient(90deg, transparent, transparent 38px, rgba(255,255,255,.018) 38px, rgba(255,255,255,.018) 39px),
-    linear-gradient(180deg, #0c1016, #070a0e);
+    radial-gradient(140% 50% at 50% 0%, rgba(120,72,30,.18), transparent 60%),
+    repeating-linear-gradient(28deg, rgba(120,80,40,.04) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(-28deg, rgba(120,80,40,.035) 0 2px, transparent 2px 5px),
+    radial-gradient(circle at 30% 12%, rgba(150,95,45,.10), transparent 45%),
+    linear-gradient(180deg, #1a120a, #0d0906);
 }
 .map-inner{ position:relative; width:100%; }
 .map-path-svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; }
-.map-chapter{ position:absolute; transform:translate(-50%,-50%); z-index:2; text-align:center; white-space:nowrap; }
-.mc-title{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:15px; color:var(--acc-2); }
-.mc-sub{ font-size:11px; color:var(--ink3); }
-.mc-locked .mc-title{ color:var(--ink4); }
+.map-zone{ pointer-events:none; }
+
+/* табличка района — как приколотая записка */
+.map-chapter{ position:absolute; transform:translate(-50%,0); z-index:3; text-align:center; white-space:nowrap;
+  background:linear-gradient(180deg,#fdf6e3,#e8dcc0); color:#2a2012;
+  padding:8px 18px; border-radius:6px; box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.6);
+  transform:translate(-50%,0) rotate(-1.2deg); }
+.map-chapter::before{ content:''; position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+  width:11px; height:11px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ff8a7a, #c0301c);
+  box-shadow:0 2px 4px rgba(0,0,0,.5); }
+.mc-dist{ font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; opacity:.7; }
+.mc-title{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:13px; color:#2a2012; }
+.mc-locked{ filter:grayscale(.7) brightness(.7); }
+
+/* узел-уровень — кружок-жетон, приколотый к доске */
 .map-node{ position:absolute; transform:translate(-50%,-50%); z-index:2;
-  width:54px; height:54px; border-radius:50%; cursor:pointer;
+  width:56px; height:56px; border-radius:50%; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
-  font-family:'Unbounded',sans-serif; font-weight:700; font-size:18px;
-  background:var(--glass-2); border:2px solid var(--glass-line); color:var(--ink3);
+  background:radial-gradient(circle at 38% 30%, #2a3142, #141823);
+  border:2.5px solid var(--glass-line); color:var(--ink3);
+  box-shadow:0 6px 16px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12);
   transition:transform .15s ease; }
-.map-node:active{ transform:translate(-50%,-50%) scale(.92); }
-.map-node.done{ border-color:var(--acc); color:var(--acc-2); background:var(--acc-dim); }
-.map-node.current{ border-color:var(--acc-2); color:var(--acc-2); box-shadow:0 0 24px var(--acc-glow);
+.mn-num{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:18px; }
+.map-node:active{ transform:translate(-50%,-50%) scale(.9); }
+.map-node.done{ border-color:var(--nt,#c8860a); color:#fff;
+  background:radial-gradient(circle at 38% 30%, #2a3142, #10141d);
+  background:radial-gradient(circle at 38% 30%, color-mix(in srgb, var(--nt,#c8860a) 40%, #1a2030), #10141d); }
+.map-node.current{ border-color:#fff; color:#fff; transform:translate(-50%,-50%) scale(1.12);
+  background:radial-gradient(circle at 38% 30%, var(--nt,#ffcf6b), #b3741c);
+  box-shadow:0 0 0 4px rgba(255,207,107,.3), 0 8px 22px rgba(0,0,0,.55);
+  box-shadow:0 0 0 4px color-mix(in srgb, var(--nt,#ffcf6b) 30%, transparent), 0 8px 22px rgba(0,0,0,.55);
   animation:nodePulse 1.8s ease-in-out infinite; }
-@keyframes nodePulse{ 50%{ box-shadow:0 0 36px var(--acc-glow); } }
+@keyframes nodePulse{ 50%{ box-shadow:0 0 0 10px transparent, 0 8px 22px rgba(0,0,0,.55); } }
+.map-node.locked{ background:radial-gradient(circle at 38% 30%, #1a1e28, #0e1119); }
 .map-node.locked [data-ico]{ width:20px; height:20px; color:var(--ink4); }
+.map-node.milestone{ width:66px; height:66px; border-radius:18px; }
+.map-node.milestone .mn-num{ font-size:20px; }
+/* звёзды под пройденным узлом */
+.mn-stars{ position:absolute; bottom:-15px; left:50%; transform:translateX(-50%);
+  font-size:11px; color:#ffcf6b; letter-spacing:1px; text-shadow:0 1px 3px rgba(0,0,0,.6); white-space:nowrap; }
+/* булавка-аватар на текущем уровне */
+.mn-pin{ position:absolute; top:-26px; left:50%; transform:translateX(-50%);
+  width:30px; height:30px; border-radius:50%; background:var(--glass-2); border:2px solid #fff;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,.5); }
+.mn-pin [data-ico]{ width:16px; height:16px; color:#fff; }
+.mn-pin::after{ content:''; position:absolute; bottom:-7px; left:50%; transform:translateX(-50%);
+  border:5px solid transparent; border-top-color:#fff; }
 
 /* ═══ TOAST ═══ */
 .toast{
@@ -416,266 +446,6 @@ body::before{
 
 EOF_SDVIG
 
-echo "  ✦ $S/card-design.css"
-mkdir -p $(dirname "$S/card-design.css")
-cat > "$S/card-design.css" << 'EOF_SDVIG'
-/* ═══════════════════════════════════════════════
-   СДВИГ · card-design.css — карточки дел
-   Тёмное стекло · штампы скрыты до свайпа
-═══════════════════════════════════════════════ */
-
-/* ── стопка-подложка ── */
-/* ── колода-подложка (набирается анимацией при входе) ── */
-.stack-card{
-  position:absolute; top:46%; left:50%;
-  width:min(86%,360px); height:58%;
-  border-radius:var(--r2xl);
-  background:linear-gradient(160deg, #161a26, #0c0f16);
-  border:2px solid rgba(255,255,255,.06);
-  box-shadow:0 16px 40px -12px rgba(0,0,0,.7);
-  pointer-events:none;
-  opacity:0;
-}
-.sc1{ transform:translate(-50%,-50%) translateY(10px) scale(.965) rotate(1deg); }
-.sc2{ transform:translate(-50%,-50%) translateY(20px) scale(.93)  rotate(-1.5deg); }
-.sc3{ transform:translate(-50%,-50%) translateY(30px) scale(.895) rotate(2deg); }
-/* анимация набора колоды */
-.stack-card.deal{ animation:dealIn .45s cubic-bezier(.22,1.1,.36,1) both; }
-.sc3.deal{ animation-delay:.0s; }
-.sc2.deal{ animation-delay:.1s; }
-.sc1.deal{ animation-delay:.2s; }
-@keyframes dealIn{
-  from{ opacity:0; transform:translate(-50%,-180%) rotate(-12deg) scale(.8); }
-}
-.sc1.dealt{ opacity:.72; }
-.sc2.dealt{ opacity:.46; }
-.sc3.dealt{ opacity:.26; }
-
-/* ── активная карточка ── */
-.case-card{
-  position:absolute; top:46%; left:50%;
-  transform:translate(-50%,-50%) rotate(-.4deg);
-  width:min(86%,360px); min-height:58%; max-height:64%;
-  display:flex; flex-direction:column;
-  padding:22px 20px 18px;
-  border-radius:var(--r2xl);
-  /* плотная подложка снизу (убирает чёрный просвет при свайпе) + стекло сверху */
-  background:
-    linear-gradient(155deg, rgba(38,34,28,.22), transparent 40%),
-    linear-gradient(160deg, #14182260, #0a0d12d0),
-    #0c1016;
-  -webkit-backdrop-filter:blur(calc(var(--glass-blur) + 6px)) saturate(1.2);
-  backdrop-filter:blur(calc(var(--glass-blur) + 6px)) saturate(1.2);
-  /* толстая рамка */
-  border:2.5px solid rgba(255,207,107,.32);
-  box-shadow:
-    0 30px 70px -12px rgba(0,0,0,.8),
-    0 8px 24px -6px rgba(0,0,0,.55),
-    inset 0 1px 0 rgba(255,255,255,.14),
-    inset 0 -1px 0 rgba(0,0,0,.4);
-  touch-action:none;
-  z-index:6;
-}
-/* все дочерние элементы карточки передают свайп родителю */
-.case-card *{ touch-action:none; }
-/* тонкая золотая кайма поверх стекла */
-.case-card::after{
-  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
-  padding:1px;
-  background:linear-gradient(150deg, rgba(255,207,107,.45), transparent 30%, transparent 70%, rgba(255,207,107,.25));
-  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite:xor; mask-composite:exclude;
-  opacity:.6;
-}
-/* все дочерние элементы карточки передают свайп родителю */
-.case-card *{ touch-action:none; }
-/* премиум-фон карточки (SVG-текстура по типу дела) */
-.card-bg{ position:absolute; inset:0; border-radius:inherit; overflow:hidden; z-index:0; }
-.card-bg svg{ display:block; width:100%; height:100%; }
-/* лёгкий скрим для читабельности текста поверх фона */
-.card-bg::after{ content:''; position:absolute; inset:0;
-  background:linear-gradient(180deg, rgba(6,8,12,.25), rgba(6,8,12,.55)); }
-.case-card>.card-head,
-.case-card>.card-divider,
-.case-card>.card-body,
-.case-card>.card-actions-area{ position:relative; z-index:2; }
-.case-card.card-enter{ animation:cardIn .5s cubic-bezier(.22,1.1,.36,1) both; }
-@keyframes cardIn{
-  from{ opacity:0; transform:translate(-50%,-50%) translateY(40px) scale(.92) rotate(2deg); }
-  to{ opacity:1; transform:translate(-50%,-50%) rotate(-.4deg); }
-}
-
-/* акцентная рамка по типу */
-.case-card::before{
-  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
-  border:1px solid transparent;
-}
-.ct-crime::before{ box-shadow:inset 0 0 0 1px rgba(255,93,108,.3); }
-.ct-suspect::before{ box-shadow:inset 0 0 0 1px rgba(168,139,255,.3); }
-.ct-evidence::before{ box-shadow:inset 0 0 0 1px rgba(107,224,255,.3); }
-.ct-witness::before{ box-shadow:inset 0 0 0 1px rgba(53,212,155,.3); }
-.ct-revelation::before{ box-shadow:inset 0 0 0 1px rgba(255,207,107,.35); }
-
-/* tilt-подсветка при свайпе */
-.case-card.tilt-left{ box-shadow:0 30px 70px -12px rgba(0,0,0,.75),-24px 0 70px -22px var(--no); }
-.case-card.tilt-right{ box-shadow:0 30px 70px -12px rgba(0,0,0,.75),24px 0 70px -22px var(--ok); }
-.case-card.tilt-up{ box-shadow:0 30px 70px -12px rgba(0,0,0,.75),0 -24px 70px -22px var(--acc-2); }
-
-/* ── шапка ── */
-.card-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; position:relative; z-index:2; }
-.card-act{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:var(--ink3);
-  text-transform:uppercase; }
-.card-type-badge{ font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase;
-  padding:5px 12px; border-radius:var(--rfull);
-  background:linear-gradient(135deg, rgba(255,207,107,.22), rgba(200,134,10,.12));
-  color:var(--acc-2); border:1px solid rgba(255,207,107,.4);
-  box-shadow:0 2px 8px rgba(200,134,10,.15), inset 0 1px 0 rgba(255,255,255,.15); }
-.card-divider{ height:1px; margin:16px 0; position:relative; z-index:2;
-  background:linear-gradient(90deg, transparent, rgba(255,207,107,.4), transparent); }
-
-/* ── тело ── */
-.card-body{ flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px;
-  position:relative; z-index:2; overflow:hidden; }
-.card-icon-box{
-  font-size:46px; line-height:1; margin-top:10px;
-  width:92px; height:92px; display:flex; align-items:center; justify-content:center;
-  border-radius:50%;
-  background:radial-gradient(circle at 38% 32%, rgba(255,207,107,.14), rgba(20,24,34,.6) 70%);
-  border:1px solid rgba(255,207,107,.22);
-  box-shadow:
-    0 8px 24px -6px rgba(0,0,0,.6),
-    inset 0 2px 8px rgba(255,255,255,.08),
-    inset 0 -4px 12px rgba(0,0,0,.4),
-    0 0 30px -8px rgba(255,207,107,.3);
-}
-.card-case-title{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:21px; letter-spacing:.3px;
-  background:linear-gradient(180deg, #fff, #d8dde8);
-  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
-  text-shadow:0 2px 12px rgba(0,0,0,.3); }
-.card-text{ font-size:14.5px; color:var(--ink2); line-height:1.65; max-width:92%; }
-
-/* ── ШТАМПЫ: скрыты по умолчанию (opacity:0!) ── */
-.stamp-wrap{
-  position:absolute; top:54px; z-index:5;
-  pointer-events:none;
-  opacity:0;                              /* ← ключевой фикс залипших надписей */
-  transition:opacity .1s ease;
-}
-.stamp-right{ right:24px; transform:rotate(14deg); }
-.stamp-left{ left:24px; transform:rotate(-14deg); }
-.stamp-up{ left:50%; top:30px; transform:translateX(-50%) rotate(-3deg); }
-.stamp{
-  font-family:'Unbounded',sans-serif; font-weight:800; font-size:22px; letter-spacing:2px;
-  padding:8px 16px; border-radius:10px; border:3px solid; text-transform:uppercase;
-}
-.stamp-approve-text{ color:var(--ok); border-color:var(--ok); text-shadow:0 0 14px var(--ok-dim); }
-.stamp-deny-text{ color:var(--no); border-color:var(--no); text-shadow:0 0 14px var(--no-dim); }
-.stamp-special-text{ color:var(--acc-2); border-color:var(--acc-2); text-shadow:0 0 14px var(--acc-glow); }
-
-/* ── действия ── */
-.card-actions-area{ position:relative; z-index:2; margin-top:12px; display:flex; flex-direction:column; gap:10px; }
-.btn-play-gems{
-  display:flex; align-items:center; justify-content:center; gap:8px;
-  border:none; cursor:pointer; font-family:inherit; font-weight:700; font-size:15px;
-  padding:14px; border-radius:var(--rl); width:100%;
-  background:linear-gradient(135deg,var(--gem),var(--info)); color:#04121a;
-  box-shadow:0 6px 20px rgba(107,224,255,.2);
-}
-.btn-play-gems [data-ico]{ width:18px; height:18px; }
-.swipe-indicator{ display:flex; align-items:center; justify-content:space-between; gap:8px;
-  font-size:12px; color:var(--ink3); padding:4px 2px; }
-.swipe-indicator .si-center [data-ico]{ width:20px; height:20px; }
-.si-deny{ color:var(--no); font-weight:700; }
-.si-approve{ color:var(--ok); font-weight:700; }
-.si-locked{ display:flex; align-items:center; gap:6px; justify-content:center; width:100%; color:var(--ink4); }
-.si-locked [data-ico]{ width:15px; height:15px; }
-.si-special{ display:block; text-align:center; font-size:11px; color:var(--acc-2); margin-top:4px; }
-
-/* ── подсказка после мини-игры ── */
-.hint-revealed-panel{ display:flex; gap:10px; align-items:flex-start; margin-top:6px;
-  padding:11px 13px; border-radius:var(--rl); background:var(--acc-dim); border:1px solid rgba(240,169,58,.25); }
-.hrp-icon{ font-size:16px; }
-.hrp-text{ font-size:12.5px; color:var(--ink2); line-height:1.5; }
-
-/* ── оверлей результата ── */
-.result-overlay{ position:absolute; inset:0; z-index:8; border-radius:var(--r2xl);
-  background:linear-gradient(160deg, rgba(20,24,34,.96), rgba(8,10,16,.98));
-  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
-  padding:30px 24px; text-align:center; animation:roIn .4s cubic-bezier(.22,1.1,.36,1) both; }
-@keyframes roIn{ from{ opacity:0; transform:scale(.94); } to{ opacity:1; transform:none; } }
-.ro-stamp-text{ font-family:'Unbounded',sans-serif; font-weight:800; font-size:24px; letter-spacing:2px;
-  color:var(--acc-2); text-shadow:0 0 20px var(--acc-glow); }
-.ro-text{ font-size:15px; color:var(--ink2); line-height:1.6; }
-.ro-rewards{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
-.ro-chip{ padding:8px 14px; border-radius:var(--rfull); font-size:13px; font-weight:800; border:1px solid var(--glass-line); }
-.ro-xp{ color:var(--acc-2); background:var(--acc-dim); }
-.ro-cr{ color:var(--gem); background:rgba(107,224,255,.1); }
-.ro-en{ color:var(--no); background:var(--no-dim); }
-.ro-next{ margin-top:6px; }
-
-/* ── GAME LIST (Аркады) ── */
-.game-list{ display:flex; flex-direction:column; gap:12px; }
-.game-row{ display:flex; align-items:center; gap:14px; cursor:pointer; padding:16px; border-radius:var(--rxl);
-  background:var(--glass); -webkit-backdrop-filter:blur(var(--glass-blur)); backdrop-filter:blur(var(--glass-blur));
-  border:1px solid var(--glass-line); box-shadow:var(--sh-1); position:relative; overflow:hidden;
-  transition:transform .15s ease; }
-.game-row:active{ transform:scale(.985); }
-.gr-stripe{ position:absolute; left:0; top:0; bottom:0; width:4px; }
-.gr-s-v{ background:linear-gradient(180deg,var(--gem),var(--info)); }
-.gr-icon{ font-size:34px; width:52px; text-align:center; flex:0 0 auto; }
-.gr-info{ flex:1; min-width:0; }
-.gr-name{ font-family:'Unbounded',sans-serif; font-weight:600; font-size:16px; }
-.gr-desc{ font-size:11.5px; color:var(--ink3); margin:2px 0 8px; }
-.gr-prog{ display:flex; align-items:center; gap:8px; }
-.gr-bar{ flex:1; height:5px; border-radius:5px; background:rgba(255,255,255,.07); overflow:hidden; }
-.gr-fill{ height:100%; border-radius:5px; background:linear-gradient(90deg,var(--gem),var(--info)); }
-.gr-lvl{ font-size:11px; color:var(--ink3); font-family:'JetBrains Mono',monospace; white-space:nowrap; }
-.gr-arrow{ font-size:22px; color:var(--ink4); }
-
-/* ── HINT GAME bottom-sheet ── */
-.hint-modal{
-  position:fixed; left:0; right:0; bottom:0; z-index:300;
-  height:92vh; border-radius:var(--r2xl) var(--r2xl) 0 0;
-  background:linear-gradient(180deg,#0c0f16,#070910);
-  border:1px solid var(--glass-line); box-shadow:0 -10px 50px rgba(0,0,0,.6);
-  display:flex; flex-direction:column;
-  transform:translateY(100%); transition:transform .4s cubic-bezier(.4,0,.2,1);
-}
-.hint-modal:not(.hidden){ transform:translateY(0); }
-.hint-modal.hidden{ pointer-events:none; }
-.hm-header{ display:flex; align-items:center; justify-content:space-between; padding:16px 18px;
-  border-bottom:1px solid var(--glass-line-2); }
-.hm-title{ display:flex; align-items:center; gap:8px; font-family:'Unbounded',sans-serif; font-weight:600; font-size:16px; }
-.hm-title [data-ico]{ width:18px; height:18px; }
-.hm-close{ border:none; cursor:pointer; background:rgba(255,255,255,.04); border:1px solid var(--glass-line-2);
-  color:var(--ink2); font-family:inherit; font-weight:700; font-size:16px; padding:6px 14px; border-radius:var(--rl); }
-.hm-vp{ flex:1; position:relative; overflow:hidden; }
-.hm-footer{ padding:12px 18px calc(12px + var(--safeb)); border-top:1px solid var(--glass-line-2); }
-.hm-footer-text{ font-size:12px; color:var(--ink3); text-align:center; }
-
-/* ── DAILY ── */
-.daily-card{ width:min(92%,360px); border-radius:var(--r2xl); padding:26px 22px; text-align:center;
-  background:linear-gradient(160deg,rgba(28,33,46,.92),rgba(12,15,22,.96));
-  border:1px solid var(--glass-line); box-shadow:var(--sh-2);
-  display:flex; flex-direction:column; align-items:center; gap:12px; animation:roIn .4s cubic-bezier(.22,1.1,.36,1) both; }
-.daily-icon{ font-size:48px; }
-.daily-h{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:20px; }
-.daily-streak{ font-size:13px; color:var(--ink3); }
-.daily-week{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
-.dw-day{ width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:700; background:rgba(255,255,255,.04); border:1px solid var(--glass-line-2); color:var(--ink3); }
-.dw-day.done{ background:var(--acc-dim); border-color:rgba(240,169,58,.4); color:var(--acc-2); }
-.daily-chips{ display:flex; gap:10px; }
-.dc-chip{ padding:8px 14px; border-radius:var(--rfull); font-size:13px; font-weight:800; color:var(--acc-2);
-  background:var(--acc-dim); border:1px solid rgba(240,169,58,.3); }
-
-/* ── частицы / след / конфетти ── */
-.swipe-trail{ position:absolute; border-radius:50%; pointer-events:none; z-index:7; }
-.confetti{ position:fixed; width:9px; height:14px; z-index:400; pointer-events:none; border-radius:2px; }
-
-EOF_SDVIG
-
 echo "  ✦ $S/app.js"
 mkdir -p $(dirname "$S/app.js")
 cat > "$S/app.js" << 'EOF_SDVIG'
@@ -702,7 +472,7 @@ const App = {
 
 const DEFAULT_PROFILE = {
   level:1, xp:0, energy:5, maxEnergy:5, credits:0,
-  casesSolved:0, streak:0, prestige:0, mapNode:0,
+  casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
   achievements:[], dailyStreak:0, lastDaily:null, sound:true
 };
@@ -1322,8 +1092,16 @@ function showResultOverlay(b,dir){
 }
 
 function nextCard(){
+  // присвоить звёзды за пройденное дело
+  App.profile.mapStars = App.profile.mapStars || {};
+  const doneIdx = App.profile.mapNode||0;
+  if(App.profile.mapStars[doneIdx]==null){
+    // звёзды по энергии: больше осталось энергии — больше звёзд
+    const e=App.profile.energy, m=App.profile.maxEnergy||5;
+    App.profile.mapStars[doneIdx] = e>=m*0.66?3 : e>=m*0.33?2 : 1;
+  }
   App.cardIndex=(App.cardIndex+1)%App.deck.length;
-  App.profile.mapNode=App.cardIndex;
+  App.profile.mapNode=Math.min(totalLevels()-1, (App.profile.mapNode||0)+1);
   saveProfile();
   renderCard();
 }
@@ -1363,65 +1141,86 @@ function spawnTrail(dir){
    КАРТА ПРОГРЕССА
 ═══════════════════════════════════════════════ */
 const CHAPTERS=[
-  {title:'Глава I · Пропавший экспонат', levels:5},
-  {title:'Глава II · Тень музея',        levels:6},
-  {title:'Глава III · Ночной свидетель', levels:6},
-  {title:'Глава IV · Двойная игра',      levels:7},
-  {title:'Глава V · Финал',              levels:6}
+  {title:'Глава I · Пропавший экспонат', levels:5, district:'Музейный квартал', tint:'#6be0ff'},
+  {title:'Глава II · Тень музея',        levels:6, district:'Старый центр',     tint:'#a98bff'},
+  {title:'Глава III · Ночной свидетель', levels:6, district:'Доки',             tint:'#35d49b'},
+  {title:'Глава IV · Двойная игра',      levels:7, district:'Трущобы',          tint:'#ff5d6c'},
+  {title:'Глава V · Финал',              levels:6, district:'Особняк',          tint:'#ffcf6b'}
 ];
 
 function totalLevels(){ return CHAPTERS.reduce((s,c)=>s+c.levels,0); }
 
 function renderMap(){
   const inner=$('#map-inner'); const svg=$('#map-path');
-  inner.querySelectorAll('.map-node,.map-chapter').forEach(e=>e.remove());
+  inner.querySelectorAll('.map-node,.map-chapter,.map-zone').forEach(e=>e.remove());
 
   const total=totalLevels();
   const scroll=$('#map-scroll');
   const W=inner.clientWidth || (scroll&&scroll.clientWidth) || window.innerWidth || 360;
-  const rowH=104, padTop=70;
-  const H=padTop+total*rowH+100;
+  const rowH=110, padTop=84;
+  const H=padTop+total*rowH+120;
   inner.style.height=H+'px';
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
 
   const cur=App.profile.mapNode||0;
-  // три колонки: змейка идёт лево→центр→право→центр→лево…
-  const cols=[W*0.26, W*0.5, W*0.74];
-  const colPattern=[0,1,2,1];     // плавный зигзаг без пересечений
-  let idx=0, pts=[];
+  const stars=App.profile.mapStars||{};   // {idx: 1..3}
+  const cols=[W*0.24, W*0.5, W*0.76];
+  const colPattern=[0,1,2,1];
+  let idx=0, pts=[], zones=[];
 
   CHAPTERS.forEach((ch,ci)=>{
+    const startIdx=idx;
     const unlocked = idx<=cur;
-    // заголовок главы — по центру, со своим отступом
-    const chTopY = padTop + idx*rowH - 46;
+    // цветовая зона-район (полупрозрачная подложка за главой)
+    const zoneTop = padTop + startIdx*rowH - 56;
+    const zoneH = ch.levels*rowH + 8;
+    const zone=el('div','map-zone');
+    zone.style.cssText=`position:absolute;left:8px;right:8px;top:${zoneTop}px;height:${zoneH}px;`+
+      `border-radius:24px;z-index:0;`+
+      `background:radial-gradient(120% 60% at 50% 0%, ${ch.tint}1f, transparent 70%);`+
+      `border:1px solid ${ch.tint}1a;`;
+    inner.appendChild(zone);
+
+    // заголовок-табличка района
     const head=el('div','map-chapter'+(unlocked?'':' mc-locked'),
-      `<div class="mc-title">${ch.title}</div><div class="mc-sub">${ch.levels} уровней</div>`);
-    head.style.left='50%'; head.style.top=chTopY+'px';
+      `<div class="mc-dist" style="color:${ch.tint}">${ch.district}</div>`+
+      `<div class="mc-title">${ch.title.split('·')[1]||ch.title}</div>`);
+    head.style.left='50%'; head.style.top=(zoneTop+4)+'px';
     inner.appendChild(head);
 
     for(let l=0;l<ch.levels;l++){
       const y=padTop+idx*rowH;
       const x=cols[colPattern[idx%colPattern.length]];
-      pts.push({x,y,idx});
+      const isMilestone = (l===ch.levels-1);   // последний уровень главы — ключевое дело
+      pts.push({x,y,idx,tint:ch.tint});
       const state = idx<cur?'done':idx===cur?'current':'locked';
-      const node=el('div','map-node '+state);
-      if(state==='locked') node.innerHTML=Icons.get('lock');
-      else node.textContent=(idx+1);
-      node.style.left=x+'px'; node.style.top=y+'px';
-      const myIdx=idx;
-      if(state!=='locked'){
-        node.onclick=()=>{ Sound.tap(); vibrate(8);
-          if(state==='current') goToTab('cases');
-          else toast('Пройдено','Уровень '+(myIdx+1)+' завершён','✓'); };
-      }else{
-        node.onclick=()=>{ try{Sound.error();}catch(_){} vibrate(15); toast('Закрыто','Пройдите предыдущие','🔒'); };
+      const node=el('div','map-node '+state+(isMilestone?' milestone':''));
+      node.style.setProperty('--nt',ch.tint);
+      if(state==='locked'){ node.innerHTML=Icons.get('lock'); }
+      else { node.innerHTML=`<span class="mn-num">${idx+1}</span>`; }
+      // звёзды под пройденными
+      if(state==='done'){
+        const st=stars[idx]||1;
+        node.innerHTML+=`<span class="mn-stars">${'★'.repeat(st)}${'☆'.repeat(3-st)}</span>`;
       }
+      // маркер текущего уровня (аватар-булавка)
+      if(state==='current'){
+        node.innerHTML+=`<span class="mn-pin">${Icons.get('agent')}</span>`;
+      }
+      node.style.left=x+'px'; node.style.top=y+'px';
+      const myIdx=idx, myState=state;
+      node.onclick=()=>{
+        if(myState==='locked'){ try{Sound.error();}catch(_){} vibrate(15); toast('Закрыто','Пройдите предыдущие дела','🔒'); return; }
+        Sound.tap(); vibrate(8);
+        if(myState==='current') goToTab('cases');
+        else toast('Пройдено','Дело №'+(myIdx+1)+' закрыто','✓');
+      };
       inner.appendChild(node);
       idx++;
     }
   });
 
-  // плавный путь через все точки (Catmull-Rom → кривые Безье, без пересечений)
+  // путь = красная нить расследования (как на пробковой доске)
   let pathD = pts.length ? `M ${pts[0].x} ${pts[0].y}` : '';
   for(let i=0;i<pts.length-1;i++){
     const p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||p2;
@@ -1429,17 +1228,25 @@ function renderMap(){
     const c2x=p2.x-(p3.x-p1.x)/6, c2y=p2.y-(p3.y-p1.y)/6;
     pathD+=` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
   }
+  // булавки на каждом узле
+  let pins='';
+  pts.forEach(p=>{ pins+=`<circle cx="${p.x}" cy="${p.y}" r="4" fill="#1a1008" stroke="#d4452f" stroke-width="2"/>`; });
+
   const prog = total>1 ? cur/(total-1) : 0;
   svg.innerHTML=`
     <defs>
-      <linearGradient id="mg" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#ffcf6b"/><stop offset="1" stop-color="#b3741c"/>
-      </linearGradient>
+      <filter id="thread-sh" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000" flood-opacity="0.5"/>
+      </filter>
     </defs>
-    <path d="${pathD}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7" stroke-linecap="round"/>
-    <path d="${pathD}" fill="none" stroke="url(#mg)" stroke-width="4.5" stroke-linecap="round"
+    <!-- бледная нить (весь маршрут) -->
+    <path d="${pathD}" fill="none" stroke="rgba(212,69,47,.18)" stroke-width="3" stroke-linecap="round"/>
+    <!-- красная нить расследования (пройденный путь) -->
+    <path d="${pathD}" fill="none" stroke="#d4452f" stroke-width="2.6" stroke-linecap="round"
+          filter="url(#thread-sh)"
           stroke-dasharray="100000" stroke-dashoffset="${100000*(1-prog)}" pathLength="100000"
-          style="transition:stroke-dashoffset .6s ease"/>`;
+          style="transition:stroke-dashoffset .8s ease"/>
+    ${pins}`;
 }
 
 function advanceMap(){ App.profile.mapNode=Math.min(totalLevels()-1,(App.profile.mapNode||0)+1); }
@@ -1603,4 +1410,4 @@ EOF_SDVIG
 
 echo ""
 echo "✅  Готово!"
-echo "  git add -A && git commit -m \"fix: swipe first-touch, thick border, deck anim, deep card bg, tools lower\" && git push"
+echo "  git add -A && git commit -m \"feat: investigation-board map with red thread, districts, stars\" && git push"

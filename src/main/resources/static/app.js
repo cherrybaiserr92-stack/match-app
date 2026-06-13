@@ -21,7 +21,7 @@ const App = {
 
 const DEFAULT_PROFILE = {
   level:1, xp:0, energy:5, maxEnergy:5, credits:0,
-  casesSolved:0, streak:0, prestige:0, mapNode:0,
+  casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
   achievements:[], dailyStreak:0, lastDaily:null, sound:true
 };
@@ -641,8 +641,16 @@ function showResultOverlay(b,dir){
 }
 
 function nextCard(){
+  // присвоить звёзды за пройденное дело
+  App.profile.mapStars = App.profile.mapStars || {};
+  const doneIdx = App.profile.mapNode||0;
+  if(App.profile.mapStars[doneIdx]==null){
+    // звёзды по энергии: больше осталось энергии — больше звёзд
+    const e=App.profile.energy, m=App.profile.maxEnergy||5;
+    App.profile.mapStars[doneIdx] = e>=m*0.66?3 : e>=m*0.33?2 : 1;
+  }
   App.cardIndex=(App.cardIndex+1)%App.deck.length;
-  App.profile.mapNode=App.cardIndex;
+  App.profile.mapNode=Math.min(totalLevels()-1, (App.profile.mapNode||0)+1);
   saveProfile();
   renderCard();
 }
@@ -682,65 +690,86 @@ function spawnTrail(dir){
    КАРТА ПРОГРЕССА
 ═══════════════════════════════════════════════ */
 const CHAPTERS=[
-  {title:'Глава I · Пропавший экспонат', levels:5},
-  {title:'Глава II · Тень музея',        levels:6},
-  {title:'Глава III · Ночной свидетель', levels:6},
-  {title:'Глава IV · Двойная игра',      levels:7},
-  {title:'Глава V · Финал',              levels:6}
+  {title:'Глава I · Пропавший экспонат', levels:5, district:'Музейный квартал', tint:'#6be0ff'},
+  {title:'Глава II · Тень музея',        levels:6, district:'Старый центр',     tint:'#a98bff'},
+  {title:'Глава III · Ночной свидетель', levels:6, district:'Доки',             tint:'#35d49b'},
+  {title:'Глава IV · Двойная игра',      levels:7, district:'Трущобы',          tint:'#ff5d6c'},
+  {title:'Глава V · Финал',              levels:6, district:'Особняк',          tint:'#ffcf6b'}
 ];
 
 function totalLevels(){ return CHAPTERS.reduce((s,c)=>s+c.levels,0); }
 
 function renderMap(){
   const inner=$('#map-inner'); const svg=$('#map-path');
-  inner.querySelectorAll('.map-node,.map-chapter').forEach(e=>e.remove());
+  inner.querySelectorAll('.map-node,.map-chapter,.map-zone').forEach(e=>e.remove());
 
   const total=totalLevels();
   const scroll=$('#map-scroll');
   const W=inner.clientWidth || (scroll&&scroll.clientWidth) || window.innerWidth || 360;
-  const rowH=104, padTop=70;
-  const H=padTop+total*rowH+100;
+  const rowH=110, padTop=84;
+  const H=padTop+total*rowH+120;
   inner.style.height=H+'px';
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
 
   const cur=App.profile.mapNode||0;
-  // три колонки: змейка идёт лево→центр→право→центр→лево…
-  const cols=[W*0.26, W*0.5, W*0.74];
-  const colPattern=[0,1,2,1];     // плавный зигзаг без пересечений
-  let idx=0, pts=[];
+  const stars=App.profile.mapStars||{};   // {idx: 1..3}
+  const cols=[W*0.24, W*0.5, W*0.76];
+  const colPattern=[0,1,2,1];
+  let idx=0, pts=[], zones=[];
 
   CHAPTERS.forEach((ch,ci)=>{
+    const startIdx=idx;
     const unlocked = idx<=cur;
-    // заголовок главы — по центру, со своим отступом
-    const chTopY = padTop + idx*rowH - 46;
+    // цветовая зона-район (полупрозрачная подложка за главой)
+    const zoneTop = padTop + startIdx*rowH - 56;
+    const zoneH = ch.levels*rowH + 8;
+    const zone=el('div','map-zone');
+    zone.style.cssText=`position:absolute;left:8px;right:8px;top:${zoneTop}px;height:${zoneH}px;`+
+      `border-radius:24px;z-index:0;`+
+      `background:radial-gradient(120% 60% at 50% 0%, ${ch.tint}1f, transparent 70%);`+
+      `border:1px solid ${ch.tint}1a;`;
+    inner.appendChild(zone);
+
+    // заголовок-табличка района
     const head=el('div','map-chapter'+(unlocked?'':' mc-locked'),
-      `<div class="mc-title">${ch.title}</div><div class="mc-sub">${ch.levels} уровней</div>`);
-    head.style.left='50%'; head.style.top=chTopY+'px';
+      `<div class="mc-dist" style="color:${ch.tint}">${ch.district}</div>`+
+      `<div class="mc-title">${ch.title.split('·')[1]||ch.title}</div>`);
+    head.style.left='50%'; head.style.top=(zoneTop+4)+'px';
     inner.appendChild(head);
 
     for(let l=0;l<ch.levels;l++){
       const y=padTop+idx*rowH;
       const x=cols[colPattern[idx%colPattern.length]];
-      pts.push({x,y,idx});
+      const isMilestone = (l===ch.levels-1);   // последний уровень главы — ключевое дело
+      pts.push({x,y,idx,tint:ch.tint});
       const state = idx<cur?'done':idx===cur?'current':'locked';
-      const node=el('div','map-node '+state);
-      if(state==='locked') node.innerHTML=Icons.get('lock');
-      else node.textContent=(idx+1);
-      node.style.left=x+'px'; node.style.top=y+'px';
-      const myIdx=idx;
-      if(state!=='locked'){
-        node.onclick=()=>{ Sound.tap(); vibrate(8);
-          if(state==='current') goToTab('cases');
-          else toast('Пройдено','Уровень '+(myIdx+1)+' завершён','✓'); };
-      }else{
-        node.onclick=()=>{ try{Sound.error();}catch(_){} vibrate(15); toast('Закрыто','Пройдите предыдущие','🔒'); };
+      const node=el('div','map-node '+state+(isMilestone?' milestone':''));
+      node.style.setProperty('--nt',ch.tint);
+      if(state==='locked'){ node.innerHTML=Icons.get('lock'); }
+      else { node.innerHTML=`<span class="mn-num">${idx+1}</span>`; }
+      // звёзды под пройденными
+      if(state==='done'){
+        const st=stars[idx]||1;
+        node.innerHTML+=`<span class="mn-stars">${'★'.repeat(st)}${'☆'.repeat(3-st)}</span>`;
       }
+      // маркер текущего уровня (аватар-булавка)
+      if(state==='current'){
+        node.innerHTML+=`<span class="mn-pin">${Icons.get('agent')}</span>`;
+      }
+      node.style.left=x+'px'; node.style.top=y+'px';
+      const myIdx=idx, myState=state;
+      node.onclick=()=>{
+        if(myState==='locked'){ try{Sound.error();}catch(_){} vibrate(15); toast('Закрыто','Пройдите предыдущие дела','🔒'); return; }
+        Sound.tap(); vibrate(8);
+        if(myState==='current') goToTab('cases');
+        else toast('Пройдено','Дело №'+(myIdx+1)+' закрыто','✓');
+      };
       inner.appendChild(node);
       idx++;
     }
   });
 
-  // плавный путь через все точки (Catmull-Rom → кривые Безье, без пересечений)
+  // путь = красная нить расследования (как на пробковой доске)
   let pathD = pts.length ? `M ${pts[0].x} ${pts[0].y}` : '';
   for(let i=0;i<pts.length-1;i++){
     const p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||p2;
@@ -748,17 +777,25 @@ function renderMap(){
     const c2x=p2.x-(p3.x-p1.x)/6, c2y=p2.y-(p3.y-p1.y)/6;
     pathD+=` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
   }
+  // булавки на каждом узле
+  let pins='';
+  pts.forEach(p=>{ pins+=`<circle cx="${p.x}" cy="${p.y}" r="4" fill="#1a1008" stroke="#d4452f" stroke-width="2"/>`; });
+
   const prog = total>1 ? cur/(total-1) : 0;
   svg.innerHTML=`
     <defs>
-      <linearGradient id="mg" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#ffcf6b"/><stop offset="1" stop-color="#b3741c"/>
-      </linearGradient>
+      <filter id="thread-sh" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000" flood-opacity="0.5"/>
+      </filter>
     </defs>
-    <path d="${pathD}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7" stroke-linecap="round"/>
-    <path d="${pathD}" fill="none" stroke="url(#mg)" stroke-width="4.5" stroke-linecap="round"
+    <!-- бледная нить (весь маршрут) -->
+    <path d="${pathD}" fill="none" stroke="rgba(212,69,47,.18)" stroke-width="3" stroke-linecap="round"/>
+    <!-- красная нить расследования (пройденный путь) -->
+    <path d="${pathD}" fill="none" stroke="#d4452f" stroke-width="2.6" stroke-linecap="round"
+          filter="url(#thread-sh)"
           stroke-dasharray="100000" stroke-dashoffset="${100000*(1-prog)}" pathLength="100000"
-          style="transition:stroke-dashoffset .6s ease"/>`;
+          style="transition:stroke-dashoffset .8s ease"/>
+    ${pins}`;
 }
 
 function advanceMap(){ App.profile.mapNode=Math.min(totalLevels()-1,(App.profile.mapNode||0)+1); }
