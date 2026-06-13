@@ -1,12 +1,12 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-#  СДВИГ · deploy.sh — фиксы: меню, свайп с любой точки, новый фон
+#  СДВИГ · deploy.sh — фикс меню + премиум фон/карточки, без дождя
 #  Запускай из корня репозитория:  bash deploy.sh
 # ═══════════════════════════════════════════════════════════════
 set -e
 S="src/main/resources/static"
 echo ""
-echo "🎬  СДВИГ — меню + свайп + кинематографичный фон…"
+echo "💎  СДВИГ — меню + премиум-графика…"
 echo ""
 echo "  ✦ $S/style.css"
 mkdir -p $(dirname "$S/style.css")
@@ -236,12 +236,16 @@ body::before{
   padding-bottom:var(--safeb);
   background:var(--glass-2); -webkit-backdrop-filter:blur(var(--glass-blur)); backdrop-filter:blur(var(--glass-blur));
   border-top:1px solid var(--glass-line);
+  pointer-events:auto;
 }
 .nb{
   flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
   background:none; border:none; cursor:pointer; color:var(--ink4);
   font-family:inherit; transition:color .2s ease;
+  pointer-events:auto;
 }
+/* иконка и подпись не перехватывают клик — он уходит на кнопку */
+.nb *{ pointer-events:none; }
 .nb [data-ico]{ width:24px; height:24px; display:inline-flex; }
 .nb-lbl{ font-size:10px; font-weight:600; letter-spacing:.5px; }
 .nb.active{ color:var(--acc-2); }
@@ -370,14 +374,34 @@ cat > "$S/card-design.css" << 'EOF_SDVIG'
   transform:translate(-50%,-50%) rotate(-.4deg);
   width:min(86%,360px); min-height:62%;
   display:flex; flex-direction:column;
-  padding:20px 18px 18px;
+  padding:22px 20px 18px;
   border-radius:var(--r2xl);
-  background:linear-gradient(160deg, rgba(24,29,40,.82), rgba(12,15,22,.9));
-  -webkit-backdrop-filter:blur(var(--glass-blur)); backdrop-filter:blur(var(--glass-blur));
-  border:1px solid var(--glass-line);
-  box-shadow:var(--sh-2);
+  /* многослойное тёмное стекло с тёплым отливом */
+  background:
+    linear-gradient(155deg, rgba(38,34,28,.30), transparent 40%),
+    linear-gradient(160deg, rgba(26,30,42,.88), rgba(10,12,18,.94));
+  -webkit-backdrop-filter:blur(calc(var(--glass-blur) + 6px)) saturate(1.2);
+  backdrop-filter:blur(calc(var(--glass-blur) + 6px)) saturate(1.2);
+  border:1px solid rgba(255,255,255,.10);
+  /* объёмная тень + золотой ободок + внутренний блик */
+  box-shadow:
+    0 30px 70px -12px rgba(0,0,0,.75),
+    0 8px 24px -6px rgba(0,0,0,.5),
+    inset 0 1px 0 rgba(255,255,255,.14),
+    inset 0 -1px 0 rgba(0,0,0,.4);
   touch-action:none;
   z-index:6;
+}
+/* все дочерние элементы карточки передают свайп родителю */
+.case-card *{ touch-action:none; }
+/* тонкая золотая кайма поверх стекла */
+.case-card::after{
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  padding:1px;
+  background:linear-gradient(150deg, rgba(255,207,107,.45), transparent 30%, transparent 70%, rgba(255,207,107,.25));
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+  opacity:.6;
 }
 /* все дочерние элементы карточки передают свайп родителю */
 .case-card *{ touch-action:none; }
@@ -399,23 +423,42 @@ cat > "$S/card-design.css" << 'EOF_SDVIG'
 .ct-revelation::before{ box-shadow:inset 0 0 0 1px rgba(255,207,107,.35); }
 
 /* tilt-подсветка при свайпе */
-.case-card.tilt-left{ box-shadow:var(--sh-2),-20px 0 60px -20px var(--no); }
-.case-card.tilt-right{ box-shadow:var(--sh-2),20px 0 60px -20px var(--ok); }
-.case-card.tilt-up{ box-shadow:var(--sh-2),0 -20px 60px -20px var(--acc-2); }
+.case-card.tilt-left{ box-shadow:0 30px 70px -12px rgba(0,0,0,.75),-24px 0 70px -22px var(--no); }
+.case-card.tilt-right{ box-shadow:0 30px 70px -12px rgba(0,0,0,.75),24px 0 70px -22px var(--ok); }
+.case-card.tilt-up{ box-shadow:0 30px 70px -12px rgba(0,0,0,.75),0 -24px 70px -22px var(--acc-2); }
 
 /* ── шапка ── */
 .card-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; position:relative; z-index:2; }
-.card-act{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink3); }
-.card-type-badge{ font-size:11px; font-weight:700; padding:4px 10px; border-radius:var(--rfull);
-  background:var(--acc-dim); color:var(--acc-2); border:1px solid rgba(240,169,58,.25); }
-.card-divider{ height:1px; background:var(--glass-line-2); margin:14px 0; position:relative; z-index:2; }
+.card-act{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:var(--ink3);
+  text-transform:uppercase; }
+.card-type-badge{ font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase;
+  padding:5px 12px; border-radius:var(--rfull);
+  background:linear-gradient(135deg, rgba(255,207,107,.22), rgba(200,134,10,.12));
+  color:var(--acc-2); border:1px solid rgba(255,207,107,.4);
+  box-shadow:0 2px 8px rgba(200,134,10,.15), inset 0 1px 0 rgba(255,255,255,.15); }
+.card-divider{ height:1px; margin:16px 0; position:relative; z-index:2;
+  background:linear-gradient(90deg, transparent, rgba(255,207,107,.4), transparent); }
 
 /* ── тело ── */
-.card-body{ flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px;
+.card-body{ flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px;
   position:relative; z-index:2; overflow:hidden; }
-.card-icon-box{ font-size:56px; line-height:1; margin-top:6px; }
-.card-case-title{ font-family:'Unbounded',sans-serif; font-weight:600; font-size:20px; }
-.card-text{ font-size:14.5px; color:var(--ink2); line-height:1.6; }
+.card-icon-box{
+  font-size:46px; line-height:1; margin-top:10px;
+  width:92px; height:92px; display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  background:radial-gradient(circle at 38% 32%, rgba(255,207,107,.14), rgba(20,24,34,.6) 70%);
+  border:1px solid rgba(255,207,107,.22);
+  box-shadow:
+    0 8px 24px -6px rgba(0,0,0,.6),
+    inset 0 2px 8px rgba(255,255,255,.08),
+    inset 0 -4px 12px rgba(0,0,0,.4),
+    0 0 30px -8px rgba(255,207,107,.3);
+}
+.card-case-title{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:21px; letter-spacing:.3px;
+  background:linear-gradient(180deg, #fff, #d8dde8);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  text-shadow:0 2px 12px rgba(0,0,0,.3); }
+.card-text{ font-size:14.5px; color:var(--ink2); line-height:1.65; max-width:92%; }
 
 /* ── ШТАМПЫ: скрыты по умолчанию (opacity:0!) ── */
 .stamp-wrap{
@@ -790,31 +833,34 @@ function saveProfile(){
 ═══════════════════════════════════════════════ */
 function enterMain(){
   showScreen('main-screen');
-  if(window.BgFx) BgFx.init();
-  Icons.paint();
-  buildDeck();
-  renderCard();
-  renderHUD();
-  renderGameList();
-  renderProfile();
-  renderShop();
+  // навигацию и звук вешаем ПЕРВЫМИ — чтобы ошибка в рендере не убила меню
   bindNav();
   bindSoundBtn();
-  checkDaily();
+  if(window.BgFx) BgFx.init();
+  Icons.paint();
+  try{ buildDeck(); renderCard(); }catch(e){ console.error('renderCard',e); }
+  try{ renderHUD(); }catch(e){ console.error('renderHUD',e); }
+  try{ renderGameList(); }catch(e){ console.error('renderGameList',e); }
+  try{ renderProfile(); }catch(e){ console.error('renderProfile',e); }
+  try{ renderShop(); }catch(e){ console.error('renderShop',e); }
+  try{ checkDaily(); }catch(e){ console.error('checkDaily',e); }
 }
 
 /* ── навигация ─────────────────────────────────── */
 function bindNav(){
-  $$('.nb').forEach(b=>{
-    b.onclick=()=>{
-      const tab=b.dataset.tab; if(tab===App.tab) return;
-      Sound.nav(); vibrate(8);
-      App.tab=tab;
-      $$('.nb').forEach(x=>x.classList.toggle('active',x===b));
-      $$('.tab-pane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
-      if(tab==='map') requestAnimationFrame(()=>renderMap());
-      if(tab==='profile') renderProfile();
-    };
+  const nav=document.querySelector('.bottom-nav');
+  if(!nav || nav.dataset.bound) return;
+  nav.dataset.bound='1';
+  nav.addEventListener('click',e=>{
+    const b=e.target.closest('.nb'); if(!b) return;
+    const tab=b.dataset.tab; if(!tab || tab===App.tab) return;
+    try{ Sound.nav(); }catch(_){}
+    vibrate(8);
+    App.tab=tab;
+    document.querySelectorAll('.nb').forEach(x=>x.classList.toggle('active',x===b));
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
+    if(tab==='map') requestAnimationFrame(()=>{ try{renderMap();}catch(_){} });
+    if(tab==='profile') try{renderProfile();}catch(_){}
   });
 }
 
@@ -920,7 +966,6 @@ function renderCardActions(card,c){
     a.innerHTML=`
       <div class="swipe-indicator swipe-unlocked">
         <span class="si-deny">◄ ${c.leftLabel||'Отказать'}</span>
-        <span class="si-center">${Icons.get('arrows')}</span>
         <span class="si-approve">${c.rightLabel||'Принять'} ►</span>
       </div>
       ${c.special?`<span class="si-special">▲ Свайп вверх — спецприём</span>`:''}`;
@@ -1327,18 +1372,18 @@ echo "  ✦ $S/phaser-bg.js"
 mkdir -p $(dirname "$S/phaser-bg.js")
 cat > "$S/phaser-bg.js" << 'EOF_SDVIG'
 /* ═══════════════════════════════════════════════
-   СДВИГ · phaser-bg.js v8 — кинематографичный фон кабинета
-   ✓ Реальное фото кабинета с параллаксом по слоям
-   ✓ Глубина резкости (фокус на столе, размытие по краям)
-   ✓ Тёплый свет лампы (дышит)
-   ✓ Пылинки в луче света
-   ✓ Дождь за окном
+   СДВИГ · phaser-bg.js v9 — премиум кинематографичный фон
+   ✓ Фото кабинета + многослойная глубина (параллакс)
+   ✓ Объёмный свет лампы (два слоя, дышит)
+   ✓ Световые лучи из окна (god rays)
+   ✓ Парящие пылинки в свете
+   ✓ Плёночное зерно (film grain) для «дорогого» вида
+   ✓ БЕЗ дождя
    ✓ input:false — не крадёт тачи
 ═══════════════════════════════════════════════ */
 (function(){
   let game=null, scene=null, paused=false;
-  let tx=0, ty=0, cx=0, cy=0;
-  let frame=0;
+  let tx=0, ty=0, cx=0, cy=0, frame=0;
 
   function boot(){
     if(game || !window.Phaser) return;
@@ -1346,7 +1391,7 @@ cat > "$S/phaser-bg.js" << 'EOF_SDVIG'
       type:Phaser.AUTO, parent:'bg-fx',
       width:window.innerWidth, height:window.innerHeight,
       transparent:true, banner:false,
-      input:false,                                   // не трогаем ввод
+      input:false,
       fps:{ target:30, forceSetTimeOut:true },
       render:{ powerPreference:'low-power', antialias:true },
       scale:{ mode:Phaser.Scale.RESIZE },
@@ -1371,121 +1416,139 @@ cat > "$S/phaser-bg.js" << 'EOF_SDVIG'
     scene=this;
     const W=scene.scale.width, H=scene.scale.height;
 
-    // ── СЛОЙ 1: фото кабинета (дальний план, мягкое размытие глубины) ──
+    // ── СЛОЙ 0: фото кабинета ──
     const photo=scene.add.image(W/2,H/2,'office').setDepth(0);
-    const scl=Math.max(W/photo.width,H/photo.height)*1.16;   // запас для параллакса
+    const scl=Math.max(W/photo.width,H/photo.height)*1.18;
     photo.setScale(scl);
-    photo.setTint(0x9fb0c8);
+    photo.setTint(0xb8c4d8);                 // лёгкая холодная коррекция
     scene._photo=photo;
-    scene._baseScale=scl;
 
-    // ── СЛОЙ 2: затемнение + виньетка (глубина, фокус в центре) ──
-    const vig=scene.add.graphics().setDepth(1);
+    // ── СЛОЙ 1: цветокоррекция (тёплый низ / холодный верх) ──
+    const grade=scene.add.graphics().setDepth(1).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    grade.fillStyle(0x1a2840,0.35); grade.fillRect(0,0,W,H*0.5);          // холодный верх
+    grade.fillStyle(0x3a2410,0.30); grade.fillRect(0,H*0.5,W,H*0.5);      // тёплый низ
+    scene._grade=grade;
+
+    // ── СЛОЙ 2: глубокая виньетка ──
+    const vig=scene.add.graphics().setDepth(2);
     drawVignette(vig,W,H);
     scene._vig=vig;
 
-    // ── СЛОЙ 3: тёплый луч лампы (дышит) ──
-    const lampTex=makeLampTexture(scene,W);
-    const lamp=scene.add.image(W*0.5,H*0.40,'lampGlow').setDepth(2)
-      .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.55);
-    scene._lamp=lamp;
-    scene.tweens.add({targets:lamp,alpha:0.34,duration:3200,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+    // ── СЛОЙ 3: god rays (лучи из окна, ADD) ──
+    makeRayTexture(scene,W,H);
+    const rays=scene.add.image(W*0.72,H*0.3,'godRays').setDepth(3)
+      .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.16).setAngle(18);
+    scene._rays=rays;
+    scene.tweens.add({targets:rays,alpha:0.07,duration:4200,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
 
-    // ── СЛОЙ 4: пылинки в луче ──
+    // ── СЛОЙ 4: объёмный свет лампы (два круга, ADD, дышит) ──
+    makeLampTexture(scene,W);
+    const lampOuter=scene.add.image(W*0.5,H*0.42,'lampGlow').setDepth(4)
+      .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.5).setScale(1.4);
+    const lampCore=scene.add.image(W*0.5,H*0.42,'lampCore').setDepth(4)
+      .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.6);
+    scene._lampOuter=lampOuter; scene._lampCore=lampCore;
+    scene.tweens.add({targets:[lampOuter,lampCore],alpha:'-=0.18',duration:3000,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+
+    // ── СЛОЙ 5: пылинки в свете ──
     scene._dust=[];
-    for(let i=0;i<22;i++) scene._dust.push({
-      x:W*(0.3+Math.random()*0.4), y:H*(0.2+Math.random()*0.5),
-      r:0.6+Math.random()*1.8, vx:(Math.random()-0.5)*0.12, vy:-0.05-Math.random()*0.12,
-      a:0.1+Math.random()*0.35, ph:Math.random()*6.28
+    for(let i=0;i<26;i++) scene._dust.push({
+      x:W*(0.28+Math.random()*0.44), y:H*(0.2+Math.random()*0.55),
+      r:0.6+Math.random()*2.0, vx:(Math.random()-0.5)*0.1, vy:-0.04-Math.random()*0.1,
+      a:0.08+Math.random()*0.35, ph:Math.random()*6.28
     });
-    scene._dustG=scene.add.graphics().setDepth(3).setBlendMode(Phaser.BlendModes.ADD);
+    scene._dustG=scene.add.graphics().setDepth(5).setBlendMode(Phaser.BlendModes.ADD);
 
-    // ── СЛОЙ 5: дождь за окном (правый верх) ──
-    scene._rain=[];
-    for(let i=0;i<26;i++) scene._rain.push({
-      x:W*(0.55+Math.random()*0.4), y:Math.random()*H*0.6,
-      l:8+Math.random()*10, s:6+Math.random()*5
-    });
-    scene._rainG=scene.add.graphics().setDepth(2);
+    // ── СЛОЙ 6: плёночное зерно ──
+    makeGrainTexture(scene);
+    scene._grain=scene.add.image(W/2,H/2,'grain0').setDepth(6)
+      .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.035);
 
     scene._W=W; scene._H=H;
   }
 
-  // публичный хук — app.js двигает фон при свайпе карточки
   window.BgFxDrag=function(nx,ny){ tx=Math.max(-1,Math.min(1,nx)); ty=Math.max(-1,Math.min(1,ny)); };
 
   function makeLampTexture(scene,W){
-    if(scene.textures.exists('lampGlow')) return;
-    const size=Math.round(W*1.1);
-    const g=scene.make.graphics({x:0,y:0,add:false});
-    const cx=size/2, cy=size/2;
-    for(let i=20;i>0;i--){
-      const r=(size/2)*(i/20);
-      const a=0.05*(1-i/20)+0.005;
-      // тёплый янтарный свет лампы
-      g.fillStyle(0xffb347, a);
-      g.fillCircle(cx,cy,r);
+    if(!scene.textures.exists('lampGlow')){
+      const size=Math.round(W*1.0), g=scene.make.graphics({x:0,y:0,add:false});
+      const c=size/2;
+      for(let i=24;i>0;i--){ const r=(size/2)*(i/24); g.fillStyle(0xffb347,0.045*(1-i/24)+0.004); g.fillCircle(c,c,r); }
+      g.generateTexture('lampGlow',size,size); g.destroy();
     }
-    g.generateTexture('lampGlow',size,size);
-    g.destroy();
+    if(!scene.textures.exists('lampCore')){
+      const size=Math.round(W*0.5), g=scene.make.graphics({x:0,y:0,add:false});
+      const c=size/2;
+      for(let i=16;i>0;i--){ const r=(size/2)*(i/16); g.fillStyle(0xffd27a,0.08*(1-i/16)+0.006); g.fillCircle(c,c,r); }
+      g.generateTexture('lampCore',size,size); g.destroy();
+    }
+  }
+
+  function makeRayTexture(scene,W,H){
+    if(scene.textures.exists('godRays')) return;
+    const ww=Math.round(W*0.7), hh=Math.round(H*0.9);
+    const g=scene.make.graphics({x:0,y:0,add:false});
+    // несколько мягких параллельных лучей
+    for(let i=0;i<5;i++){
+      const x=ww*(0.15+i*0.16);
+      const w=ww*0.05;
+      g.fillStyle(0xffe0a0, 0.06);
+      g.fillRect(x,0,w,hh);
+    }
+    g.generateTexture('godRays',ww,hh); g.destroy();
+  }
+
+  function makeGrainTexture(scene){
+    if(scene.textures.exists('grain0')) return;
+    const s=128, g=scene.make.graphics({x:0,y:0,add:false});
+    for(let i=0;i<2200;i++){
+      const x=Math.random()*s, y=Math.random()*s, a=Math.random()*0.5;
+      g.fillStyle(0xffffff,a); g.fillRect(x,y,1,1);
+    }
+    g.generateTexture('grain0',s,s); g.destroy();
   }
 
   function drawVignette(g,W,H){
     g.clear();
-    // верх — темнее (потолок в тени)
-    g.fillStyle(0x05070c,0.55); g.fillRect(0,0,W,H*0.22);
-    // низ — глубокая тень (пол)
-    g.fillStyle(0x04060a,0.6);  g.fillRect(0,H*0.72,W,H*0.28);
-    // боковые виньетки
-    const steps=14;
+    g.fillStyle(0x04060c,0.62); g.fillRect(0,0,W,H*0.18);       // потолок
+    g.fillStyle(0x030509,0.7);  g.fillRect(0,H*0.78,W,H*0.22);  // пол
+    const steps=16;
     for(let i=0;i<steps;i++){
-      const a=0.5*(1-i/steps);
-      g.fillStyle(0x04060a,a*0.5);
-      g.fillRect(i*(W*0.04),0,W*0.04,H);            // левый край
-      g.fillRect(W-(i+1)*(W*0.04),0,W*0.04,H);      // правый край
+      const a=0.55*(1-i/steps)*0.5;
+      g.fillStyle(0x030509,a);
+      g.fillRect(i*(W*0.035),0,W*0.035,H);
+      g.fillRect(W-(i+1)*(W*0.035),0,W*0.035,H);
     }
   }
 
   function update(){
     if(!scene||paused) return;
     const W=scene._W, H=scene._H;
-    // плавный параллакс
     cx += (tx-cx)*0.06; cy += (ty-cy)*0.06;
 
-    if(scene._photo){
-      scene._photo.x = W/2 - cx*26;
-      scene._photo.y = H/2 - cy*18;
-    }
-    if(scene._lamp){
-      scene._lamp.x = W*0.5 - cx*40;
-      scene._lamp.y = H*0.40 - cy*26;
-    }
+    if(scene._photo){ scene._photo.x=W/2-cx*28; scene._photo.y=H/2-cy*20; }
+    if(scene._lampOuter){ scene._lampOuter.x=W*0.5-cx*44; scene._lampOuter.y=H*0.42-cy*30; }
+    if(scene._lampCore){ scene._lampCore.x=W*0.5-cx*44; scene._lampCore.y=H*0.42-cy*30; }
+    if(scene._rays){ scene._rays.x=W*0.72-cx*60; }
 
     frame++;
-    // пылинки — каждый кадр (их мало)
+    // пылинки
     if(scene._dustG){
       const g=scene._dustG; g.clear();
       const t=frame*0.02;
       for(const d of scene._dust){
         d.x+=d.vx; d.y+=d.vy;
-        if(d.y<H*0.15){ d.y=H*0.6; d.x=W*(0.3+Math.random()*0.4); }
-        if(d.x<W*0.25||d.x>W*0.75) d.vx*=-1;
-        const tw=d.a*(0.6+0.4*Math.sin(t+d.ph));
-        g.fillStyle(0xffe0a0, tw);
-        g.fillCircle(d.x - cx*30, d.y - cy*20, d.r);
+        if(d.y<H*0.12){ d.y=H*0.66; d.x=W*(0.28+Math.random()*0.44); }
+        if(d.x<W*0.22||d.x>W*0.78) d.vx*=-1;
+        const tw=d.a*(0.55+0.45*Math.sin(t+d.ph));
+        g.fillStyle(0xffe6b0,tw);
+        g.fillCircle(d.x-cx*32, d.y-cy*22, d.r);
       }
     }
-    // дождь — через кадр
-    if(frame%2===0 && scene._rainG){
-      const g=scene._rainG; g.clear();
-      g.lineStyle(1.2,0x6a8bbf,0.22);
-      for(const r of scene._rain){
-        r.y+=r.s; if(r.y>H*0.62){ r.y=-r.l; r.x=W*(0.55+Math.random()*0.4); }
-        g.beginPath();
-        g.moveTo(r.x - cx*8, r.y);
-        g.lineTo(r.x - cx*8 - 1.5, r.y+r.l);
-        g.strokePath();
-      }
+    // зерно — лёгкое дрожание позиции каждые 3 кадра
+    if(scene._grain && frame%3===0){
+      scene._grain.x = W/2 + (Math.random()-0.5)*8;
+      scene._grain.y = H/2 + (Math.random()-0.5)*8;
     }
   }
 
@@ -1504,9 +1567,4 @@ EOF_SDVIG
 
 echo ""
 echo "✅  Готово!"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  git add -A"
-echo "  git commit -m \"fix: nav clicks, full-card swipe, cinematic office bg\""
-echo "  git push"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  git add -A && git commit -m \"fix: delegated nav, premium bg+cards, no rain\" && git push"

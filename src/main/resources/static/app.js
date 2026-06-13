@@ -246,31 +246,34 @@ function saveProfile(){
 ═══════════════════════════════════════════════ */
 function enterMain(){
   showScreen('main-screen');
-  if(window.BgFx) BgFx.init();
-  Icons.paint();
-  buildDeck();
-  renderCard();
-  renderHUD();
-  renderGameList();
-  renderProfile();
-  renderShop();
+  // навигацию и звук вешаем ПЕРВЫМИ — чтобы ошибка в рендере не убила меню
   bindNav();
   bindSoundBtn();
-  checkDaily();
+  if(window.BgFx) BgFx.init();
+  Icons.paint();
+  try{ buildDeck(); renderCard(); }catch(e){ console.error('renderCard',e); }
+  try{ renderHUD(); }catch(e){ console.error('renderHUD',e); }
+  try{ renderGameList(); }catch(e){ console.error('renderGameList',e); }
+  try{ renderProfile(); }catch(e){ console.error('renderProfile',e); }
+  try{ renderShop(); }catch(e){ console.error('renderShop',e); }
+  try{ checkDaily(); }catch(e){ console.error('checkDaily',e); }
 }
 
 /* ── навигация ─────────────────────────────────── */
 function bindNav(){
-  $$('.nb').forEach(b=>{
-    b.onclick=()=>{
-      const tab=b.dataset.tab; if(tab===App.tab) return;
-      Sound.nav(); vibrate(8);
-      App.tab=tab;
-      $$('.nb').forEach(x=>x.classList.toggle('active',x===b));
-      $$('.tab-pane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
-      if(tab==='map') requestAnimationFrame(()=>renderMap());
-      if(tab==='profile') renderProfile();
-    };
+  const nav=document.querySelector('.bottom-nav');
+  if(!nav || nav.dataset.bound) return;
+  nav.dataset.bound='1';
+  nav.addEventListener('click',e=>{
+    const b=e.target.closest('.nb'); if(!b) return;
+    const tab=b.dataset.tab; if(!tab || tab===App.tab) return;
+    try{ Sound.nav(); }catch(_){}
+    vibrate(8);
+    App.tab=tab;
+    document.querySelectorAll('.nb').forEach(x=>x.classList.toggle('active',x===b));
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
+    if(tab==='map') requestAnimationFrame(()=>{ try{renderMap();}catch(_){} });
+    if(tab==='profile') try{renderProfile();}catch(_){}
   });
 }
 
@@ -376,7 +379,6 @@ function renderCardActions(card,c){
     a.innerHTML=`
       <div class="swipe-indicator swipe-unlocked">
         <span class="si-deny">◄ ${c.leftLabel||'Отказать'}</span>
-        <span class="si-center">${Icons.get('arrows')}</span>
         <span class="si-approve">${c.rightLabel||'Принять'} ►</span>
       </div>
       ${c.special?`<span class="si-special">▲ Свайп вверх — спецприём</span>`:''}`;
