@@ -10,7 +10,13 @@
     lock:'<rect x="5" y="10.5" width="14" height="10" rx="2.5" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M8 10.5V8a4 4 0 018 0v2.5" stroke="currentColor" stroke-width="1.8" fill="none"/>',
     arrows:'<path d="M9 6l-4 6 4 6m6-12l4 6-4 6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
     back:'<path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
-    star:'<path d="M12 3l2.6 5.6 6.1.8-4.5 4.2 1.2 6L12 16.9 6.6 19.6l1.2-6L3.3 9.4l6.1-.8L12 3z" fill="currentColor"/>'
+    star:'<path d="M12 3l2.6 5.6 6.1.8-4.5 4.2 1.2 6L12 16.9 6.6 19.6l1.2-6L3.3 9.4l6.1-.8L12 3z" fill="currentColor"/>',
+    // ── премиум-инструменты ──
+    magnify:'<circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="10.5" cy="10.5" r="3" fill="currentColor" opacity=".25"/>',
+    lamp:'<path d="M9 18h6M10 21h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 3a6 6 0 00-3.5 10.9c.3.2.5.6.5 1V16h6v-1.1c0-.4.2-.8.5-1A6 6 0 0012 3z" fill="currentColor" opacity=".22" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+    file:'<path d="M6 3h8l4 4v14a0 0 0 01 0 0H6a1 1 0 01-1-1V4a1 1 0 011-1z" fill="currentColor" opacity=".18" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v4h4M8.5 12h7M8.5 15.5h7M8.5 9h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    hourglass:'<path d="M7 3h10M7 21h10M8 3c0 4 8 5 8 9s-8 5-8 9M16 3c0 4-8 5-8 9s8 5 8 9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 18.5h5L12 15z" fill="currentColor"/>',
+    plus:'<path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>'
   };
   function paint(){
     document.querySelectorAll('[data-ico]').forEach(el=>{
@@ -18,7 +24,13 @@
       el.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22">'+I[k]+'</svg>';
       el.dataset.painted='1';
     });
+    document.querySelectorAll('[data-tico]').forEach(el=>{
+      const k=el.getAttribute('data-tico'); if(!I[k]||el.dataset.painted)return;
+      el.innerHTML='<svg viewBox="0 0 24 24" width="26" height="26">'+I[k]+'</svg>';
+      el.dataset.painted='1';
+    });
   }
   window.Icons={ get:k=>'<svg viewBox="0 0 24 24" width="22" height="22">'+(I[k]||'')+'</svg>', paint };
   document.addEventListener('DOMContentLoaded',paint);
 })();
+

@@ -63,23 +63,26 @@
 <!-- ══ MAIN ══ -->
 <div id="main-screen" class="screen">
 
-  <div class="topbar">
-    <div class="topbar-left">
-      <div class="topbar-emblem">С</div>
-      <div class="topbar-brand">СДВИГ</div>
-    </div>
-    <div class="topbar-right">
-      <div class="topbar-stats">
-        <div class="stat-pill" id="pill-energy"><span data-ico="bolt"></span><span id="hud-energy">5</span></div>
-        <div class="stat-pill" id="pill-credits"><span data-ico="gem"></span><span id="hud-credits">0</span></div>
-      </div>
-      <button class="sound-btn" id="sound-btn" type="button">🔊</button>
-    </div>
-  </div>
-
-  <div class="xp-band">
-    <div class="xp-track"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
-    <div class="xp-info" id="xp-info">УР 1 · 0/100</div>
+  <div class="tools-bar" id="tools-bar">
+    <button class="tool-btn" data-tool="magnify" title="Лупа — подсветит важную улику">
+      <span class="tool-ico" data-tico="magnify"></span>
+      <span class="tool-badge" id="tool-magnify-n">2</span>
+    </button>
+    <button class="tool-btn" data-tool="lamp" title="Лампа — +ход в Самоцветах">
+      <span class="tool-ico" data-tico="lamp"></span>
+      <span class="tool-badge" id="tool-lamp-n">3</span>
+    </button>
+    <button class="tool-btn" data-tool="file" title="Досье — пропустить мини-игру">
+      <span class="tool-ico" data-tico="file"></span>
+      <span class="tool-badge" id="tool-file-n">1</span>
+    </button>
+    <button class="tool-btn" data-tool="hourglass" title="Песочные часы — +20 энергии">
+      <span class="tool-ico" data-tico="hourglass"></span>
+      <span class="tool-badge" id="tool-hourglass-n">1</span>
+    </button>
+    <button class="tool-btn tool-shop" data-tool="shop" title="Купить инструменты">
+      <span class="tool-ico" data-tico="plus"></span>
+    </button>
   </div>
 
   <div class="tab-area">

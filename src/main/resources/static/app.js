@@ -15,6 +15,7 @@ const App = {
   swipeUnlocked:false,
   currentCard:null,
   pendingSwipe:null,
+  flags:{},
   tab:'cases'
 };
 
@@ -249,6 +250,7 @@ function enterMain(){
   // навигацию и звук вешаем ПЕРВЫМИ — чтобы ошибка в рендере не убила меню
   bindNav();
   bindSoundBtn();
+  bindTools();
   if(window.BgFx) BgFx.init();
   Icons.paint();
   try{ buildDeck(); renderCard(); }catch(e){ console.error('renderCard',e); }
@@ -279,18 +281,55 @@ function bindNav(){
 
 function bindSoundBtn(){
   const btn=$('#sound-btn');
+  if(!btn) return;
   btn.textContent=Sound.isOn()?'🔊':'🔇';
   btn.onclick=()=>{ const on=Sound.toggle(); btn.textContent=on?'🔊':'🔇'; if(on)Sound.tap(); };
+}
+
+function bindTools(){
+  const bar=document.querySelector('.tools-bar');
+  if(!bar || bar.dataset.bound) return;
+  bar.dataset.bound='1';
+  App.profile.tools = App.profile.tools || {magnify:2,lamp:3,file:1,hourglass:1};
+  refreshTools();
+  bar.addEventListener('click',e=>{
+    const b=e.target.closest('.tool-btn'); if(!b) return;
+    const t=b.dataset.tool;
+    vibrate(8); try{Sound.tap();}catch(_){}
+    if(t==='shop'){ App.tab='shop';
+      document.querySelectorAll('.nb').forEach(x=>x.classList.toggle('active',x.dataset.tab==='shop'));
+      document.querySelectorAll('.tab-pane').forEach(p=>p.classList.toggle('active',p.id==='tab-shop'));
+      return; }
+    useTool(t);
+  });
+}
+function refreshTools(){
+  const T=(App.profile&&App.profile.tools)||{};
+  ['magnify','lamp','file','hourglass'].forEach(k=>{
+    const el=$('#tool-'+k+'-n'); if(el){ const n=T[k]||0; el.textContent=n; el.style.display=n>0?'':'none'; }
+  });
+}
+function useTool(t){
+  const T=App.profile.tools||(App.profile.tools={});
+  if((T[t]||0)<=0){ toast('Инструменты','Нет в наличии — загляни в Лавку','🛠️'); return; }
+  if(t==='hourglass'){ T[t]--; addEnergy(20); toast('Песочные часы','+20 энергии','⏳'); }
+  else if(t==='magnify'){ T[t]--; App.flags.hintNext=true; toast('Лупа','Подсказка активна','🔍'); }
+  else if(t==='lamp'){ T[t]--; App.flags.extraMove=true; toast('Лампа','+1 ход в Самоцветах','💡'); }
+  else if(t==='file'){ T[t]--; App.swipeUnlocked=true;
+    const c=App.deck[App.cardIndex]; const card=document.querySelector('.case-card');
+    if(card&&c) renderCardActions(card,c);
+    toast('Досье','Свайп разблокирован','📁'); }
+  refreshTools(); saveProfile();
 }
 
 /* ── HUD ───────────────────────────────────────── */
 function renderHUD(){
   const p=App.profile;
-  $('#hud-energy').textContent=p.energy;
-  $('#hud-credits').textContent=p.credits;
+  const en=$('#hud-energy'); if(en) en.textContent=p.energy;
+  const cr=$('#hud-credits'); if(cr) cr.textContent=p.credits;
   const need=xpNeeded(p.level);
-  $('#xp-fill').style.width=clamp(p.xp/need*100,0,100)+'%';
-  $('#xp-info').textContent=`УР ${p.level} · ${p.xp}/${need}`;
+  const xf=$('#xp-fill'); if(xf) xf.style.width=clamp(p.xp/need*100,0,100)+'%';
+  const xi=$('#xp-info'); if(xi) xi.textContent=`УР ${p.level} · ${p.xp}/${need}`;
 }
 function xpNeeded(lvl){ return 100+(lvl-1)*60; }
 
@@ -571,55 +610,69 @@ function renderMap(){
   inner.querySelectorAll('.map-node,.map-chapter').forEach(e=>e.remove());
 
   const total=totalLevels();
-  // Надёжная ширина: clientWidth=0 если вкладка скрыта → берём из scroll-контейнера или окна
   const scroll=$('#map-scroll');
   const W=inner.clientWidth || (scroll&&scroll.clientWidth) || window.innerWidth || 360;
-  const rowH=120, padTop=40;
-  const H=padTop+total*rowH+120;
+  const rowH=104, padTop=70;
+  const H=padTop+total*rowH+100;
   inner.style.height=H+'px';
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
 
   const cur=App.profile.mapNode||0;
-  let idx=0, pts=[], pathD='';
+  // три колонки: змейка идёт лево→центр→право→центр→лево…
+  const cols=[W*0.26, W*0.5, W*0.74];
+  const colPattern=[0,1,2,1];     // плавный зигзаг без пересечений
+  let idx=0, pts=[];
 
   CHAPTERS.forEach((ch,ci)=>{
-    // заголовок главы
-    const chY=padTop+idx*rowH;
     const unlocked = idx<=cur;
+    // заголовок главы — по центру, со своим отступом
+    const chTopY = padTop + idx*rowH - 46;
     const head=el('div','map-chapter'+(unlocked?'':' mc-locked'),
       `<div class="mc-title">${ch.title}</div><div class="mc-sub">${ch.levels} уровней</div>`);
-    head.style.left='50%'; head.style.top=(chY)+'px';
+    head.style.left='50%'; head.style.top=chTopY+'px';
     inner.appendChild(head);
 
     for(let l=0;l<ch.levels;l++){
-      const y=padTop+ (idx+0.6+l)*rowH + (l===0?40:0);
-      const x=W*(0.5+0.30*Math.sin(idx*0.9));
-      pts.push({x,y});
+      const y=padTop+idx*rowH;
+      const x=cols[colPattern[idx%colPattern.length]];
+      pts.push({x,y,idx});
       const state = idx<cur?'done':idx===cur?'current':'locked';
       const node=el('div','map-node '+state);
       if(state==='locked') node.innerHTML=Icons.get('lock');
       else node.textContent=(idx+1);
       node.style.left=x+'px'; node.style.top=y+'px';
+      const myIdx=idx;
       if(state!=='locked'){
         node.onclick=()=>{ Sound.tap(); vibrate(8);
-          if(state==='current'){ goToTab('cases'); }
-          else toast('Пройдено','Уровень '+(idx+1)+' завершён','✓'); };
+          if(state==='current') goToTab('cases');
+          else toast('Пройдено','Уровень '+(myIdx+1)+' завершён','✓'); };
       }else{
-        node.onclick=()=>{ Sound.error(); vibrate(15); toast('Закрыто','Пройдите предыдущие уровни','🔒'); };
+        node.onclick=()=>{ try{Sound.error();}catch(_){} vibrate(15); toast('Закрыто','Пройдите предыдущие','🔒'); };
       }
       inner.appendChild(node);
       idx++;
     }
   });
 
-  // извилистый путь
-  pts.forEach((p,i)=>{ pathD+= i===0?`M ${p.x} ${p.y}`:` L ${p.x} ${p.y}`; });
+  // плавный путь через все точки (Catmull-Rom → кривые Безье, без пересечений)
+  let pathD = pts.length ? `M ${pts[0].x} ${pts[0].y}` : '';
+  for(let i=0;i<pts.length-1;i++){
+    const p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||p2;
+    const c1x=p1.x+(p2.x-p0.x)/6, c1y=p1.y+(p2.y-p0.y)/6;
+    const c2x=p2.x-(p3.x-p1.x)/6, c2y=p2.y-(p3.y-p1.y)/6;
+    pathD+=` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
+  }
+  const prog = total>1 ? cur/(total-1) : 0;
   svg.innerHTML=`
-    <path d="${pathD}" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="6" stroke-linecap="round"/>
-    <path d="${pathD}" fill="none" stroke="url(#mg)" stroke-width="4" stroke-linecap="round"
-          stroke-dasharray="${(cur/total)*100000}" pathLength="100000"/>
-    <defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffcf6b"/><stop offset="1" stop-color="#b3741c"/></linearGradient></defs>`;
+    <defs>
+      <linearGradient id="mg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffcf6b"/><stop offset="1" stop-color="#b3741c"/>
+      </linearGradient>
+    </defs>
+    <path d="${pathD}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7" stroke-linecap="round"/>
+    <path d="${pathD}" fill="none" stroke="url(#mg)" stroke-width="4.5" stroke-linecap="round"
+          stroke-dasharray="100000" stroke-dashoffset="${100000*(1-prog)}" pathLength="100000"
+          style="transition:stroke-dashoffset .6s ease"/>`;
 }
 
 function advanceMap(){ App.profile.mapNode=Math.min(totalLevels()-1,(App.profile.mapNode||0)+1); }

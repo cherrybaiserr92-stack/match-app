@@ -4,14 +4,15 @@
 ═══════════════════════════════════════════════ */
 (function(){
   const COLORS=[
-    {a:'#ff5d6c',b:'#b3202d'}, // 0 красный
-    {a:'#6be0ff',b:'#1f7da8'}, // 1 голубой
-    {a:'#35d49b',b:'#127a52'}, // 2 зелёный
-    {a:'#ffcf6b',b:'#b3741c'}, // 3 золотой
-    {a:'#a98bff',b:'#5b3fb0'}, // 4 фиолетовый
-    {a:'#ffffff',b:'#9aa6bd'}  // 5 белый
+    {a:'#ff5d6c',b:'#b3202d',pg:'#ffe8ea'}, // 0 красная книга
+    {a:'#6be0ff',b:'#1f7da8',pg:'#e6f9ff'}, // 1 голубая
+    {a:'#35d49b',b:'#127a52',pg:'#e3fff4'}, // 2 зелёная
+    {a:'#ffcf6b',b:'#b3741c',pg:'#fff6e0'}, // 3 золотая
+    {a:'#a98bff',b:'#5b3fb0',pg:'#f1ebff'}, // 4 фиолетовая
+    {a:'#2b2f3a',b:'#0e1016',pg:'#f4f6fb'}  // 5 чёрная (как в референсе)
   ];
-  const GLYPH=['✦','◆','▲','★','⬟','●'];
+  // тематический эмблема на обложке каждой книги
+  const EMBLEM=['star','sparkle','triangle','bigstar','pentagon','question'];
   const N=8; // 8×8
 
   let cvs,ctx,W,H,DPR,cell,ox,oy;
@@ -335,26 +336,115 @@
   }
 
   function drawGem(cx,cy,g,selected){
-    const col=COLORS[g.c]; const r=cell*0.40*g.scale;
+    const col=COLORS[g.c];
+    const s=cell*0.42*g.scale;          // полу-высота книги
+    const w=s*1.55, h=s*2;              // ширина/высота обложки
+    const x=cx-w/2, y=cy-h/2;
+    const sp=w*0.16;                    // ширина корешка
+
     // glow при матче/выборе
     if(g.glow>0||selected){
-      ctx.save(); ctx.globalAlpha=(selected?0.5:g.glow);
-      ctx.fillStyle=col.a; ctx.beginPath(); ctx.arc(cx,cy,r*1.5,0,7); ctx.fill(); ctx.restore();
+      ctx.save(); ctx.globalAlpha=(selected?0.55:g.glow);
+      ctx.fillStyle=col.a;
+      ctx.beginPath(); ctx.arc(cx,cy,s*1.7,0,7); ctx.fill(); ctx.restore();
     }
-    // тело (градиент)
-    const grd=ctx.createLinearGradient(cx-r,cy-r,cx+r,cy+r);
+
+    ctx.save();
+    // тень книги
+    ctx.fillStyle='rgba(0,0,0,.35)';
+    bookPath(x+2,y+3,w,h,w*0.12); ctx.fill();
+
+    // страницы (низ, белые полоски справа)
+    ctx.fillStyle=col.pg;
+    roundRectC(x+w*0.5,y+h*0.1,w*0.52,h*0.84,w*0.06); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=1;
+    for(let i=1;i<=3;i++){ const yy=y+h*0.1+ (h*0.84)*(i/4);
+      ctx.beginPath(); ctx.moveTo(x+w*0.55,yy); ctx.lineTo(x+w*0.98,yy); ctx.stroke(); }
+
+    // обложка (градиент)
+    const grd=ctx.createLinearGradient(x,y,x+w,y+h);
     grd.addColorStop(0,col.a); grd.addColorStop(1,col.b);
-    roundRectC(cx-r,cy-r,r*2,r*2,r*0.5);
-    ctx.fillStyle=grd; ctx.fill();
-    // блик
-    ctx.fillStyle='rgba(255,255,255,.22)';
-    ctx.beginPath(); ctx.ellipse(cx-r*0.3,cy-r*0.4,r*0.4,r*0.22,-0.5,0,7); ctx.fill();
-    // глиф
-    ctx.fillStyle='rgba(0,0,0,.35)'; ctx.font=`${Math.floor(r)}px sans-serif`;
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(GLYPH[g.c],cx,cy+r*0.05);
-    if(selected){ ctx.strokeStyle='#fff'; ctx.lineWidth=2;
-      roundRectC(cx-r,cy-r,r*2,r*2,r*0.5); ctx.stroke(); }
+    bookPath(x,y,w,h,w*0.12); ctx.fillStyle=grd; ctx.fill();
+
+    // корешок (темнее) + золотые перетяжки
+    ctx.fillStyle=col.b;
+    roundRectC(x,y,sp,h,w*0.08); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.moveTo(x+sp*1.4,y+h*0.04); ctx.lineTo(x+sp*1.4,y+h*0.96); ctx.stroke();
+    ctx.fillStyle='#ffcf6b';
+    for(let i=1;i<=3;i++){ const yy=y+h*(0.22*i);
+      roundRectC(x-w*0.02,yy,sp*1.5,h*0.06,2); ctx.fill(); }
+
+    // блик на обложке
+    ctx.fillStyle='rgba(255,255,255,.16)';
+    ctx.beginPath(); ctx.ellipse(cx+w*0.05,y+h*0.2,w*0.28,h*0.1,-0.4,0,7); ctx.fill();
+
+    // эмблема по центру обложки
+    drawEmblem(cx+w*0.12, cy, s*0.7, EMBLEM[g.c], col);
+
+    ctx.restore();
+
+    if(selected){
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2.5;
+      bookPath(x,y,w,h,w*0.12); ctx.stroke();
+    }
+  }
+
+  function bookPath(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+
+  function drawEmblem(cx,cy,r,kind,col){
+    ctx.save();
+    ctx.fillStyle='#ffcf6b';
+    ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=1;
+    if(kind==='star'||kind==='bigstar'){
+      // белый овал + звезда (как в референсе)
+      if(kind==='star'){ ctx.fillStyle='#fff';
+        ctx.beginPath(); ctx.ellipse(cx,cy-r*0.5,r*0.6,r*0.42,0,0,7); ctx.fill(); }
+      drawStar(cx,cy-(kind==='star'?r*0.5:0),(kind==='star'?r*0.28:r*0.6),5,'#ffcf6b');
+    } else if(kind==='sparkle'){
+      drawSpark(cx,cy,r*0.7);
+    } else if(kind==='triangle'){
+      ctx.beginPath(); ctx.moveTo(cx,cy-r*0.6); ctx.lineTo(cx+r*0.55,cy+r*0.45);
+      ctx.lineTo(cx-r*0.55,cy+r*0.45); ctx.closePath(); ctx.fill();
+    } else if(kind==='pentagon'){
+      ctx.beginPath();
+      for(let i=0;i<5;i++){ const a=-Math.PI/2+i*2*Math.PI/5;
+        const px=cx+Math.cos(a)*r*0.6, py=cy+Math.sin(a)*r*0.6;
+        i?ctx.lineTo(px,py):ctx.moveTo(px,py); }
+      ctx.closePath(); ctx.fill();
+    } else if(kind==='question'){
+      // белый овал + звезда сверху + знак вопроса (чёрная книга)
+      ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.ellipse(cx,cy-r*0.7,r*0.45,r*0.32,0,0,7); ctx.fill();
+      drawStar(cx,cy-r*0.7,r*0.2,5,'#ffcf6b');
+      ctx.fillStyle='#ffcf6b'; ctx.font=`bold ${Math.floor(r*1.1)}px sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('?',cx,cy+r*0.25);
+    }
+    ctx.restore();
+  }
+
+  function drawStar(cx,cy,r,n,fill){
+    ctx.fillStyle=fill; ctx.beginPath();
+    for(let i=0;i<n*2;i++){ const rr=i%2?r*0.45:r;
+      const a=-Math.PI/2+i*Math.PI/n;
+      const px=cx+Math.cos(a)*rr, py=cy+Math.sin(a)*rr;
+      i?ctx.lineTo(px,py):ctx.moveTo(px,py); }
+    ctx.closePath(); ctx.fill();
+  }
+
+  function drawSpark(cx,cy,r){
+    // четырёхлучевой бриллиант-блеск
+    ctx.fillStyle='#ffcf6b'; ctx.beginPath();
+    ctx.moveTo(cx,cy-r); ctx.quadraticCurveTo(cx+r*0.18,cy-r*0.18,cx+r,cy);
+    ctx.quadraticCurveTo(cx+r*0.18,cy+r*0.18,cx,cy+r);
+    ctx.quadraticCurveTo(cx-r*0.18,cy+r*0.18,cx-r,cy);
+    ctx.quadraticCurveTo(cx-r*0.18,cy-r*0.18,cx,cy-r);
+    ctx.closePath(); ctx.fill();
   }
 
   function roundRect(x,y,w,h,r){ ctx.beginPath();
