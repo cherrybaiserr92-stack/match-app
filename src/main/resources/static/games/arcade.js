@@ -62,6 +62,13 @@
       width:800, height:600,
       backgroundColor:'#0f1117',
       scale:{ mode:Phaser.Scale.FIT, autoCenter:Phaser.Scale.CENTER_BOTH },
+      // ═══ ввод привязан к canvas игры, а не к window ═══
+      // target:null → слушает на своём canvas; touch.capture=false → не глотает чужие тачи
+      input:{
+        activePointers:2,
+        touch:{ capture:false },
+        mouse:{ preventDefaultDown:false, preventDefaultUp:false }
+      },
       render:{ antialias:true }
     });
     game.scene.add(key, window[key], true, g.opts);
@@ -109,3 +116,4 @@
 
   window.Arcade={ launch, close };
 })();
+

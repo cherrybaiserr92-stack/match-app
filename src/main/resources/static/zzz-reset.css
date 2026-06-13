@@ -39,3 +39,25 @@
 /* 7. Активный экран кликабелен, неактивные — нет */
 .screen.active{ pointer-events:auto !important; }
 .screen:not(.active){ pointer-events:none !important; }
+
+/* 8. Hint-modal (мини-игра) и её canvas — кликабельны поверх всего */
+#hint-modal:not(.hidden){ pointer-events:auto !important; z-index:500 !important; }
+#hint-modal *{ pointer-events:auto !important; }
+#hint-vp, #hint-vp canvas{ pointer-events:auto !important; touch-action:none !important; }
+
+/* 9. Игровой оверлей аркад поверх всего, канвас кликабелен */
+#arcade-overlay{ pointer-events:auto !important; z-index:10000 !important; }
+#arcade-overlay *{ pointer-events:auto !important; }
+#arc-stage canvas{ pointer-events:auto !important; touch-action:none !important; }
+
+/* 10. Активная карточка дела — кликабельна (кнопка «Найти улики») */
+#swipe-zone{ pointer-events:auto !important; }
+.case-card{ pointer-events:auto !important; }
+.case-card *{ pointer-events:auto !important; }
+.btn-play-gems{ pointer-events:auto !important; cursor:pointer; }
+
+/* 11. Игровые вкладки и их содержимое */
+.tab-pane.active{ pointer-events:auto !important; }
+.tab-pane.active *{ pointer-events:auto; }
+.game-row, .arcade-card{ pointer-events:auto !important; cursor:pointer; }
+

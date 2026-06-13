@@ -251,7 +251,6 @@ function enterMain(){
   buildDeck();
   renderCard();
   renderHUD();
-  renderMap();
   renderGameList();
   renderProfile();
   renderShop();
@@ -269,7 +268,7 @@ function bindNav(){
       App.tab=tab;
       $$('.nb').forEach(x=>x.classList.toggle('active',x===b));
       $$('.tab-pane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
-      if(tab==='map') renderMap();
+      if(tab==='map') requestAnimationFrame(()=>renderMap());
       if(tab==='profile') renderProfile();
     };
   });
@@ -562,7 +561,9 @@ function renderMap(){
   inner.querySelectorAll('.map-node,.map-chapter').forEach(e=>e.remove());
 
   const total=totalLevels();
-  const W=inner.clientWidth||window.innerWidth;
+  // Надёжная ширина: clientWidth=0 если вкладка скрыта → берём из scroll-контейнера или окна
+  const scroll=$('#map-scroll');
+  const W=inner.clientWidth || (scroll&&scroll.clientWidth) || window.innerWidth || 360;
   const rowH=120, padTop=40;
   const H=padTop+total*rowH+120;
   inner.style.height=H+'px';
@@ -767,3 +768,4 @@ function pickMission(){
 
 /* ── главная вкладка-переход для кнопки карты ── */
 window.goToTab=goToTab;
+

@@ -31,6 +31,7 @@
       moves=m.moves||14; score=0; progress=0; combo=0; comboMax=0;
       booster=opts.boosters||0; boosterMode=null; particles=[];
       running=true;
+      try{ if(window.BgFx&&BgFx.pause) BgFx.pause(); }catch(e){}
       buildCanvas(container);
       initGrid();
       bindInput();
@@ -38,7 +39,9 @@
       hud();
     },
     stop(){ running=false; if(raf)cancelAnimationFrame(raf);
-      if(cvs&&cvs.parentNode) cvs.parentNode.innerHTML=''; }
+      try{ window.removeEventListener('resize',window._m3resize); }catch(e){}
+      if(cvs&&cvs.parentNode) cvs.parentNode.innerHTML='';
+      try{ if(window.BgFx&&BgFx.resume) BgFx.resume(); }catch(e){} }
   };
 
   /* ── canvas ────────────────────────────────── */
@@ -46,7 +49,8 @@
     container.innerHTML='';
     DPR=Math.min(window.devicePixelRatio||1,2);
     cvs=document.createElement('canvas');
-    cvs.style.cssText='display:block;width:100%;height:100%;touch-action:none';
+    cvs.style.cssText='display:block;width:100%;height:100%;touch-action:none;'+
+      'pointer-events:auto;position:relative;z-index:1';
     container.appendChild(cvs);
     ctx=cvs.getContext('2d');
     resize(container);
@@ -218,24 +222,38 @@
   function bindInput(){
     cvs.onpointerdown=e=>{ if(!running||anim)return;
       const c=hitCell(e); if(!c)return; down={...c,sx:e.clientX,sy:e.clientY}; };
-    cvs.onpointerup=e=>{ if(!running||anim||!down){ down=null; return; }
-      const c=hitCell(e);
-      const dx=e.clientX-down.sx, dy=e.clientY-down.sy;
-      const dist=Math.hypot(dx,dy);
-      // режим бустера
-      if(boosterMode){ if(c) useBooster(c.i); down=null; return; }
-      if(dist<14){ // ТАП
-        if(sel==null){ sel=down.i; grid[sel].glow=.6; Sound.gemSelect(); }
-        else if(sel===down.i){ grid[sel].glow=0; sel=null; }
-        else { grid[sel].glow=0; const a=sel; sel=null; trySwap(a,down.i); }
-      }else{ // СВАЙП
-        let nx=down.x,ny=down.y;
-        if(Math.abs(dx)>Math.abs(dy)) nx+=dx>0?1:-1; else ny+=dy>0?1:-1;
-        if(inb(nx,ny)){ if(sel!=null){grid[sel].glow=0;sel=null;} trySwap(down.i,idx(nx,ny)); }
-      }
-      down=null;
-    };
+    cvs.onpointerup=e=>{ handleUp(e.clientX,e.clientY); };
     cvs.oncontextmenu=e=>e.preventDefault();
+
+    // ── Touch fallback (некоторые мобильные браузеры глушат pointer-события) ──
+    cvs.addEventListener('touchstart',e=>{
+      if(!running||anim)return;
+      const t=e.changedTouches[0]; const c=hitCell(t);
+      if(c) down={...c,sx:t.clientX,sy:t.clientY};
+    },{passive:true});
+    cvs.addEventListener('touchend',e=>{
+      const t=e.changedTouches[0];
+      handleUp(t.clientX,t.clientY);
+      e.preventDefault();
+    },{passive:false});
+  }
+
+  function handleUp(cx,cy){
+    if(!running||anim||!down){ down=null; return; }
+    const c=hitCell({clientX:cx,clientY:cy});
+    const dx=cx-down.sx, dy=cy-down.sy;
+    const dist=Math.hypot(dx,dy);
+    if(boosterMode){ if(c) useBooster(c.i); down=null; return; }
+    if(dist<14){ // ТАП
+      if(sel==null){ sel=down.i; grid[sel].glow=.6; Sound.gemSelect(); }
+      else if(sel===down.i){ grid[sel].glow=0; sel=null; }
+      else { grid[sel].glow=0; const a=sel; sel=null; trySwap(a,down.i); }
+    }else{ // СВАЙП
+      let nx=down.x,ny=down.y;
+      if(Math.abs(dx)>Math.abs(dy)) nx+=dx>0?1:-1; else ny+=dy>0?1:-1;
+      if(inb(nx,ny)){ if(sel!=null){grid[sel].glow=0;sel=null;} trySwap(down.i,idx(nx,ny)); }
+    }
+    down=null;
   }
   function hitCell(e){
     const r=cvs.getBoundingClientRect();
@@ -348,3 +366,4 @@
 
   function vibrate(ms){ try{ navigator.vibrate&&navigator.vibrate(ms);}catch(e){} }
 })();
+
