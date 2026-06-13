@@ -177,11 +177,15 @@ body::before{
 .xp-info{ font-size:11px; color:var(--ink3); font-family:'JetBrains Mono',monospace; white-space:nowrap; }
 
 /* tab area занимает оставшееся место между topbar/xp и nav */
-.tab-area{ flex:1 1 auto; position:relative; overflow:hidden; }
+.tab-area{
+  flex:1 1 auto; position:relative; overflow:hidden;
+  /* резервируем место под фиксированную навигацию, чтобы зона не накрывала меню */
+  margin-bottom:calc(var(--navh) + var(--safeb));
+}
 .tab-pane{
   position:absolute; inset:0;
   overflow-y:auto; -webkit-overflow-scrolling:touch;
-  padding:16px 14px calc(var(--navh) + var(--safeb) + 24px);
+  padding:16px 14px 24px;
   opacity:0; pointer-events:none; transform:translateY(6px);
   transition:opacity .25s ease, transform .25s ease;
 }
@@ -190,7 +194,21 @@ body::before{
 
 /* свайп-зона (вкладка Дела) — НЕ скроллится */
 #tab-cases{ overflow:hidden; padding:0; }
-.swipe-zone{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+.swipe-zone{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  /* атмосферный слой поверх Phaser-фона: фокус-свет в центре, тень по краям */
+  background:
+    radial-gradient(120% 90% at 50% 38%, transparent 0%, transparent 30%, rgba(4,6,12,.45) 75%, rgba(2,3,8,.75) 100%),
+    radial-gradient(60% 45% at 50% 40%, rgba(255,179,71,.10), transparent 60%);
+}
+/* мягкое световое пятно под карточкой — будто свет лампы падает на стол */
+.swipe-zone::before{
+  content:''; position:absolute; left:50%; top:50%;
+  width:min(94%,420px); height:74%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255,200,120,.07), transparent 70%);
+  pointer-events:none; z-index:0;
+}
 
 .pane-hd{ margin-bottom:14px; }
 .pane-title{ font-family:'Unbounded',sans-serif; font-weight:600; font-size:20px; }

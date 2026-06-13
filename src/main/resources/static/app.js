@@ -417,6 +417,8 @@ function bindSwipe(card,c){
     card.classList.toggle('tilt-right',dx>30);
     card.classList.toggle('tilt-up',c.special&&dy<-40&&Math.abs(dx)<60);
     setStampOpacity(card,dx,dy,c);
+    // параллакс фона следует за свайпом
+    if(window.BgFxDrag) BgFxDrag(-dx/180, -dy/180);
     if(Math.abs(dx)>TH||(c.special&&dy<-UPTH)) vibrate(6);
   };
   const end=()=>{
@@ -429,9 +431,14 @@ function bindSwipe(card,c){
     card.style.transform=`translate(-50%,-50%) rotate(-.4deg)`;
     card.className='case-card ct-'+(c.type||'evidence');
     resetStamps(card);
+    if(window.BgFxDrag) BgFxDrag(0,0);
   };
 
-  card.addEventListener('pointerdown',e=>{ start(e.clientX,e.clientY); card.setPointerCapture?.(e.pointerId); });
+  card.addEventListener('pointerdown',e=>{
+    // не начинать свайп если жмём кнопку «Найти улики»
+    if(e.target.closest('#play-gems')) return;
+    start(e.clientX,e.clientY); card.setPointerCapture?.(e.pointerId);
+  });
   card.addEventListener('pointermove',e=>move(e.clientX,e.clientY));
   card.addEventListener('pointerup',end);
   card.addEventListener('pointercancel',end);

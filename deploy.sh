@@ -1,203 +1,13 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-#  СДВИГ · deploy.sh — ЧИСТАЯ ПЕРЕСБОРКА фронтенда
-#  Убраны костыли (zzz-reset, inline-HOTFIX). Единый стиль.
-#  Фиксы: клики, экран входа, залипшие штампы, карта, фоны.
+#  СДВИГ · deploy.sh — фиксы: меню, свайп с любой точки, новый фон
 #  Запускай из корня репозитория:  bash deploy.sh
 # ═══════════════════════════════════════════════════════════════
 set -e
 S="src/main/resources/static"
 echo ""
-echo "🧹  СДВИГ — чистая пересборка фронтенда…"
+echo "🎬  СДВИГ — меню + свайп + кинематографичный фон…"
 echo ""
-
-# Удаляем устаревший костыль (если был)
-rm -f "$S/zzz-reset.css" 2>/dev/null && echo "  ✗ удалён zzz-reset.css (костыль)" || true
-echo ""
-echo "  ✦ $S/index.html"
-mkdir -p $(dirname "$S/index.html")
-cat > "$S/index.html" << 'EOF_SDVIG'
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#07090d">
-<title>СДВИГ</title>
-<link rel="stylesheet" href="/style.css">
-<link rel="stylesheet" href="/card-design.css">
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-<script>window.SDVIG_BOT_USERNAME="sdvig_game_bot";</script>
-</head>
-<body>
-
-<!-- фон Phaser (никогда не ловит клики) -->
-<div id="bg-fx"></div>
-
-<!-- ══ SPLASH ══ -->
-<div id="splash-screen" class="screen active">
-  <div class="splash-scene">
-    <div class="splash-emblem" id="splash-emblem">
-      <div class="emblem-inner"><span class="emblem-letter">С</span></div>
-    </div>
-    <div class="splash-title-row" id="splash-title"></div>
-    <div class="splash-progress-wrap">
-      <div class="splash-track"><div class="splash-fill" id="splash-fill"></div></div>
-      <div class="splash-status" id="splash-status">Инициализация</div>
-    </div>
-  </div>
-  <div class="splash-flash" id="splash-flash"></div>
-</div>
-
-<!-- ══ LOGIN ══ -->
-<div id="login-screen" class="screen">
-  <div class="login-wrap">
-    <div class="login-header">
-      <div class="login-badge">С</div>
-      <div class="login-h1">СДВИГ</div>
-      <div class="login-tagline">Детективное агентство</div>
-    </div>
-    <div class="login-card">
-      <div class="login-card-label">Вход</div>
-      <div class="tg-widget-area" id="tg-widget-area"></div>
-      <div class="tg-tip" id="tg-status">Загрузка способов входа…</div>
-      <div class="divider">или</div>
-      <button class="btn btn-outline" id="guest-btn" type="button">Войти как гость</button>
-      <div class="login-hint">Гостевой прогресс хранится на этом устройстве.</div>
-    </div>
-  </div>
-</div>
-
-<!-- ══ ERROR ══ -->
-<div id="error-screen" class="screen">
-  <div class="err-center">
-    <div class="err-icon">⚠️</div>
-    <div class="err-title">Что-то пошло не так</div>
-    <div class="err-msg" id="error-msg">Не удалось загрузить данные.</div>
-    <button class="btn btn-bronze" onclick="location.reload()" style="max-width:200px">Перезапустить</button>
-  </div>
-</div>
-
-<!-- ══ MAIN ══ -->
-<div id="main-screen" class="screen">
-
-  <div class="topbar">
-    <div class="topbar-left">
-      <div class="topbar-emblem">С</div>
-      <div class="topbar-brand">СДВИГ</div>
-    </div>
-    <div class="topbar-right">
-      <div class="topbar-stats">
-        <div class="stat-pill" id="pill-energy"><span data-ico="bolt"></span><span id="hud-energy">5</span></div>
-        <div class="stat-pill" id="pill-credits"><span data-ico="gem"></span><span id="hud-credits">0</span></div>
-      </div>
-      <button class="sound-btn" id="sound-btn" type="button">🔊</button>
-    </div>
-  </div>
-
-  <div class="xp-band">
-    <div class="xp-track"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
-    <div class="xp-info" id="xp-info">УР 1 · 0/100</div>
-  </div>
-
-  <div class="tab-area">
-
-    <div class="tab-pane active" id="tab-cases">
-      <div class="swipe-zone" id="swipe-zone">
-        <div class="stack-card sc3"></div>
-        <div class="stack-card sc2"></div>
-        <div class="stack-card sc1"></div>
-      </div>
-    </div>
-
-    <div class="tab-pane" id="tab-map">
-      <div class="map-scroll" id="map-scroll">
-        <div class="map-inner" id="map-inner">
-          <svg class="map-path-svg" id="map-path"></svg>
-        </div>
-      </div>
-    </div>
-
-    <div class="tab-pane" id="tab-games">
-      <div class="pane-hd">
-        <div class="pane-title">Аркады</div>
-        <div class="pane-sub">Тренируй навыки — открывай свайпы дел</div>
-      </div>
-      <div class="game-list" id="game-list"></div>
-    </div>
-
-    <div class="tab-pane" id="tab-profile">
-      <div class="profile-hero">
-        <div class="profile-av" id="prof-av">С</div>
-        <div>
-          <div class="profile-name" id="prof-name">Агент</div>
-          <div class="profile-arch" id="prof-arch">Новичок</div>
-          <div class="profile-id" id="prof-id">#000000</div>
-        </div>
-      </div>
-      <div class="stats-row">
-        <div class="sg"><div class="sg-val" id="st-cases">0</div><div class="sg-lbl">Дел</div></div>
-        <div class="sg"><div class="sg-val" id="st-streak">0</div><div class="sg-lbl">Серия</div></div>
-        <div class="sg"><div class="sg-val" id="st-prestige">0</div><div class="sg-lbl">Престиж</div></div>
-        <div class="sg"><div class="sg-val" id="st-lvl">1</div><div class="sg-lbl">Уровень</div></div>
-      </div>
-      <div class="pane-hd" style="margin-top:6px"><div class="pane-title" style="font-size:16px">Навыки</div></div>
-      <div class="skill-list" id="skill-list"></div>
-      <div class="pane-hd" style="margin-top:18px"><div class="pane-title" style="font-size:16px">Достижения</div></div>
-      <div class="ach-grid" id="ach-grid"></div>
-    </div>
-
-    <div class="tab-pane" id="tab-shop">
-      <div class="pane-hd">
-        <div class="pane-title">Лавка</div>
-        <div class="pane-sub">Трать кредиты с умом</div>
-      </div>
-      <div class="shop-grid" id="shop-grid"></div>
-    </div>
-
-  </div>
-
-  <nav class="bottom-nav">
-    <button class="nb active" data-tab="cases"><span data-ico="cards"></span><span class="nb-lbl">Дела</span></button>
-    <button class="nb" data-tab="map"><span data-ico="map"></span><span class="nb-lbl">Карта</span></button>
-    <button class="nb" data-tab="games"><span data-ico="gem"></span><span class="nb-lbl">Аркады</span></button>
-    <button class="nb" data-tab="profile"><span data-ico="agent"></span><span class="nb-lbl">Агент</span></button>
-    <button class="nb" data-tab="shop"><span data-ico="bag"></span><span class="nb-lbl">Лавка</span></button>
-  </nav>
-</div>
-
-<!-- ══ HINT GAME SHEET ══ -->
-<div class="hint-modal hidden" id="hint-modal">
-  <div class="hm-header">
-    <div class="hm-title"><span data-ico="gem"></span><span>Найди улики</span></div>
-    <button class="hm-close" id="hint-close" type="button">✕</button>
-  </div>
-  <div class="hm-vp" id="hint-vp"></div>
-  <div class="hm-footer"><div class="hm-footer-text" id="hint-footer">Собери комбинацию, чтобы разблокировать свайп</div></div>
-</div>
-
-<!-- ══ TOAST / OVERLAYS ══ -->
-<div class="toast" id="toast">
-  <div class="toast-icon" id="toast-icon">✦</div>
-  <div><div class="toast-title" id="toast-title">Уведомление</div><div class="toast-desc" id="toast-desc"></div></div>
-</div>
-<div class="modal-bg hidden" id="daily-modal"></div>
-
-<script src="/icons.js"></script>
-<script src="/sound.js"></script>
-<script src="/phaser-bg.js"></script>
-<script src="/games/match3.js"></script>
-<script src="/app.js"></script>
-<script src="/games/detective-mahjong.js"></script>
-<script src="/games/torn-letter.js"></script>
-<script src="/games/crime-board.js"></script>
-<script src="/games/arcade.js"></script>
-</body>
-</html>
-
-EOF_SDVIG
-
 echo "  ✦ $S/style.css"
 mkdir -p $(dirname "$S/style.css")
 cat > "$S/style.css" << 'EOF_SDVIG'
@@ -380,11 +190,15 @@ body::before{
 .xp-info{ font-size:11px; color:var(--ink3); font-family:'JetBrains Mono',monospace; white-space:nowrap; }
 
 /* tab area занимает оставшееся место между topbar/xp и nav */
-.tab-area{ flex:1 1 auto; position:relative; overflow:hidden; }
+.tab-area{
+  flex:1 1 auto; position:relative; overflow:hidden;
+  /* резервируем место под фиксированную навигацию, чтобы зона не накрывала меню */
+  margin-bottom:calc(var(--navh) + var(--safeb));
+}
 .tab-pane{
   position:absolute; inset:0;
   overflow-y:auto; -webkit-overflow-scrolling:touch;
-  padding:16px 14px calc(var(--navh) + var(--safeb) + 24px);
+  padding:16px 14px 24px;
   opacity:0; pointer-events:none; transform:translateY(6px);
   transition:opacity .25s ease, transform .25s ease;
 }
@@ -393,7 +207,21 @@ body::before{
 
 /* свайп-зона (вкладка Дела) — НЕ скроллится */
 #tab-cases{ overflow:hidden; padding:0; }
-.swipe-zone{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+.swipe-zone{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  /* атмосферный слой поверх Phaser-фона: фокус-свет в центре, тень по краям */
+  background:
+    radial-gradient(120% 90% at 50% 38%, transparent 0%, transparent 30%, rgba(4,6,12,.45) 75%, rgba(2,3,8,.75) 100%),
+    radial-gradient(60% 45% at 50% 40%, rgba(255,179,71,.10), transparent 60%);
+}
+/* мягкое световое пятно под карточкой — будто свет лампы падает на стол */
+.swipe-zone::before{
+  content:''; position:absolute; left:50%; top:50%;
+  width:min(94%,420px); height:74%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255,200,120,.07), transparent 70%);
+  pointer-events:none; z-index:0;
+}
 
 .pane-hd{ margin-bottom:14px; }
 .pane-title{ font-family:'Unbounded',sans-serif; font-weight:600; font-size:20px; }
@@ -551,6 +379,8 @@ cat > "$S/card-design.css" << 'EOF_SDVIG'
   touch-action:none;
   z-index:6;
 }
+/* все дочерние элементы карточки передают свайп родителю */
+.case-card *{ touch-action:none; }
 .case-card.card-enter{ animation:cardIn .5s cubic-bezier(.22,1.1,.36,1) both; }
 @keyframes cardIn{
   from{ opacity:0; transform:translate(-50%,-50%) translateY(40px) scale(.92) rotate(2deg); }
@@ -582,7 +412,7 @@ cat > "$S/card-design.css" << 'EOF_SDVIG'
 
 /* ── тело ── */
 .card-body{ flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px;
-  position:relative; z-index:2; overflow-y:auto; }
+  position:relative; z-index:2; overflow:hidden; }
 .card-icon-box{ font-size:56px; line-height:1; margin-top:6px; }
 .card-case-title{ font-family:'Unbounded',sans-serif; font-weight:600; font-size:20px; }
 .card-text{ font-size:14.5px; color:var(--ink2); line-height:1.6; }
@@ -1131,6 +961,8 @@ function bindSwipe(card,c){
     card.classList.toggle('tilt-right',dx>30);
     card.classList.toggle('tilt-up',c.special&&dy<-40&&Math.abs(dx)<60);
     setStampOpacity(card,dx,dy,c);
+    // параллакс фона следует за свайпом
+    if(window.BgFxDrag) BgFxDrag(-dx/180, -dy/180);
     if(Math.abs(dx)>TH||(c.special&&dy<-UPTH)) vibrate(6);
   };
   const end=()=>{
@@ -1143,9 +975,14 @@ function bindSwipe(card,c){
     card.style.transform=`translate(-50%,-50%) rotate(-.4deg)`;
     card.className='case-card ct-'+(c.type||'evidence');
     resetStamps(card);
+    if(window.BgFxDrag) BgFxDrag(0,0);
   };
 
-  card.addEventListener('pointerdown',e=>{ start(e.clientX,e.clientY); card.setPointerCapture?.(e.pointerId); });
+  card.addEventListener('pointerdown',e=>{
+    // не начинать свайп если жмём кнопку «Найти улики»
+    if(e.target.closest('#play-gems')) return;
+    start(e.clientX,e.clientY); card.setPointerCapture?.(e.pointerId);
+  });
   card.addEventListener('pointermove',e=>move(e.clientX,e.clientY));
   card.addEventListener('pointerup',end);
   card.addEventListener('pointercancel',end);
@@ -1490,14 +1327,17 @@ echo "  ✦ $S/phaser-bg.js"
 mkdir -p $(dirname "$S/phaser-bg.js")
 cat > "$S/phaser-bg.js" << 'EOF_SDVIG'
 /* ═══════════════════════════════════════════════
-   СДВИГ · phaser-bg.js v7 — фон-параллакс
-   ✓ input ПОЛНОСТЬЮ отключён (не крадёт тач у игр)
-   ✓ при pause() — input.enabled=false + canvas убирается
-   ✓ лёгкий: спрайты двигаются, graphics не перерисовывается
+   СДВИГ · phaser-bg.js v8 — кинематографичный фон кабинета
+   ✓ Реальное фото кабинета с параллаксом по слоям
+   ✓ Глубина резкости (фокус на столе, размытие по краям)
+   ✓ Тёплый свет лампы (дышит)
+   ✓ Пылинки в луче света
+   ✓ Дождь за окном
+   ✓ input:false — не крадёт тачи
 ═══════════════════════════════════════════════ */
 (function(){
-  let game=null, scene=null, layers=[], rain=null, lamp=null, paused=false;
-  let px=0.5, py=0.5, tx=0, ty=0;
+  let game=null, scene=null, paused=false;
+  let tx=0, ty=0, cx=0, cy=0;
   let frame=0;
 
   function boot(){
@@ -1506,93 +1346,155 @@ cat > "$S/phaser-bg.js" << 'EOF_SDVIG'
       type:Phaser.AUTO, parent:'bg-fx',
       width:window.innerWidth, height:window.innerHeight,
       transparent:true, banner:false,
-      // ═══ КРИТИЧНО: полностью выключаем подсистему ввода ═══
-      // иначе фоновый Phaser вешает touch-listener на window с capture
-      // и перехватывает тачи у второго (игрового) Phaser и DOM-кнопок
-      input:false,
-      fps:{ target:24, forceSetTimeOut:true },
-      render:{ powerPreference:'low-power', antialias:false },
+      input:false,                                   // не трогаем ввод
+      fps:{ target:30, forceSetTimeOut:true },
+      render:{ powerPreference:'low-power', antialias:true },
       scale:{ mode:Phaser.Scale.RESIZE },
-      scene:{ create, update }
+      scene:{ preload, create, update }
     });
-    // canvas НИКОГДА не ловит клики
-    const kill=()=>{ document.querySelectorAll('#bg-fx canvas,#bg-fx *').forEach(c=>{
-      c.style.pointerEvents='none'; c.style.touchAction='none'; }); };
+    const kill=()=>document.querySelectorAll('#bg-fx canvas,#bg-fx *')
+      .forEach(c=>{ c.style.pointerEvents='none'; c.style.touchAction='none'; });
     [40,200,600].forEach(t=>setTimeout(kill,t));
+    if(window.DeviceOrientationEvent){
+      window.addEventListener('deviceorientation',e=>{
+        if(e.gamma!=null) tx=Math.max(-1,Math.min(1,e.gamma/35));
+        if(e.beta!=null)  ty=Math.max(-1,Math.min(1,(e.beta-45)/35));
+      },{passive:true});
+    }
   }
 
-  function makeTex(scene){
-    const W=scene.scale.width, H=scene.scale.height;
-    let g=scene.add.graphics();
-    g.fillStyle(0x0d1424,1).fillRect(0,0,W,H);
-    g.fillStyle(0x16243f,0.5);
-    for(let i=0;i<3;i++) g.fillRect(W*0.6,H*0.1+i*H*0.22,W*0.34,H*0.18);
-    g.generateTexture('bgwin',W,H); g.destroy();
-    g=scene.add.graphics();
-    for(let s=0;s<4;s++){ const y=H*0.2+s*H*0.18;
-      g.fillStyle(0x0a0e16,0.7).fillRect(W*0.04,y,W*0.42,8);
-      for(let b=0;b<7;b++){ g.fillStyle(0x1a2336,0.45)
-        .fillRect(W*0.05+b*W*0.055,y-28-(b%3)*6,W*0.04,28+(b%3)*6);} }
-    g.generateTexture('shelf',W,H); g.destroy();
+  function preload(){
+    this.load.image('office','/img/bg-login.jpg');
   }
 
   function create(){
-    scene=this; const W=scene.scale.width, H=scene.scale.height;
-    makeTex(scene);
-    const win=scene.add.image(W/2,H/2,'bgwin').setDepth(0);
-    const shelf=scene.add.image(W/2,H/2,'shelf').setDepth(1);
-    layers=[{o:win,d:0.02},{o:shelf,d:0.05}];
+    scene=this;
+    const W=scene.scale.width, H=scene.scale.height;
 
-    rain=scene.add.graphics().setDepth(2);
-    scene._rain=[]; for(let i=0;i<28;i++) scene._rain.push({
-      x:Math.random()*W, y:Math.random()*H, l:8+Math.random()*8, s:5+Math.random()*5});
-    drawRain(W,H);
+    // ── СЛОЙ 1: фото кабинета (дальний план, мягкое размытие глубины) ──
+    const photo=scene.add.image(W/2,H/2,'office').setDepth(0);
+    const scl=Math.max(W/photo.width,H/photo.height)*1.16;   // запас для параллакса
+    photo.setScale(scl);
+    photo.setTint(0x9fb0c8);
+    scene._photo=photo;
+    scene._baseScale=scl;
 
-    const lg=scene.add.graphics();
-    for(let i=6;i>0;i--){ lg.fillStyle(0xf0a93a,0.04*i/6); lg.fillCircle(140,140,60*i); }
-    lg.generateTexture('lamp',280,280); lg.destroy();
-    lamp=scene.add.image(W*0.5,H*0.16,'lamp').setDepth(3).setAlpha(0.7);
+    // ── СЛОЙ 2: затемнение + виньетка (глубина, фокус в центре) ──
+    const vig=scene.add.graphics().setDepth(1);
+    drawVignette(vig,W,H);
+    scene._vig=vig;
 
-    // НЕ слушаем scene.input (его нет — input:false). Параллакс — только от наклона.
-    if(window.DeviceOrientationEvent){
-      window.addEventListener('deviceorientation',e=>{
-        if(e.gamma!=null) tx=Math.max(-1,Math.min(1,e.gamma/40));
-        if(e.beta!=null)  ty=Math.max(-1,Math.min(1,(e.beta-45)/40));
-      },{passive:true});
-    }
-    scene.tweens.add({targets:lamp,alpha:0.45,duration:2600,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+    // ── СЛОЙ 3: тёплый луч лампы (дышит) ──
+    const lampTex=makeLampTexture(scene,W);
+    const lamp=scene.add.image(W*0.5,H*0.40,'lampGlow').setDepth(2)
+      .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.55);
+    scene._lamp=lamp;
+    scene.tweens.add({targets:lamp,alpha:0.34,duration:3200,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+
+    // ── СЛОЙ 4: пылинки в луче ──
+    scene._dust=[];
+    for(let i=0;i<22;i++) scene._dust.push({
+      x:W*(0.3+Math.random()*0.4), y:H*(0.2+Math.random()*0.5),
+      r:0.6+Math.random()*1.8, vx:(Math.random()-0.5)*0.12, vy:-0.05-Math.random()*0.12,
+      a:0.1+Math.random()*0.35, ph:Math.random()*6.28
+    });
+    scene._dustG=scene.add.graphics().setDepth(3).setBlendMode(Phaser.BlendModes.ADD);
+
+    // ── СЛОЙ 5: дождь за окном (правый верх) ──
+    scene._rain=[];
+    for(let i=0;i<26;i++) scene._rain.push({
+      x:W*(0.55+Math.random()*0.4), y:Math.random()*H*0.6,
+      l:8+Math.random()*10, s:6+Math.random()*5
+    });
+    scene._rainG=scene.add.graphics().setDepth(2);
+
+    scene._W=W; scene._H=H;
   }
 
-  // публичный хук: app.js двигает фон при свайпе карточки
+  // публичный хук — app.js двигает фон при свайпе карточки
   window.BgFxDrag=function(nx,ny){ tx=Math.max(-1,Math.min(1,nx)); ty=Math.max(-1,Math.min(1,ny)); };
 
-  function drawRain(W,H){
-    if(!rain) return;
-    rain.clear(); rain.lineStyle(1.3,0x5a7bb0,0.30);
-    scene._rain.forEach(r=>{ rain.beginPath();
-      rain.moveTo(r.x,r.y); rain.lineTo(r.x-2,r.y+r.l); rain.strokePath(); });
+  function makeLampTexture(scene,W){
+    if(scene.textures.exists('lampGlow')) return;
+    const size=Math.round(W*1.1);
+    const g=scene.make.graphics({x:0,y:0,add:false});
+    const cx=size/2, cy=size/2;
+    for(let i=20;i>0;i--){
+      const r=(size/2)*(i/20);
+      const a=0.05*(1-i/20)+0.005;
+      // тёплый янтарный свет лампы
+      g.fillStyle(0xffb347, a);
+      g.fillCircle(cx,cy,r);
+    }
+    g.generateTexture('lampGlow',size,size);
+    g.destroy();
+  }
+
+  function drawVignette(g,W,H){
+    g.clear();
+    // верх — темнее (потолок в тени)
+    g.fillStyle(0x05070c,0.55); g.fillRect(0,0,W,H*0.22);
+    // низ — глубокая тень (пол)
+    g.fillStyle(0x04060a,0.6);  g.fillRect(0,H*0.72,W,H*0.28);
+    // боковые виньетки
+    const steps=14;
+    for(let i=0;i<steps;i++){
+      const a=0.5*(1-i/steps);
+      g.fillStyle(0x04060a,a*0.5);
+      g.fillRect(i*(W*0.04),0,W*0.04,H);            // левый край
+      g.fillRect(W-(i+1)*(W*0.04),0,W*0.04,H);      // правый край
+    }
   }
 
   function update(){
     if(!scene||paused) return;
-    const W=scene.scale.width, H=scene.scale.height;
-    const ox=tx*0.5, oy=ty*0.5;
-    layers.forEach(l=>{ l.o.x=W/2-ox*W*l.d; l.o.y=H/2-oy*H*l.d; });
-    if(lamp) lamp.x=W*0.5+ox*30;
-    frame++; if(frame%2===0){
-      scene._rain.forEach(r=>{ r.y+=r.s*2; if(r.y>H){r.y=-r.l;r.x=Math.random()*W;} });
-      drawRain(W,H);
+    const W=scene._W, H=scene._H;
+    // плавный параллакс
+    cx += (tx-cx)*0.06; cy += (ty-cy)*0.06;
+
+    if(scene._photo){
+      scene._photo.x = W/2 - cx*26;
+      scene._photo.y = H/2 - cy*18;
+    }
+    if(scene._lamp){
+      scene._lamp.x = W*0.5 - cx*40;
+      scene._lamp.y = H*0.40 - cy*26;
+    }
+
+    frame++;
+    // пылинки — каждый кадр (их мало)
+    if(scene._dustG){
+      const g=scene._dustG; g.clear();
+      const t=frame*0.02;
+      for(const d of scene._dust){
+        d.x+=d.vx; d.y+=d.vy;
+        if(d.y<H*0.15){ d.y=H*0.6; d.x=W*(0.3+Math.random()*0.4); }
+        if(d.x<W*0.25||d.x>W*0.75) d.vx*=-1;
+        const tw=d.a*(0.6+0.4*Math.sin(t+d.ph));
+        g.fillStyle(0xffe0a0, tw);
+        g.fillCircle(d.x - cx*30, d.y - cy*20, d.r);
+      }
+    }
+    // дождь — через кадр
+    if(frame%2===0 && scene._rainG){
+      const g=scene._rainG; g.clear();
+      g.lineStyle(1.2,0x6a8bbf,0.22);
+      for(const r of scene._rain){
+        r.y+=r.s; if(r.y>H*0.62){ r.y=-r.l; r.x=W*(0.55+Math.random()*0.4); }
+        g.beginPath();
+        g.moveTo(r.x - cx*8, r.y);
+        g.lineTo(r.x - cx*8 - 1.5, r.y+r.l);
+        g.strokePath();
+      }
     }
   }
 
   window.BgFx={
     init:boot,
-    pause(){ paused=true;
-      if(game){ try{ game.loop.sleep(); }catch(e){}
-        const c=document.querySelector('#bg-fx canvas'); if(c) c.style.visibility='hidden'; } },
-    resume(){ paused=false;
-      if(game){ try{ game.loop.wake(); }catch(e){}
-        const c=document.querySelector('#bg-fx canvas'); if(c) c.style.visibility='visible'; } },
+    pause(){ paused=true; if(game){ try{game.loop.sleep();}catch(e){}
+      const c=document.querySelector('#bg-fx canvas'); if(c)c.style.visibility='hidden'; } },
+    resume(){ paused=false; if(game){ try{game.loop.wake();}catch(e){}
+      const c=document.querySelector('#bg-fx canvas'); if(c)c.style.visibility='visible'; } },
     setMood(){}
   };
   window.addEventListener('resize',()=>{ if(game) game.scale.resize(innerWidth,innerHeight); });
@@ -1600,513 +1502,11 @@ cat > "$S/phaser-bg.js" << 'EOF_SDVIG'
 
 EOF_SDVIG
 
-echo "  ✦ $S/games/match3.js"
-mkdir -p $(dirname "$S/games/match3.js")
-cat > "$S/games/match3.js" << 'EOF_SDVIG'
-/* ═══════════════════════════════════════════════
-   СДВИГ · match3.js v5 — Canvas «Улики»
-   На весь контейнер · тапы + свайпы · ходы · бустеры
-═══════════════════════════════════════════════ */
-(function(){
-  const COLORS=[
-    {a:'#ff5d6c',b:'#b3202d'}, // 0 красный
-    {a:'#6be0ff',b:'#1f7da8'}, // 1 голубой
-    {a:'#35d49b',b:'#127a52'}, // 2 зелёный
-    {a:'#ffcf6b',b:'#b3741c'}, // 3 золотой
-    {a:'#a98bff',b:'#5b3fb0'}, // 4 фиолетовый
-    {a:'#ffffff',b:'#9aa6bd'}  // 5 белый
-  ];
-  const GLYPH=['✦','◆','▲','★','⬟','●'];
-  const N=8; // 8×8
-
-  let cvs,ctx,W,H,DPR,cell,ox,oy;
-  let grid=[];                 // [{c,scale,dy,glow}]
-  let sel=null;                // выбранная ячейка
-  let anim=false, raf=null;
-  let opts=null, moves=0, score=0, progress=0, combo=0, comboMax=0;
-  let booster=0, boosterMode=null;
-  let running=false;
-  let particles=[];
-  let last=0;
-
-  /* ── публичный API ─────────────────────────── */
-  window.Match3={
-    start(container,o){
-      opts=o||{}; const m=opts.mission||{type:'score',target:600,moves:14};
-      moves=m.moves||14; score=0; progress=0; combo=0; comboMax=0;
-      booster=opts.boosters||0; boosterMode=null; particles=[];
-      running=true;
-      try{ if(window.BgFx&&BgFx.pause) BgFx.pause(); }catch(e){}
-      buildCanvas(container);
-      initGrid();
-      bindInput();
-      loop();
-      hud();
-    },
-    stop(){ running=false; if(raf)cancelAnimationFrame(raf);
-      try{ window.removeEventListener('resize',window._m3resize); }catch(e){}
-      if(cvs&&cvs.parentNode) cvs.parentNode.innerHTML='';
-      try{ if(window.BgFx&&BgFx.resume) BgFx.resume(); }catch(e){} }
-  };
-
-  /* ── canvas ────────────────────────────────── */
-  function buildCanvas(container){
-    container.innerHTML='';
-    DPR=Math.min(window.devicePixelRatio||1,2);
-    cvs=document.createElement('canvas');
-    cvs.style.cssText='display:block;width:100%;height:100%;touch-action:none;'+
-      'pointer-events:auto;position:relative;z-index:1';
-    container.appendChild(cvs);
-    ctx=cvs.getContext('2d');
-    resize(container);
-    window._m3resize=()=>resize(container);
-    window.addEventListener('resize',window._m3resize);
-  }
-  function resize(container){
-    const r=container.getBoundingClientRect();
-    W=r.width; H=r.height;
-    cvs.width=W*DPR; cvs.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
-    const pad=14, hudH=64;
-    const avail=Math.min(W-pad*2, H-hudH-pad*2);
-    cell=Math.floor(avail/N);
-    ox=(W-cell*N)/2; oy=hudH+(H-hudH-cell*N)/2;
-  }
-
-  /* ── grid ──────────────────────────────────── */
-  function initGrid(){
-    grid=[];
-    for(let i=0;i<N*N;i++) grid.push({c:rnd(),scale:1,dy:0,glow:0});
-    // убрать стартовые матчи
-    let guard=0;
-    while(findMatches().length && guard++<60){
-      findMatches().forEach(idx=>grid[idx].c=rnd());
-    }
-  }
-  function rnd(){ return Math.floor(Math.random()*COLORS.length); }
-  const idx=(x,y)=>y*N+x;
-  const inb=(x,y)=>x>=0&&y>=0&&x<N&&y<N;
-
-  /* ── поиск совпадений ──────────────────────── */
-  function findMatches(){
-    const set=new Set();
-    // горизонталь
-    for(let y=0;y<N;y++) for(let x=0;x<N-2;x++){
-      const c=grid[idx(x,y)].c;
-      if(c===grid[idx(x+1,y)].c && c===grid[idx(x+2,y)].c){
-        set.add(idx(x,y)); set.add(idx(x+1,y)); set.add(idx(x+2,y));
-        let k=x+3; while(k<N&&grid[idx(k,y)].c===c){ set.add(idx(k,y)); k++; }
-      }
-    }
-    // вертикаль
-    for(let x=0;x<N;x++) for(let y=0;y<N-2;y++){
-      const c=grid[idx(x,y)].c;
-      if(c===grid[idx(x,y+1)].c && c===grid[idx(x,y+2)].c){
-        set.add(idx(x,y)); set.add(idx(x,y+1)); set.add(idx(x,y+2));
-        let k=y+3; while(k<N&&grid[idx(x,k)].c===c){ set.add(idx(x,k)); k++; }
-      }
-    }
-    return [...set];
-  }
-
-  /* ── ход игрока ────────────────────────────── */
-  function trySwap(a,b){
-    if(anim||moves<=0) return;
-    const ax=a%N,ay=(a/N|0),bx=b%N,by=(b/N|0);
-    if(Math.abs(ax-bx)+Math.abs(ay-by)!==1) return;
-    swap(a,b);
-    const m=findMatches();
-    if(!m.length){ // откат
-      Sound.error();
-      swap(a,b);
-      shakeCells([a,b]);
-      return;
-    }
-    Sound.gemSwap(); vibrate(8);
-    moves--; combo=0;
-    resolveCascade();
-    hud();
-  }
-  function swap(a,b){ const t=grid[a].c; grid[a].c=grid[b].c; grid[b].c=t; }
-
-  /* ── каскад ────────────────────────────────── */
-  function resolveCascade(){
-    const m=findMatches();
-    if(!m.length){ checkEnd(); return; }
-    combo++; comboMax=Math.max(comboMax,combo);
-    Sound.gemMatch(m.length); if(combo>1) Sound.gemCascade(combo);
-    vibrate(combo>1?[6,20,6]:6);
-
-    // очки + миссия
-    const gain=m.length*30*combo; score+=gain;
-    m.forEach(i=>{
-      const x=i%N,y=(i/N|0);
-      spawnBurst(ox+x*cell+cell/2, oy+y*cell+cell/2, grid[i].c);
-      grid[i].glow=1;
-      // миссии color/clear
-      if(opts.mission){
-        const mi=opts.mission;
-        if(mi.type==='color'&&grid[i].c===mi.color) progress++;
-        if(mi.type==='clear') progress++;
-      }
-    });
-    if(opts.mission){
-      const mi=opts.mission;
-      if(mi.type==='score') progress=score;
-      if(mi.type==='combo') progress=comboMax;
-    }
-
-    // удалить и обрушить
-    anim=true;
-    setTimeout(()=>{
-      m.forEach(i=>grid[i].c=-1);
-      collapse();
-      anim=false;
-      hud();
-      setTimeout(()=>resolveCascade(),120);
-    },140);
-  }
-
-  function collapse(){
-    for(let x=0;x<N;x++){
-      let write=N-1;
-      for(let y=N-1;y>=0;y--){
-        if(grid[idx(x,y)].c!==-1){
-          if(write!==y){ grid[idx(x,write)].c=grid[idx(x,y)].c;
-            grid[idx(x,write)].dy=(write-y)*cell; }
-          write--;
-        }
-      }
-      for(let y=write;y>=0;y--){ grid[idx(x,y)].c=rnd(); grid[idx(x,y)].dy=(write+2)*cell; }
-    }
-    Sound.gemFall();
-  }
-
-  /* ── бустер: разбить ячейку и соседей ──────── */
-  function useBooster(i){
-    if(booster<=0){ Sound.error(); return; }
-    booster--; boosterMode=null; Sound.booster(); vibrate([10,30,10]);
-    const x=i%N,y=(i/N|0); const hit=[];
-    for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
-      if(inb(x+dx,y+dy)) hit.push(idx(x+dx,y+dy)); }
-    hit.forEach(k=>{ const xx=k%N,yy=(k/N|0);
-      spawnBurst(ox+xx*cell+cell/2,oy+yy*cell+cell/2,grid[k].c);
-      grid[k].c=-1; });
-    score+=hit.length*40;
-    if(opts.mission&&opts.mission.type==='clear') progress+=hit.length;
-    anim=true; setTimeout(()=>{ collapse(); anim=false; resolveCascade(); hud(); },140);
-  }
-
-  /* ── конец ─────────────────────────────────── */
-  function checkEnd(){
-    const mi=opts.mission||{type:'score',target:600};
-    const target=mi.target||600;
-    if(progress>=target){ win(); return; }
-    if(moves<=0){ lose(); }
-  }
-  function win(){ running=false; Sound.win(); vibrate([10,40,10,40]);
-    overlay(true); setTimeout(()=>{ opts.onWin&&opts.onWin(); },900); }
-  function lose(){ running=false; Sound.deny(); overlay(false);
-    setTimeout(()=>{ opts.onLose&&opts.onLose(); },1400); }
-
-  function overlay(ok){
-    const o=document.createElement('div');
-    o.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;'+
-      'align-items:center;justify-content:center;gap:14px;text-align:center;'+
-      'background:rgba(7,9,13,.82);backdrop-filter:blur(6px);z-index:5;'+
-      'font-family:Unbounded,sans-serif;color:#f2f5fb';
-    o.innerHTML=ok
-      ? `<div style="font-size:54px">🔍</div><div style="font-size:22px;color:#35d49b">УЛИКИ НАЙДЕНЫ</div>
-         <div style="font-size:13px;color:#b7c0d4">Очки: ${score} · Каскад x${comboMax}</div>`
-      : `<div style="font-size:54px">🚫</div><div style="font-size:22px;color:#ff5d6c">ХОДЫ ЗАКОНЧИЛИСЬ</div>
-         <div style="font-size:13px;color:#b7c0d4">Попробуйте ещё раз</div>`;
-    cvs.parentNode.appendChild(o);
-  }
-
-  /* ── input: тап + свайп ───────────────────── */
-  let down=null;
-  function bindInput(){
-    cvs.onpointerdown=e=>{ if(!running||anim)return;
-      const c=hitCell(e); if(!c)return; down={...c,sx:e.clientX,sy:e.clientY}; };
-    cvs.onpointerup=e=>{ handleUp(e.clientX,e.clientY); };
-    cvs.oncontextmenu=e=>e.preventDefault();
-
-    // ── Touch fallback (некоторые мобильные браузеры глушат pointer-события) ──
-    cvs.addEventListener('touchstart',e=>{
-      if(!running||anim)return;
-      const t=e.changedTouches[0]; const c=hitCell(t);
-      if(c) down={...c,sx:t.clientX,sy:t.clientY};
-    },{passive:true});
-    cvs.addEventListener('touchend',e=>{
-      const t=e.changedTouches[0];
-      handleUp(t.clientX,t.clientY);
-      e.preventDefault();
-    },{passive:false});
-  }
-
-  function handleUp(cx,cy){
-    if(!running||anim||!down){ down=null; return; }
-    const c=hitCell({clientX:cx,clientY:cy});
-    const dx=cx-down.sx, dy=cy-down.sy;
-    const dist=Math.hypot(dx,dy);
-    if(boosterMode){ if(c) useBooster(c.i); down=null; return; }
-    if(dist<14){ // ТАП
-      if(sel==null){ sel=down.i; grid[sel].glow=.6; Sound.gemSelect(); }
-      else if(sel===down.i){ grid[sel].glow=0; sel=null; }
-      else { grid[sel].glow=0; const a=sel; sel=null; trySwap(a,down.i); }
-    }else{ // СВАЙП
-      let nx=down.x,ny=down.y;
-      if(Math.abs(dx)>Math.abs(dy)) nx+=dx>0?1:-1; else ny+=dy>0?1:-1;
-      if(inb(nx,ny)){ if(sel!=null){grid[sel].glow=0;sel=null;} trySwap(down.i,idx(nx,ny)); }
-    }
-    down=null;
-  }
-  function hitCell(e){
-    const r=cvs.getBoundingClientRect();
-    const px=e.clientX-r.left, py=e.clientY-r.top;
-    const x=Math.floor((px-ox)/cell), y=Math.floor((py-oy)/cell);
-    if(!inb(x,y)) return null; return {x,y,i:idx(x,y)};
-  }
-
-  /* ── частицы ───────────────────────────────── */
-  function spawnBurst(x,y,c){
-    const col=COLORS[c]?COLORS[c].a:'#fff';
-    for(let i=0;i<6;i++){ const a=Math.random()*Math.PI*2,s=1+Math.random()*3;
-      particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1,life:1,col,r:2+Math.random()*3}); }
-  }
-  function shakeCells(arr){ arr.forEach(i=>grid[i].glow=.4); setTimeout(()=>arr.forEach(i=>grid[i].glow=0),200); }
-
-  /* ── HUD (поверх canvas, лёгкий DOM) ───────── */
-  function hud(){
-    let bar=cvs.parentNode.querySelector('.m3-hud');
-    const mi=opts.mission||{type:'score',target:600}; const target=mi.target||600;
-    if(!bar){ bar=document.createElement('div'); bar.className='m3-hud';
-      bar.style.cssText='position:absolute;top:0;left:0;right:0;height:60px;display:flex;'+
-        'align-items:center;justify-content:space-between;padding:0 16px;'+
-        'font-family:Manrope,sans-serif;color:#f2f5fb;z-index:4;pointer-events:none';
-      cvs.parentNode.appendChild(bar); }
-    const pct=Math.min(100,progress/target*100);
-    bar.innerHTML=`
-      <div style="text-align:left">
-        <div style="font-size:10px;letter-spacing:1px;color:#7d8699;text-transform:uppercase">${mi.label||'Цель'}</div>
-        <div style="width:130px;height:6px;background:rgba(255,255,255,.08);border-radius:6px;margin-top:5px;overflow:hidden">
-          <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#b3741c,#ffcf6b);border-radius:6px"></div></div>
-      </div>
-      <div style="display:flex;gap:14px;align-items:center">
-        <div style="text-align:center"><div style="font-family:Unbounded;font-weight:700;font-size:18px;color:#ffcf6b">${moves}</div>
-          <div style="font-size:9px;color:#7d8699">ХОДЫ</div></div>
-        <div style="text-align:center"><div style="font-family:Unbounded;font-weight:700;font-size:18px">${score}</div>
-          <div style="font-size:9px;color:#7d8699">ОЧКИ</div></div>
-        <button class="m3-boost" style="pointer-events:auto;border:none;cursor:pointer;
-          background:${boosterMode?'#ffcf6b':'rgba(255,255,255,.06)'};color:${boosterMode?'#1a1206':'#ffcf6b'};
-          border:1px solid rgba(240,169,58,.4);border-radius:10px;padding:6px 9px;font-weight:800;font-size:13px">
-          💥 ${booster}</button>
-      </div>`;
-    const bb=bar.querySelector('.m3-boost');
-    if(bb) bb.onclick=()=>{ if(booster<=0){Sound.error();return;}
-      boosterMode=boosterMode?null:'bomb'; Sound.tap(); hud(); };
-  }
-
-  /* ── render loop ───────────────────────────── */
-  function loop(t){
-    if(!running && particles.length===0){ draw(); return; }
-    raf=requestAnimationFrame(loop);
-    const dt=Math.min(40,(t||0)-last); last=t||0;
-    // плавное падение
-    for(const g of grid){ if(g.dy>0){ g.dy=Math.max(0,g.dy-cell*0.04*(dt/16)*4); }
-      if(g.glow>0) g.glow=Math.max(0,g.glow-0.04); g.scale+=(1-g.scale)*0.2; }
-    // частицы
-    particles=particles.filter(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.25; p.life-=0.03; return p.life>0; });
-    draw();
-  }
-
-  function draw(){
-    ctx.clearRect(0,0,W,H);
-    // фон поля
-    roundRect(ox-8,oy-8,cell*N+16,cell*N+16,18);
-    ctx.fillStyle='rgba(18,22,32,.55)'; ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.lineWidth=1; ctx.stroke();
-
-    for(let y=0;y<N;y++)for(let x=0;x<N;x++){
-      const g=grid[idx(x,y)]; if(g.c<0) continue;
-      const cx=ox+x*cell+cell/2, cy=oy+y*cell+cell/2 - g.dy;
-      drawGem(cx,cy,g,(sel===idx(x,y)));
-    }
-    // частицы
-    for(const p of particles){ ctx.globalAlpha=Math.max(0,p.life);
-      ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); }
-    ctx.globalAlpha=1;
-
-    if(boosterMode){ ctx.fillStyle='rgba(240,169,58,.06)'; ctx.fillRect(0,0,W,H); }
-  }
-
-  function drawGem(cx,cy,g,selected){
-    const col=COLORS[g.c]; const r=cell*0.40*g.scale;
-    // glow при матче/выборе
-    if(g.glow>0||selected){
-      ctx.save(); ctx.globalAlpha=(selected?0.5:g.glow);
-      ctx.fillStyle=col.a; ctx.beginPath(); ctx.arc(cx,cy,r*1.5,0,7); ctx.fill(); ctx.restore();
-    }
-    // тело (градиент)
-    const grd=ctx.createLinearGradient(cx-r,cy-r,cx+r,cy+r);
-    grd.addColorStop(0,col.a); grd.addColorStop(1,col.b);
-    roundRectC(cx-r,cy-r,r*2,r*2,r*0.5);
-    ctx.fillStyle=grd; ctx.fill();
-    // блик
-    ctx.fillStyle='rgba(255,255,255,.22)';
-    ctx.beginPath(); ctx.ellipse(cx-r*0.3,cy-r*0.4,r*0.4,r*0.22,-0.5,0,7); ctx.fill();
-    // глиф
-    ctx.fillStyle='rgba(0,0,0,.35)'; ctx.font=`${Math.floor(r)}px sans-serif`;
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(GLYPH[g.c],cx,cy+r*0.05);
-    if(selected){ ctx.strokeStyle='#fff'; ctx.lineWidth=2;
-      roundRectC(cx-r,cy-r,r*2,r*2,r*0.5); ctx.stroke(); }
-  }
-
-  function roundRect(x,y,w,h,r){ ctx.beginPath();
-    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-  function roundRectC(x,y,w,h,r){ ctx.beginPath();
-    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-
-  function vibrate(ms){ try{ navigator.vibrate&&navigator.vibrate(ms);}catch(e){} }
-})();
-
-EOF_SDVIG
-
-echo "  ✦ $S/games/arcade.js"
-mkdir -p $(dirname "$S/games/arcade.js")
-cat > "$S/games/arcade.js" << 'EOF_SDVIG'
-/* СДВИГ · arcade.js — независимый модуль аркад */
-(function(){
-  const GAMES = [
-    { key:'DetectiveMahjong', name:'Детективный маджонг', desc:'Соединяй связанные улики', icon:'🀄', evt:'detective-mahjong-complete', opts:{ maxTime:140, maxErrors:5 } },
-    { key:'TornLetterScene',  name:'Разорванное письмо',  desc:'Собери письмо из кусков',  icon:'✉️', evt:'torn-letter-complete',      opts:{} },
-    { key:'CrimeBoardScene',  name:'Доска улик',          desc:'Построй цепочку связей',   icon:'🧩', evt:'crime-board-complete',     opts:{ maxTime:80 } }
-  ];
-
-  let game=null;
-
-  function cardHTML(g){
-    return `<div class="game-row arcade-card" data-key="${g.key}">
-      <div class="gr-stripe gr-s-v"></div>
-      <div class="gr-icon">${g.icon}</div>
-      <div class="gr-info">
-        <div class="gr-name">${g.name}</div>
-        <div class="gr-desc">${g.desc}</div>
-        <div class="gr-prog"><div class="gr-bar"><div class="gr-fill" style="width:40%"></div></div><div class="gr-lvl">PLAY</div></div>
-      </div>
-      <div class="gr-arrow">›</div>
-    </div>`;
-  }
-
-  function renderInto(list){
-    if(!list) return;
-    if(list.getAttribute('data-arcade')==='1') return;
-    list.setAttribute('data-arcade','1');
-    list.innerHTML = GAMES.map(cardHTML).join('');
-    list.querySelectorAll('.arcade-card').forEach(c=>{
-      c.addEventListener('click',()=>launch(c.getAttribute('data-key')));
-    });
-  }
-
-  function ensure(){
-    const list=document.getElementById('game-list');
-    if(list) renderInto(list);
-  }
-
-  function launch(key){
-    const g = GAMES.find(x=>x.key===key);
-    if(!g) return;
-    if(!window.Phaser){ alert('Phaser не загружен'); return; }
-    if(!window[key]){ alert('Игра не найдена: '+key); return; }
-    try{ window.Sound && Sound.tap && Sound.tap(); }catch(e){}
-    if(window.BgFx && BgFx.pause) BgFx.pause();
-
-    const ov=document.createElement('div');
-    ov.id='arcade-overlay';
-    ov.innerHTML=`
-      <div class="arc-bar">
-        <button class="arc-close" id="arc-close">‹ Выход</button>
-        <div class="arc-title">${g.name}</div>
-        <div style="width:72px"></div>
-      </div>
-      <div class="arc-stage" id="arc-stage"></div>`;
-    document.body.appendChild(ov);
-
-    const stage=ov.querySelector('#arc-stage');
-    game=new Phaser.Game({
-      type:Phaser.AUTO,
-      parent:stage,
-      width:800, height:600,
-      backgroundColor:'#0f1117',
-      scale:{ mode:Phaser.Scale.FIT, autoCenter:Phaser.Scale.CENTER_BOTH },
-      // ═══ ввод привязан к canvas игры, а не к window ═══
-      // target:null → слушает на своём canvas; touch.capture=false → не глотает чужие тачи
-      input:{
-        activePointers:2,
-        touch:{ capture:false },
-        mouse:{ preventDefaultDown:false, preventDefaultUp:false }
-      },
-      render:{ antialias:true }
-    });
-    game.scene.add(key, window[key], true, g.opts);
-
-    game.events.once(g.evt,(payload)=>{
-      reward(payload);
-      setTimeout(close,400);
-    });
-
-    ov.querySelector('#arc-close').onclick=close;
-  }
-
-  function reward(p){
-    try{
-      if(!p) return;
-      if(window.App && App.profile){
-        if(typeof addXP==='function' && p.rewardXP) addXP(p.rewardXP);
-        if(typeof addCredits==='function') addCredits(p.deductionSuccess?20:5);
-        if(typeof unlockSwipe==='function' && p.deductionSuccess) unlockSwipe();
-      }
-      if(window.Sound){ p.deductionSuccess?(Sound.win&&Sound.win()):(Sound.deny&&Sound.deny()); }
-    }catch(e){}
-  }
-
-  function close(){
-    try{ if(game){ game.destroy(true); game=null; } }catch(e){}
-    const ov=document.getElementById('arcade-overlay');
-    if(ov) ov.remove();
-    if(window.BgFx && BgFx.resume) BgFx.resume();
-  }
-
-  // следим, чтобы карточки всегда были на месте
-  function boot(){
-    ensure();
-    const mo=new MutationObserver(()=>{
-      const list=document.getElementById('game-list');
-      if(list && list.getAttribute('data-arcade')!=='1') renderInto(list);
-    });
-    mo.observe(document.body,{childList:true,subtree:true});
-    setInterval(ensure,1500);
-  }
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
-  else boot();
-
-  window.Arcade={ launch, close };
-})();
-
-EOF_SDVIG
-
 echo ""
-echo "✅  Чистая пересборка применена!"
-echo ""
-echo "  ⚠️  ВАЖНО: после открытия сбрось старую сессию —"
-echo "     в браузере: DevTools → Application → Local Storage → Clear"
-echo "     или просто открой в режиме инкогнито для проверки."
+echo "✅  Готово!"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  git add -A"
-echo "  git commit -m \"fix: clean rebuild — clicks, login, stamps, map, backgrounds\""
+echo "  git commit -m \"fix: nav clicks, full-card swipe, cinematic office bg\""
 echo "  git push"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

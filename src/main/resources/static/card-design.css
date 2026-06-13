@@ -30,6 +30,8 @@
   touch-action:none;
   z-index:6;
 }
+/* все дочерние элементы карточки передают свайп родителю */
+.case-card *{ touch-action:none; }
 .case-card.card-enter{ animation:cardIn .5s cubic-bezier(.22,1.1,.36,1) both; }
 @keyframes cardIn{
   from{ opacity:0; transform:translate(-50%,-50%) translateY(40px) scale(.92) rotate(2deg); }
@@ -61,7 +63,7 @@
 
 /* ── тело ── */
 .card-body{ flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px;
-  position:relative; z-index:2; overflow-y:auto; }
+  position:relative; z-index:2; overflow:hidden; }
 .card-icon-box{ font-size:56px; line-height:1; margin-top:6px; }
 .card-case-title{ font-family:'Unbounded',sans-serif; font-weight:600; font-size:20px; }
 .card-text{ font-size:14.5px; color:var(--ink2); line-height:1.6; }
