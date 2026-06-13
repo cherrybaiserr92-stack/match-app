@@ -690,154 +690,83 @@ function spawnTrail(dir){
    КАРТА ПРОГРЕССА
 ═══════════════════════════════════════════════ */
 const CHAPTERS=[
-  {title:'Глава I · Пропавший экспонат', levels:5, district:'Музейный квартал', tint:'#6be0ff'},
-  {title:'Глава II · Тень музея',        levels:6, district:'Старый центр',     tint:'#a98bff'},
-  {title:'Глава III · Ночной свидетель', levels:6, district:'Доки',             tint:'#35d49b'},
-  {title:'Глава IV · Двойная игра',      levels:7, district:'Трущобы',          tint:'#ff5d6c'},
-  {title:'Глава V · Финал',              levels:6, district:'Особняк',          tint:'#ffcf6b'}
+  {title:'Глава I · Музейный квартал', levels:7, district:'Музейный квартал', tint:'#6be0ff'},
+  {title:'Глава II · Ночные доки',     levels:6, district:'Доки',             tint:'#35d49b'},
+  {title:'Глава III · Особняк',        levels:7, district:'Особняк',          tint:'#ffcf6b'}
 ];
 
 function totalLevels(){ return CHAPTERS.reduce((s,c)=>s+c.levels,0); }
 
+// нормализованные точки узлов на нарисованной дороге (из map-art/nodes.json)
+const MAP_NODES=[[0.5,0.952],[0.42,0.902],[0.55,0.857],[0.47,0.808],[0.57,0.772],[0.45,0.737],[0.55,0.703],[0.52,0.602],[0.57,0.527],[0.5,0.483],[0.52,0.438],[0.62,0.392],[0.55,0.358],[0.46,0.325],[0.48,0.285],[0.45,0.247],[0.5,0.205],[0.53,0.177],[0.4,0.137],[0.48,0.103]];
+const MAP_ASPECT=4876/843;  // высота карты = ширина × 4
+
 function renderMap(){
   const inner=$('#map-inner'); const svg=$('#map-path');
-  inner.querySelectorAll('.map-node,.map-chapter,.map-zone').forEach(e=>e.remove());
+  inner.querySelectorAll('.map-node,.map-chapter').forEach(e=>e.remove());
+  if(svg) svg.innerHTML='';
 
-  const total=totalLevels();
+  const total=Math.min(totalLevels(), MAP_NODES.length);
   const scroll=$('#map-scroll');
   const W=inner.clientWidth || (scroll&&scroll.clientWidth) || window.innerWidth || 360;
-  const rowH=120, padTop=90;
-  const H=padTop+total*rowH+140;
+  const H=W*MAP_ASPECT;
   inner.style.height=H+'px';
-  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  // нарисованная карта-город как фон
+  inner.style.background="url('/img/map-city.jpg') top center / 100% auto no-repeat";
 
   const cur=App.profile.mapNode||0;
   const stars=App.profile.mapStars||{};
-  const cols=[W*0.24, W*0.52, W*0.78];
-  const colPattern=[0,1,2,1];
-  let idx=0, pts=[];
 
-  // ── 2D-сцена: рисуем землю, кварталы, дома, улицы по главам ──
-  let scene='';
-  CHAPTERS.forEach((ch,ci)=>{
-    const yTop = padTop + idx*rowH - 60;
-    const yBot = yTop + ch.levels*rowH + 30;
-    scene += drawDistrict(ci, ch, W, yTop, yBot);
-    idx += ch.levels;
-  });
+  // границы районов (по N глав) — для табличек
+  let bounds=[], acc=0;
+  CHAPTERS.forEach(ch=>{ bounds.push(acc); acc+=ch.levels; });
 
-  // ── узлы и путь ──
-  idx=0;
-  CHAPTERS.forEach((ch,ci)=>{
-    const yTop = padTop + idx*rowH - 60;
-    const head=el('div','map-chapter', `<div class="mc-dist" style="color:${ch.tint}">${ch.district}</div><div class="mc-title">${(ch.title.split('·')[1]||ch.title).trim()}</div>`);
-    head.style.left='50%'; head.style.top=(yTop-4)+'px';
-    inner.appendChild(head);
+  for(let idx=0; idx<total; idx++){
+    const [nx,ny]=MAP_NODES[idx];
+    const x=nx*W, y=ny*H;
 
-    for(let l=0;l<ch.levels;l++){
-      const y=padTop+idx*rowH;
-      const x=cols[colPattern[idx%colPattern.length]];
-      const isMile=(l===ch.levels-1);
-      pts.push({x,y,idx,tint:ch.tint});
-      const state = idx<cur?'done':idx===cur?'current':'locked';
-      const node=el('div','map-node '+state+(isMile?' milestone':''));
-      node.style.setProperty('--nt',ch.tint);
-      if(state==='locked'){ node.innerHTML=Icons.get('lock'); }
-      else { node.innerHTML=`<span class="mn-num">${idx+1}</span>`; }
-      if(state==='done'){ const st=stars[idx]||1;
-        node.innerHTML+=`<span class="mn-stars">${'★'.repeat(st)}${'☆'.repeat(3-st)}</span>`; }
-      if(state==='current'){ node.innerHTML+=`<span class="mn-pin">${Icons.get('agent')}</span>`; }
-      node.style.left=x+'px'; node.style.top=y+'px';
-      const myIdx=idx, myState=state;
-      node.onclick=()=>{
-        if(myState==='locked'){ try{Sound.error();}catch(_){} vibrate(15); toast('Закрыто','Пройдите предыдущие дела','🔒'); return; }
-        Sound.tap(); vibrate(8);
-        if(myState==='current') goToTab('cases');
-        else toast('Пройдено','Дело №'+(myIdx+1)+' закрыто','✓');
-      };
-      inner.appendChild(node);
-      idx++;
+    // табличка района на первом узле главы
+    const chI=bounds.indexOf(idx);
+    if(chI>=0){
+      const ch=CHAPTERS[chI];
+      const head=el('div','map-chapter',
+        `<div class="mc-dist" style="color:${ch.tint}">${ch.district}</div>`+
+        `<div class="mc-title">${(ch.title.split('·')[1]||ch.title).trim()}</div>`);
+      head.style.left='50%'; head.style.top=(y-46)+'px';
+      inner.appendChild(head);
     }
-  });
 
-  // тропа (дорожка) через узлы
-  let pathD = pts.length ? `M ${pts[0].x} ${pts[0].y}` : '';
-  for(let i=0;i<pts.length-1;i++){
-    const p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||p2;
-    const c1x=p1.x+(p2.x-p0.x)/6, c1y=p1.y+(p2.y-p0.y)/6;
-    const c2x=p2.x-(p3.x-p1.x)/6, c2y=p2.y-(p3.y-p1.y)/6;
-    pathD+=` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
+    const tint=CHAPTERS[Math.max(0,bounds.filter(b=>b<=idx).length-1)]?.tint||'#ffcf6b';
+    const isMile=bounds.includes(idx+1)||idx===total-1;
+    const state = idx<cur?'done':idx===cur?'current':'locked';
+    const node=el('div','map-node '+state+(isMile?' milestone':''));
+    node.style.setProperty('--nt',tint);
+    if(state==='locked'){ node.innerHTML=Icons.get('lock'); }
+    else { node.innerHTML=`<span class="mn-num">${idx+1}</span>`; }
+    if(state==='done'){ const st=stars[idx]||1;
+      node.innerHTML+=`<span class="mn-stars">${'★'.repeat(st)}${'☆'.repeat(3-st)}</span>`; }
+    if(state==='current'){ node.innerHTML+=`<span class="mn-pin">${Icons.get('agent')}</span>`; }
+    node.style.left=x+'px'; node.style.top=y+'px';
+    const myIdx=idx, myState=state;
+    node.onclick=()=>{
+      if(myState==='locked'){ try{Sound.error();}catch(_){} vibrate(15); toast('Закрыто','Пройдите предыдущие дела','🔒'); return; }
+      Sound.tap(); vibrate(8);
+      if(myState==='current') goToTab('cases');
+      else toast('Пройдено','Дело №'+(myIdx+1)+' закрыто','✓');
+    };
+    inner.appendChild(node);
   }
-  const prog = total>1 ? cur/(total-1) : 0;
-  svg.innerHTML=`
-    <defs>
-      <filter id="pathsh" x="-20%" y="-20%" width="140%" height="140%">
-        <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.4"/>
-      </filter>
-    </defs>
-    ${scene}
-    <!-- мощёная дорожка -->
-    <path d="${pathD}" fill="none" stroke="#2a2418" stroke-width="22" stroke-linecap="round" opacity=".55"/>
-    <path d="${pathD}" fill="none" stroke="#46402c" stroke-width="17" stroke-linecap="round" filter="url(#pathsh)"/>
-    <path d="${pathD}" fill="none" stroke="#5a5238" stroke-width="13" stroke-linecap="round"
-          stroke-dasharray="2 17" opacity=".5"/>
-    <!-- пройденная часть — золотой свет -->
-    <path d="${pathD}" fill="none" stroke="#ffcf6b" stroke-width="4" stroke-linecap="round"
-          stroke-dasharray="100000" stroke-dashoffset="${100000*(1-prog)}" pathLength="100000"
-          opacity=".8" style="transition:stroke-dashoffset .8s ease"/>`;
+
+  // автопрокрутка к текущему уровню
+  if(scroll){
+    const [,cy]=MAP_NODES[Math.min(cur,total-1)];
+    const target=cy*H - scroll.clientHeight*0.5;
+    setTimeout(()=>{ scroll.scrollTo({top:Math.max(0,target), behavior:'smooth'}); }, 60);
+  }
 }
 
-/* рисует 2D-квартал (землю, дома, фонари) для главы */
-function drawDistrict(ci, ch, W, yTop, yBot){
-  const h=yBot-yTop;
-  const t=ch.tint;
-  // палитра земли по району
-  const ground = ['#1c2535','#241a30','#16241f','#2a1a1c','#2a2418'][ci%5];
-  const ground2= ['#28344a','#321f44','#1f3830','#3a2326','#3a3322'][ci%5];
-  let s=`<g>`;
-  // подложка-земля квартала
-  s+=`<rect x="6" y="${yTop}" width="${W-12}" height="${h}" rx="20" fill="${ground}"/>`;
-  s+=`<rect x="6" y="${yTop}" width="${W-12}" height="${h}" rx="20" fill="url(#dg${ci})" opacity=".5"/>`;
-  s+=`<defs><radialGradient id="dg${ci}" cx="50%" cy="0%" r="90%">
-      <stop offset="0" stop-color="${t}" stop-opacity=".18"/><stop offset="1" stop-color="${t}" stop-opacity="0"/>
-    </radialGradient></defs>`;
-  // дома-силуэты (несколько прямоугольников с окнами)
-  const seed=ci*7+3;
-  for(let i=0;i<5;i++){
-    const bw=28+((seed*i*13)%34);
-    const bh=40+((seed*i*7)%60);
-    const bx=14 + ((seed*i*29)% (W-60));
-    const by=yBot-bh-14;
-    const side = i%2? -3:3;
-    s+=`<g opacity=".9">
-      <rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="3" fill="${ground2}"/>
-      <polygon points="${bx-2},${by} ${bx+bw+2},${by} ${bx+bw/2},${by-12}" fill="${ground2}"/>`;
-    // окна (некоторые светятся янтарём)
-    for(let wy=by+8; wy<by+bh-8; wy+=14){
-      for(let wx=bx+5; wx<bx+bw-6; wx+=11){
-        const lit=((wx+wy+seed)%5===0);
-        s+=`<rect x="${wx}" y="${wy}" width="6" height="8" rx="1" fill="${lit?'#ffcf6b':'#0c1018'}" opacity="${lit?'.9':'.6'}"/>`;
-      }
-    }
-    s+=`</g>`;
-  }
-  // деревья/кусты-кружки
-  for(let i=0;i<4;i++){
-    const tx=20+((seed*i*53)%(W-40));
-    const ty=yTop+30+((seed*i*37)%(h-80));
-    const tr=8+((seed*i)%8);
-    s+=`<circle cx="${tx}" cy="${ty}" r="${tr}" fill="#1a2a1c" opacity=".7"/>`;
-  }
-  // фонари вдоль (точки света)
-  for(let i=0;i<3;i++){
-    const lx=30+((seed*i*71)%(W-60));
-    const ly=yTop+50+i*(h/3);
-    s+=`<circle cx="${lx}" cy="${ly}" r="20" fill="#ffcf6b" opacity=".06"/>
-        <circle cx="${lx}" cy="${ly}" r="3" fill="#ffcf6b" opacity=".5"/>`;
-  }
-  s+=`</g>`;
-  return s;
-}
+/* старый генератор кварталов больше не нужен — карта нарисована */
+function drawDistrict(){ return ''; }
 
 function advanceMap(){ App.profile.mapNode=Math.min(totalLevels()-1,(App.profile.mapNode||0)+1); }
 function goToTab(t){ $('.nb[data-tab="'+t+'"]')?.click(); }
