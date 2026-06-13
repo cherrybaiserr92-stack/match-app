@@ -189,7 +189,7 @@ body::before{
 /* панель инструментов — ВНИЗУ вкладки Дела, над меню, под карточкой */
 .tools-bar{
   position:absolute; left:0; right:0;
-  bottom:calc(var(--navh) + var(--safeb) + 8px);
+  bottom:calc(var(--navh) + var(--safeb) - 4px);
   display:flex; align-items:center; justify-content:center; gap:12px;
   padding:0 16px; z-index:8; pointer-events:none;
 }

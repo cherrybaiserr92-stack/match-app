@@ -1,210 +1,13 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-#  СДВИГ · deploy.sh — уровень+деньги вверху, инструменты вниз,
-#  лампа в match3, премиум-фоны карточек
+#  СДВИГ · deploy.sh — фикс свайпа, толстая рамка, колода,
+#  глубокие фоны карточек, инструменты ниже
 # ═══════════════════════════════════════════════════════════════
 set -e
 S="src/main/resources/static"
 echo ""
-echo "✨  СДВИГ — HUD, инструменты, фоны карточек…"
+echo "🎴  СДВИГ — карточки, колода, глубокие фоны…"
 echo ""
-echo "  ✦ $S/index.html"
-mkdir -p $(dirname "$S/index.html")
-cat > "$S/index.html" << 'EOF_SDVIG'
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#07090d">
-<title>СДВИГ</title>
-<link rel="stylesheet" href="/style.css">
-<link rel="stylesheet" href="/card-design.css">
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-<script>window.SDVIG_BOT_USERNAME="sdvig_game_bot";</script>
-</head>
-<body>
-
-<!-- фон Phaser (никогда не ловит клики) -->
-<div id="bg-fx"></div>
-
-<!-- ══ SPLASH ══ -->
-<div id="splash-screen" class="screen active">
-  <div class="splash-scene">
-    <div class="splash-emblem" id="splash-emblem">
-      <div class="emblem-inner"><span class="emblem-letter">С</span></div>
-    </div>
-    <div class="splash-title-row" id="splash-title"></div>
-    <div class="splash-progress-wrap">
-      <div class="splash-track"><div class="splash-fill" id="splash-fill"></div></div>
-      <div class="splash-status" id="splash-status">Инициализация</div>
-    </div>
-  </div>
-  <div class="splash-flash" id="splash-flash"></div>
-</div>
-
-<!-- ══ LOGIN ══ -->
-<div id="login-screen" class="screen">
-  <div class="login-wrap">
-    <div class="login-header">
-      <div class="login-badge">С</div>
-      <div class="login-h1">СДВИГ</div>
-      <div class="login-tagline">Детективное агентство</div>
-    </div>
-    <div class="login-card">
-      <div class="login-card-label">Вход</div>
-      <div class="tg-widget-area" id="tg-widget-area"></div>
-      <div class="tg-tip" id="tg-status">Загрузка способов входа…</div>
-      <div class="divider">или</div>
-      <button class="btn btn-outline" id="guest-btn" type="button">Войти как гость</button>
-      <div class="login-hint">Гостевой прогресс хранится на этом устройстве.</div>
-    </div>
-  </div>
-</div>
-
-<!-- ══ ERROR ══ -->
-<div id="error-screen" class="screen">
-  <div class="err-center">
-    <div class="err-icon">⚠️</div>
-    <div class="err-title">Что-то пошло не так</div>
-    <div class="err-msg" id="error-msg">Не удалось загрузить данные.</div>
-    <button class="btn btn-bronze" onclick="location.reload()" style="max-width:200px">Перезапустить</button>
-  </div>
-</div>
-
-<!-- ══ MAIN ══ -->
-<div id="main-screen" class="screen">
-
-  <div class="top-hud">
-    <div class="th-level">
-      <div class="th-lvl-badge"><span id="hud-level">1</span></div>
-      <div class="th-xp">
-        <div class="th-xp-track"><div class="th-xp-fill" id="xp-fill" style="width:0%"></div></div>
-        <div class="th-xp-info" id="xp-info">0 / 100 XP</div>
-      </div>
-    </div>
-    <div class="th-money">
-      <span class="th-coin" data-tico="coin"></span>
-      <span id="hud-credits">0</span>
-    </div>
-    <button class="snd-btn" id="sound-btn" type="button">🔊</button>
-  </div>
-
-  <div class="tab-area">
-
-    <div class="tab-pane active" id="tab-cases">
-      <div class="swipe-zone" id="swipe-zone">
-        <div class="stack-card sc3"></div>
-        <div class="stack-card sc2"></div>
-        <div class="stack-card sc1"></div>
-      </div>
-      <div class="tools-bar" id="tools-bar">
-        <button class="tool-btn" data-tool="magnify" title="Лупа — подсветит важную улику">
-          <span class="tool-ico" data-tico="magnify"></span>
-          <span class="tool-badge" id="tool-magnify-n">2</span>
-        </button>
-        <button class="tool-btn" data-tool="file" title="Досье — пропустить мини-игру">
-          <span class="tool-ico" data-tico="file"></span>
-          <span class="tool-badge" id="tool-file-n">1</span>
-        </button>
-        <button class="tool-btn" data-tool="hourglass" title="Песочные часы — +20 энергии">
-          <span class="tool-ico" data-tico="hourglass"></span>
-          <span class="tool-badge" id="tool-hourglass-n">1</span>
-        </button>
-        <button class="tool-btn tool-shop" data-tool="shop" title="Купить инструменты">
-          <span class="tool-ico" data-tico="plus"></span>
-        </button>
-      </div>
-    </div>
-
-    <div class="tab-pane" id="tab-map">
-      <div class="map-scroll" id="map-scroll">
-        <div class="map-inner" id="map-inner">
-          <svg class="map-path-svg" id="map-path"></svg>
-        </div>
-      </div>
-    </div>
-
-    <div class="tab-pane" id="tab-games">
-      <div class="pane-hd">
-        <div class="pane-title">Аркады</div>
-        <div class="pane-sub">Тренируй навыки — открывай свайпы дел</div>
-      </div>
-      <div class="game-list" id="game-list"></div>
-    </div>
-
-    <div class="tab-pane" id="tab-profile">
-      <div class="profile-hero">
-        <div class="profile-av" id="prof-av">С</div>
-        <div>
-          <div class="profile-name" id="prof-name">Агент</div>
-          <div class="profile-arch" id="prof-arch">Новичок</div>
-          <div class="profile-id" id="prof-id">#000000</div>
-        </div>
-      </div>
-      <div class="stats-row">
-        <div class="sg"><div class="sg-val" id="st-cases">0</div><div class="sg-lbl">Дел</div></div>
-        <div class="sg"><div class="sg-val" id="st-streak">0</div><div class="sg-lbl">Серия</div></div>
-        <div class="sg"><div class="sg-val" id="st-prestige">0</div><div class="sg-lbl">Престиж</div></div>
-        <div class="sg"><div class="sg-val" id="st-lvl">1</div><div class="sg-lbl">Уровень</div></div>
-      </div>
-      <div class="pane-hd" style="margin-top:6px"><div class="pane-title" style="font-size:16px">Навыки</div></div>
-      <div class="skill-list" id="skill-list"></div>
-      <div class="pane-hd" style="margin-top:18px"><div class="pane-title" style="font-size:16px">Достижения</div></div>
-      <div class="ach-grid" id="ach-grid"></div>
-    </div>
-
-    <div class="tab-pane" id="tab-shop">
-      <div class="pane-hd">
-        <div class="pane-title">Лавка</div>
-        <div class="pane-sub">Трать кредиты с умом</div>
-      </div>
-      <div class="shop-grid" id="shop-grid"></div>
-    </div>
-
-  </div>
-
-  <nav class="bottom-nav">
-    <button class="nb active" data-tab="cases"><span data-ico="cards"></span><span class="nb-lbl">Дела</span></button>
-    <button class="nb" data-tab="map"><span data-ico="map"></span><span class="nb-lbl">Карта</span></button>
-    <button class="nb" data-tab="games"><span data-ico="gem"></span><span class="nb-lbl">Аркады</span></button>
-    <button class="nb" data-tab="profile"><span data-ico="agent"></span><span class="nb-lbl">Агент</span></button>
-    <button class="nb" data-tab="shop"><span data-ico="bag"></span><span class="nb-lbl">Лавка</span></button>
-  </nav>
-</div>
-
-<!-- ══ HINT GAME SHEET ══ -->
-<div class="hint-modal hidden" id="hint-modal">
-  <div class="hm-header">
-    <div class="hm-title"><span data-ico="gem"></span><span>Найди улики</span></div>
-    <button class="hm-close" id="hint-close" type="button">✕</button>
-  </div>
-  <div class="hm-vp" id="hint-vp"></div>
-  <div class="hm-footer"><div class="hm-footer-text" id="hint-footer">Собери комбинацию, чтобы разблокировать свайп</div></div>
-</div>
-
-<!-- ══ TOAST / OVERLAYS ══ -->
-<div class="toast" id="toast">
-  <div class="toast-icon" id="toast-icon">✦</div>
-  <div><div class="toast-title" id="toast-title">Уведомление</div><div class="toast-desc" id="toast-desc"></div></div>
-</div>
-<div class="modal-bg hidden" id="daily-modal"></div>
-
-<script src="/icons.js"></script>
-<script src="/sound.js"></script>
-<script src="/phaser-bg.js"></script>
-<script src="/games/match3.js"></script>
-<script src="/app.js"></script>
-<script src="/games/detective-mahjong.js"></script>
-<script src="/games/torn-letter.js"></script>
-<script src="/games/crime-board.js"></script>
-<script src="/games/arcade.js"></script>
-</body>
-</html>
-
-EOF_SDVIG
-
 echo "  ✦ $S/style.css"
 mkdir -p $(dirname "$S/style.css")
 cat > "$S/style.css" << 'EOF_SDVIG'
@@ -399,7 +202,7 @@ body::before{
 /* панель инструментов — ВНИЗУ вкладки Дела, над меню, под карточкой */
 .tools-bar{
   position:absolute; left:0; right:0;
-  bottom:calc(var(--navh) + var(--safeb) + 8px);
+  bottom:calc(var(--navh) + var(--safeb) - 4px);
   display:flex; align-items:center; justify-content:center; gap:12px;
   padding:0 16px; z-index:8; pointer-events:none;
 }
@@ -622,36 +425,52 @@ cat > "$S/card-design.css" << 'EOF_SDVIG'
 ═══════════════════════════════════════════════ */
 
 /* ── стопка-подложка ── */
+/* ── колода-подложка (набирается анимацией при входе) ── */
 .stack-card{
-  position:absolute; top:50%; left:50%;
-  width:min(86%,360px); height:62%;
+  position:absolute; top:46%; left:50%;
+  width:min(86%,360px); height:58%;
   border-radius:var(--r2xl);
-  background:var(--glass); border:1px solid var(--glass-line-2);
+  background:linear-gradient(160deg, #161a26, #0c0f16);
+  border:2px solid rgba(255,255,255,.06);
+  box-shadow:0 16px 40px -12px rgba(0,0,0,.7);
   pointer-events:none;
+  opacity:0;
 }
-.sc1{ transform:translate(-50%,-50%) translateY(10px) scale(.965); opacity:.7; }
-.sc2{ transform:translate(-50%,-50%) translateY(20px) scale(.93);  opacity:.45; }
-.sc3{ transform:translate(-50%,-50%) translateY(30px) scale(.895); opacity:.25; }
+.sc1{ transform:translate(-50%,-50%) translateY(10px) scale(.965) rotate(1deg); }
+.sc2{ transform:translate(-50%,-50%) translateY(20px) scale(.93)  rotate(-1.5deg); }
+.sc3{ transform:translate(-50%,-50%) translateY(30px) scale(.895) rotate(2deg); }
+/* анимация набора колоды */
+.stack-card.deal{ animation:dealIn .45s cubic-bezier(.22,1.1,.36,1) both; }
+.sc3.deal{ animation-delay:.0s; }
+.sc2.deal{ animation-delay:.1s; }
+.sc1.deal{ animation-delay:.2s; }
+@keyframes dealIn{
+  from{ opacity:0; transform:translate(-50%,-180%) rotate(-12deg) scale(.8); }
+}
+.sc1.dealt{ opacity:.72; }
+.sc2.dealt{ opacity:.46; }
+.sc3.dealt{ opacity:.26; }
 
 /* ── активная карточка ── */
 .case-card{
-  position:absolute; top:50%; left:50%;
+  position:absolute; top:46%; left:50%;
   transform:translate(-50%,-50%) rotate(-.4deg);
-  width:min(86%,360px); min-height:62%;
+  width:min(86%,360px); min-height:58%; max-height:64%;
   display:flex; flex-direction:column;
   padding:22px 20px 18px;
   border-radius:var(--r2xl);
-  /* многослойное тёмное стекло с тёплым отливом */
+  /* плотная подложка снизу (убирает чёрный просвет при свайпе) + стекло сверху */
   background:
-    linear-gradient(155deg, rgba(38,34,28,.30), transparent 40%),
-    linear-gradient(160deg, rgba(26,30,42,.88), rgba(10,12,18,.94));
+    linear-gradient(155deg, rgba(38,34,28,.22), transparent 40%),
+    linear-gradient(160deg, #14182260, #0a0d12d0),
+    #0c1016;
   -webkit-backdrop-filter:blur(calc(var(--glass-blur) + 6px)) saturate(1.2);
   backdrop-filter:blur(calc(var(--glass-blur) + 6px)) saturate(1.2);
-  border:1px solid rgba(255,255,255,.10);
-  /* объёмная тень + золотой ободок + внутренний блик */
+  /* толстая рамка */
+  border:2.5px solid rgba(255,207,107,.32);
   box-shadow:
-    0 30px 70px -12px rgba(0,0,0,.75),
-    0 8px 24px -6px rgba(0,0,0,.5),
+    0 30px 70px -12px rgba(0,0,0,.8),
+    0 8px 24px -6px rgba(0,0,0,.55),
     inset 0 1px 0 rgba(255,255,255,.14),
     inset 0 -1px 0 rgba(0,0,0,.4);
   touch-action:none;
@@ -671,8 +490,11 @@ cat > "$S/card-design.css" << 'EOF_SDVIG'
 /* все дочерние элементы карточки передают свайп родителю */
 .case-card *{ touch-action:none; }
 /* премиум-фон карточки (SVG-текстура по типу дела) */
-.card-bg{ position:absolute; inset:0; border-radius:inherit; overflow:hidden; z-index:0; opacity:.92; }
+.card-bg{ position:absolute; inset:0; border-radius:inherit; overflow:hidden; z-index:0; }
 .card-bg svg{ display:block; width:100%; height:100%; }
+/* лёгкий скрим для читабельности текста поверх фона */
+.card-bg::after{ content:''; position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(6,8,12,.25), rgba(6,8,12,.55)); }
 .case-card>.card-head,
 .case-card>.card-divider,
 .case-card>.card-body,
@@ -1112,7 +934,7 @@ function enterMain(){
   bindTools();
   if(window.BgFx) BgFx.init();
   Icons.paint();
-  try{ buildDeck(); renderCard(); }catch(e){ console.error('renderCard',e); }
+  try{ buildDeck(); renderCard(); dealDeck(); }catch(e){ console.error('renderCard',e); }
   try{ renderHUD(); }catch(e){ console.error('renderHUD',e); }
   try{ renderGameList(); }catch(e){ console.error('renderGameList',e); }
   try{ renderProfile(); }catch(e){ console.error('renderProfile',e); }
@@ -1232,62 +1054,77 @@ function buildDeck(){
 /* ═══════════════════════════════════════════════
    РЕНДЕР КАРТОЧКИ ДЕЛА
 ═══════════════════════════════════════════════ */
+/* анимация набора колоды-подложки при входе */
+function dealDeck(){
+  const cards=document.querySelectorAll('.stack-card');
+  cards.forEach(el=>{ el.classList.remove('deal','dealt'); void el.offsetWidth; });
+  cards.forEach(el=>{
+    el.classList.add('deal');
+    el.addEventListener('animationend',()=>{ el.classList.remove('deal'); el.classList.add('dealt'); },{once:true});
+  });
+}
+
 /* премиум SVG-фоны для карточек по типу дела */
 function cardBackground(type){
-  const A={
-    crime:    {c1:'#3a0e12',c2:'#1a0508',ac:'#ff5d6c'},
-    evidence: {c1:'#0e2a33',c2:'#06141a',ac:'#6be0ff'},
-    suspect:  {c1:'#241040',c2:'#0e0620',ac:'#a98bff'},
-    witness:  {c1:'#0e3325',c2:'#061a12',ac:'#35d49b'},
-    revelation:{c1:'#3a2c0a',c2:'#1a1404',ac:'#ffcf6b'},
-    ending:   {c1:'#2a2410',c2:'#141005',ac:'#ffcf6b'}
-  }[type] || {c1:'#1a1e2a',c2:'#0a0d14',ac:'#c8860a'};
+  // Глубокие атмосферные фоны (вдохновлено Reigns / Cultist Simulator):
+  // несколько слоёв радиальных градиентов, мягкие пятна света, дымка, виньетка.
+  const P={
+    crime:     {base:'#1a0608',glow:'#ff5d6c',glow2:'#7a1020',spot:'#ff8a95'},
+    evidence:  {base:'#04141a',glow:'#6be0ff',glow2:'#0a4a63',spot:'#9af0ff'},
+    suspect:   {base:'#0e0620',glow:'#a98bff',glow2:'#3d2470',spot:'#c4aaff'},
+    witness:   {base:'#04160f',glow:'#35d49b',glow2:'#0c4a32',spot:'#7af0c0'},
+    revelation:{base:'#1a1404',glow:'#ffcf6b',glow2:'#7a5410',spot:'#ffe6a0'},
+    ending:    {base:'#140f04',glow:'#ffcf6b',glow2:'#6a4a10',spot:'#ffe6a0'}
+  }[type] || {base:'#0a0d14',glow:'#c8860a',glow2:'#5a3d08',spot:'#ffcf6b'};
 
-  // тематический паттерн
-  let pattern='';
-  if(type==='crime'){
-    // силуэт мелового контура тела + брызги
-    pattern=`<path d="M120 230 q-30 -10 -20 -50 q5 -25 30 -20 q10 -40 35 -25 q25 -50 50 -15 q30 -5 20 35 q25 15 5 45 q10 35 -30 30 q-20 25 -50 5 q-30 20 -40 -20 z" fill="none" stroke="${A.ac}" stroke-width="2" opacity=".12"/>
-      <circle cx="80" cy="120" r="3" fill="${A.ac}" opacity=".25"/><circle cx="250" cy="90" r="4" fill="${A.ac}" opacity=".2"/><circle cx="270" cy="280" r="2.5" fill="${A.ac}" opacity=".22"/>`;
-  } else if(type==='evidence'){
-    // отпечаток пальца
-    pattern=`<g fill="none" stroke="${A.ac}" stroke-width="1.6" opacity=".14">
-      ${[...Array(7)].map((_,i)=>`<ellipse cx="200" cy="200" rx="${30+i*16}" ry="${40+i*18}" transform="rotate(${i*4} 200 200)"/>`).join('')}
-    </g>`;
-  } else if(type==='suspect'){
-    // силуэт головы в профиль
-    pattern=`<path d="M150 90 q60 -10 70 50 q5 40 -10 70 q-5 30 -40 35 l5 40 -60 0 q5 -50 -10 -70 q-25 -30 -15 -85 q10 -45 60 -40z" fill="none" stroke="${A.ac}" stroke-width="2" opacity=".13"/>`;
-  } else if(type==='witness'){
-    // глаз
-    pattern=`<g fill="none" stroke="${A.ac}" stroke-width="2" opacity=".14">
-      <path d="M90 200 q110 -90 220 0 q-110 90 -220 0z"/><circle cx="200" cy="200" r="42"/><circle cx="200" cy="200" r="18" fill="${A.ac}" opacity=".3"/></g>`;
-  } else if(type==='revelation'||type==='ending'){
-    // лучи-вспышка
-    pattern=`<g stroke="${A.ac}" stroke-width="2" opacity=".12">
-      ${[...Array(12)].map((_,i)=>{const a=i*30*Math.PI/180;return `<line x1="200" y1="200" x2="${200+Math.cos(a)*180}" y2="${200+Math.sin(a)*180}"/>`;}).join('')}</g>
-      <circle cx="200" cy="200" r="30" fill="${A.ac}" opacity=".15"/>`;
-  } else {
-    // папка/документы по умолчанию
-    pattern=`<g fill="none" stroke="${A.ac}" stroke-width="1.6" opacity=".12">
-      <rect x="120" y="120" width="160" height="200" rx="8" transform="rotate(-8 200 220)"/>
-      <rect x="130" y="100" width="160" height="200" rx="8" transform="rotate(4 200 200)"/>
-      <line x1="150" y1="160" x2="260" y2="160"/><line x1="150" y1="190" x2="260" y2="190"/><line x1="150" y1="220" x2="230" y2="220"/></g>`;
-  }
-
-  return `<svg viewBox="0 0 400 480" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">
+  return `<svg viewBox="0 0 400 520" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">
     <defs>
-      <radialGradient id="cbg-${type}" cx="50%" cy="35%" r="80%">
-        <stop offset="0" stop-color="${A.c1}"/><stop offset="1" stop-color="${A.c2}"/>
+      <radialGradient id="bg-base-${type}" cx="50%" cy="30%" r="95%">
+        <stop offset="0" stop-color="${P.glow2}" stop-opacity=".55"/>
+        <stop offset="45%" stop-color="${P.base}"/>
+        <stop offset="100%" stop-color="#04060a"/>
       </radialGradient>
-      <filter id="cgrain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="n"/>
+      <radialGradient id="bg-spot-${type}" cx="50%" cy="22%" r="42%">
+        <stop offset="0" stop-color="${P.spot}" stop-opacity=".5"/>
+        <stop offset="100%" stop-color="${P.spot}" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="bg-glow2-${type}" cx="78%" cy="68%" r="55%">
+        <stop offset="0" stop-color="${P.glow}" stop-opacity=".28"/>
+        <stop offset="100%" stop-color="${P.glow}" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="bg-vig-${type}" cx="50%" cy="50%" r="75%">
+        <stop offset="55%" stop-color="#000" stop-opacity="0"/>
+        <stop offset="100%" stop-color="#000" stop-opacity=".6"/>
+      </radialGradient>
+      <filter id="bg-soft-${type}"><feGaussianBlur stdDeviation="22"/></filter>
+      <filter id="bg-grain-${type}">
+        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" result="n"/>
         <feColorMatrix in="n" type="saturate" values="0"/>
-        <feComponentTransfer><feFuncA type="linear" slope="0.04"/></feComponentTransfer>
-        <feComposite operator="over" in2="SourceGraphic"/></filter>
+        <feComponentTransfer><feFuncA type="linear" slope="0.05"/></feComponentTransfer>
+        <feComposite operator="over" in2="SourceGraphic"/>
+      </filter>
     </defs>
-    <rect width="400" height="480" fill="url(#cbg-${type})"/>
-    ${pattern}
-    <rect width="400" height="480" filter="url(#cgrain)" opacity=".5"/>
-    <rect width="400" height="480" fill="url(#cbg-${type})" opacity="0"/>
+    <!-- базовый глубокий градиент -->
+    <rect width="400" height="520" fill="url(#bg-base-${type})"/>
+    <!-- большие мягкие световые пятна (глубина) -->
+    <g filter="url(#bg-soft-${type})">
+      <ellipse cx="120" cy="90" rx="130" ry="110" fill="${P.glow}" opacity=".14"/>
+      <ellipse cx="320" cy="380" rx="150" ry="140" fill="${P.glow2}" opacity=".5"/>
+      <ellipse cx="200" cy="250" rx="180" ry="160" fill="${P.base}" opacity=".4"/>
+    </g>
+    <!-- верхний прожектор -->
+    <rect width="400" height="520" fill="url(#bg-spot-${type})"/>
+    <!-- нижнее цветное свечение -->
+    <rect width="400" height="520" fill="url(#bg-glow2-${type})"/>
+    <!-- тонкая дымка-полосы для атмосферы -->
+    <g opacity=".06" fill="none" stroke="${P.spot}" stroke-width="1">
+      <path d="M-20 150 Q200 100 420 170"/>
+      <path d="M-20 300 Q200 250 420 320"/>
+    </g>
+    <!-- зерно плёнки -->
+    <rect width="400" height="520" filter="url(#bg-grain-${type})" opacity=".6"/>
+    <!-- виньетка для глубины -->
+    <rect width="400" height="520" fill="url(#bg-vig-${type})"/>
   </svg>`;
 }
 
@@ -1363,10 +1200,14 @@ function unlockSwipe(){
    СВАЙПЫ (left / right / up = спецприём)
 ═══════════════════════════════════════════════ */
 function bindSwipe(card,c){
-  let sx=0,sy=0,dx=0,dy=0,drag=false;
+  let sx=0,sy=0,dx=0,dy=0,drag=false,pid=null;
   const TH=90, UPTH=110;
 
-  const start=(x,y)=>{ if(!App.swipeUnlocked){ return; } drag=true; sx=x; sy=y; dx=dy=0; card.style.transition='none'; };
+  const start=(x,y)=>{
+    if(!App.swipeUnlocked) return;
+    drag=true; sx=x; sy=y; dx=dy=0;
+    card.style.transition='none';
+  };
   const move=(x,y)=>{
     if(!drag) return;
     dx=x-sx; dy=y-sy;
@@ -1376,9 +1217,7 @@ function bindSwipe(card,c){
     card.classList.toggle('tilt-right',dx>30);
     card.classList.toggle('tilt-up',c.special&&dy<-40&&Math.abs(dx)<60);
     setStampOpacity(card,dx,dy,c);
-    // параллакс фона следует за свайпом
     if(window.BgFxDrag) BgFxDrag(-dx/180, -dy/180);
-    if(Math.abs(dx)>TH||(c.special&&dy<-UPTH)) vibrate(6);
   };
   const end=()=>{
     if(!drag) return; drag=false;
@@ -1386,21 +1225,31 @@ function bindSwipe(card,c){
     if(c.special && dy<-UPTH && Math.abs(dx)<70){ flySpecial(card,c); return; }
     if(dx>TH){ flyOut(card,'right',c); return; }
     if(dx<-TH){ flyOut(card,'left',c); return; }
-    // вернуть на место
     card.style.transform=`translate(-50%,-50%) rotate(-.4deg)`;
     card.className='case-card ct-'+(c.type||'evidence');
     resetStamps(card);
     if(window.BgFxDrag) BgFxDrag(0,0);
   };
 
-  card.addEventListener('pointerdown',e=>{
-    // не начинать свайп если жмём кнопку «Найти улики»
+  // pointerdown на карточке, move/up на window — не зависим от pointer-capture
+  const onDown=e=>{
     if(e.target.closest('#play-gems')) return;
-    start(e.clientX,e.clientY); card.setPointerCapture?.(e.pointerId);
-  });
-  card.addEventListener('pointermove',e=>move(e.clientX,e.clientY));
-  card.addEventListener('pointerup',end);
-  card.addEventListener('pointercancel',end);
+    if(!App.swipeUnlocked) return;
+    pid=e.pointerId;
+    start(e.clientX,e.clientY);
+    window.addEventListener('pointermove',onMove);
+    window.addEventListener('pointerup',onUp);
+    window.addEventListener('pointercancel',onUp);
+  };
+  const onMove=e=>{ if(pid!=null&&e.pointerId!==pid) return; move(e.clientX,e.clientY); };
+  const onUp=e=>{
+    if(pid!=null&&e.pointerId!==pid) return;
+    end(); pid=null;
+    window.removeEventListener('pointermove',onMove);
+    window.removeEventListener('pointerup',onUp);
+    window.removeEventListener('pointercancel',onUp);
+  };
+  card.addEventListener('pointerdown',onDown);
 }
 
 function setStampOpacity(card,dx,dy,c){
@@ -1752,519 +1601,6 @@ window.goToTab=goToTab;
 
 EOF_SDVIG
 
-echo "  ✦ $S/icons.js"
-mkdir -p $(dirname "$S/icons.js")
-cat > "$S/icons.js" << 'EOF_SDVIG'
-/* СДВИГ · icons.js v5 — inline SVG icons */
-(function(){
-  const I = {
-    bolt:'<path d="M13 2L4.5 13.5H11l-1 8.5L19.5 10H13l0-8z" fill="currentColor"/>',
-    gem:'<path d="M6 3h12l3 6-9 12L3 9l3-6zm.8 2L5 9h4L7.5 5H6.8zm5.2 0L10 9h4l-2-4zm4.5 0H16.5L18 9h2l-1.5-4zM5.3 11l4.4 6-1.4-6H5.3zm5.2 0l1.5 7 1.5-7h-3zm5 0l-1.4 6 4.4-6h-3z" fill="currentColor"/>',
-    cards:'<rect x="3" y="5" width="13" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M17 7l3 .8a2 2 0 011.4 2.4l-2.6 9.6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>',
-    map:'<path d="M9 4L3 6.5v13L9 17l6 2.5 6-2.5v-13L15 6.5 9 4zm0 0v13m6-10.5v13" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/>',
-    agent:'<circle cx="12" cy="8.5" r="3.8" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M4.5 20a7.5 7.5 0 0115 0" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>',
-    bag:'<path d="M5 8h14l-1 12H6L5 8zm3 0a4 4 0 018 0" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/>',
-    lock:'<rect x="5" y="10.5" width="14" height="10" rx="2.5" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M8 10.5V8a4 4 0 018 0v2.5" stroke="currentColor" stroke-width="1.8" fill="none"/>',
-    arrows:'<path d="M9 6l-4 6 4 6m6-12l4 6-4 6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
-    back:'<path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
-    star:'<path d="M12 3l2.6 5.6 6.1.8-4.5 4.2 1.2 6L12 16.9 6.6 19.6l1.2-6L3.3 9.4l6.1-.8L12 3z" fill="currentColor"/>',
-    // ── премиум-инструменты ──
-    magnify:'<circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="10.5" cy="10.5" r="3" fill="currentColor" opacity=".25"/>',
-    lamp:'<path d="M9 18h6M10 21h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 3a6 6 0 00-3.5 10.9c.3.2.5.6.5 1V16h6v-1.1c0-.4.2-.8.5-1A6 6 0 0012 3z" fill="currentColor" opacity=".22" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
-    file:'<path d="M6 3h8l4 4v14a0 0 0 01 0 0H6a1 1 0 01-1-1V4a1 1 0 011-1z" fill="currentColor" opacity=".18" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v4h4M8.5 12h7M8.5 15.5h7M8.5 9h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
-    hourglass:'<path d="M7 3h10M7 21h10M8 3c0 4 8 5 8 9s-8 5-8 9M16 3c0 4-8 5-8 9s8 5 8 9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 18.5h5L12 15z" fill="currentColor"/>',
-    plus:'<path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
-    coin:'<circle cx="12" cy="12" r="9" fill="currentColor" opacity=".18" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v10M9.5 9.5h4a1.8 1.8 0 010 3.5h-3a1.8 1.8 0 000 3.5h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>'
-  };
-  function paint(){
-    document.querySelectorAll('[data-ico]').forEach(el=>{
-      const k=el.getAttribute('data-ico'); if(!I[k]||el.dataset.painted)return;
-      el.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22">'+I[k]+'</svg>';
-      el.dataset.painted='1';
-    });
-    document.querySelectorAll('[data-tico]').forEach(el=>{
-      const k=el.getAttribute('data-tico'); if(!I[k]||el.dataset.painted)return;
-      el.innerHTML='<svg viewBox="0 0 24 24" width="26" height="26">'+I[k]+'</svg>';
-      el.dataset.painted='1';
-    });
-  }
-  window.Icons={ get:k=>'<svg viewBox="0 0 24 24" width="22" height="22">'+(I[k]||'')+'</svg>', paint };
-  document.addEventListener('DOMContentLoaded',paint);
-})();
-
-EOF_SDVIG
-
-echo "  ✦ $S/games/match3.js"
-mkdir -p $(dirname "$S/games/match3.js")
-cat > "$S/games/match3.js" << 'EOF_SDVIG'
-/* ═══════════════════════════════════════════════
-   СДВИГ · match3.js v5 — Canvas «Улики»
-   На весь контейнер · тапы + свайпы · ходы · бустеры
-═══════════════════════════════════════════════ */
-(function(){
-  const COLORS=[
-    {a:'#ff5d6c',b:'#b3202d',pg:'#ffe8ea'}, // 0 красная книга
-    {a:'#6be0ff',b:'#1f7da8',pg:'#e6f9ff'}, // 1 голубая
-    {a:'#35d49b',b:'#127a52',pg:'#e3fff4'}, // 2 зелёная
-    {a:'#ffcf6b',b:'#b3741c',pg:'#fff6e0'}, // 3 золотая
-    {a:'#a98bff',b:'#5b3fb0',pg:'#f1ebff'}, // 4 фиолетовая
-    {a:'#2b2f3a',b:'#0e1016',pg:'#f4f6fb'}  // 5 чёрная (как в референсе)
-  ];
-  // тематический эмблема на обложке каждой книги
-  const EMBLEM=['star','sparkle','triangle','bigstar','pentagon','question'];
-  const N=8; // 8×8
-
-  let cvs,ctx,W,H,DPR,cell,ox,oy;
-  let grid=[];                 // [{c,scale,dy,glow}]
-  let sel=null;                // выбранная ячейка
-  let anim=false, raf=null;
-  let opts=null, moves=0, score=0, progress=0, combo=0, comboMax=0;
-  let booster=0, boosterMode=null, lamp=2;
-  let running=false;
-  let particles=[];
-  let last=0;
-
-  /* ── публичный API ─────────────────────────── */
-  window.Match3={
-    start(container,o){
-      opts=o||{}; const m=opts.mission||{type:'score',target:600,moves:14};
-      moves=m.moves||14; score=0; progress=0; combo=0; comboMax=0;
-      booster=opts.boosters||0; boosterMode=null; lamp=2; particles=[];
-      running=true;
-      try{ if(window.BgFx&&BgFx.pause) BgFx.pause(); }catch(e){}
-      buildCanvas(container);
-      initGrid();
-      bindInput();
-      loop();
-      hud();
-    },
-    stop(){ running=false; if(raf)cancelAnimationFrame(raf);
-      try{ window.removeEventListener('resize',window._m3resize); }catch(e){}
-      if(cvs&&cvs.parentNode) cvs.parentNode.innerHTML='';
-      try{ if(window.BgFx&&BgFx.resume) BgFx.resume(); }catch(e){} }
-  };
-
-  /* ── canvas ────────────────────────────────── */
-  function buildCanvas(container){
-    container.innerHTML='';
-    DPR=Math.min(window.devicePixelRatio||1,2);
-    cvs=document.createElement('canvas');
-    cvs.style.cssText='display:block;width:100%;height:100%;touch-action:none;'+
-      'pointer-events:auto;position:relative;z-index:1';
-    container.appendChild(cvs);
-    ctx=cvs.getContext('2d');
-    resize(container);
-    window._m3resize=()=>resize(container);
-    window.addEventListener('resize',window._m3resize);
-  }
-  function resize(container){
-    const r=container.getBoundingClientRect();
-    W=r.width; H=r.height;
-    cvs.width=W*DPR; cvs.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
-    const pad=14, hudH=64;
-    const avail=Math.min(W-pad*2, H-hudH-pad*2);
-    cell=Math.floor(avail/N);
-    ox=(W-cell*N)/2; oy=hudH+(H-hudH-cell*N)/2;
-  }
-
-  /* ── grid ──────────────────────────────────── */
-  function initGrid(){
-    grid=[];
-    for(let i=0;i<N*N;i++) grid.push({c:rnd(),scale:1,dy:0,glow:0});
-    // убрать стартовые матчи
-    let guard=0;
-    while(findMatches().length && guard++<60){
-      findMatches().forEach(idx=>grid[idx].c=rnd());
-    }
-  }
-  function rnd(){ return Math.floor(Math.random()*COLORS.length); }
-  const idx=(x,y)=>y*N+x;
-  const inb=(x,y)=>x>=0&&y>=0&&x<N&&y<N;
-
-  /* ── поиск совпадений ──────────────────────── */
-  function findMatches(){
-    const set=new Set();
-    // горизонталь
-    for(let y=0;y<N;y++) for(let x=0;x<N-2;x++){
-      const c=grid[idx(x,y)].c;
-      if(c===grid[idx(x+1,y)].c && c===grid[idx(x+2,y)].c){
-        set.add(idx(x,y)); set.add(idx(x+1,y)); set.add(idx(x+2,y));
-        let k=x+3; while(k<N&&grid[idx(k,y)].c===c){ set.add(idx(k,y)); k++; }
-      }
-    }
-    // вертикаль
-    for(let x=0;x<N;x++) for(let y=0;y<N-2;y++){
-      const c=grid[idx(x,y)].c;
-      if(c===grid[idx(x,y+1)].c && c===grid[idx(x,y+2)].c){
-        set.add(idx(x,y)); set.add(idx(x,y+1)); set.add(idx(x,y+2));
-        let k=y+3; while(k<N&&grid[idx(x,k)].c===c){ set.add(idx(x,k)); k++; }
-      }
-    }
-    return [...set];
-  }
-
-  /* ── ход игрока ────────────────────────────── */
-  function trySwap(a,b){
-    if(anim||moves<=0) return;
-    const ax=a%N,ay=(a/N|0),bx=b%N,by=(b/N|0);
-    if(Math.abs(ax-bx)+Math.abs(ay-by)!==1) return;
-    swap(a,b);
-    const m=findMatches();
-    if(!m.length){ // откат
-      Sound.error();
-      swap(a,b);
-      shakeCells([a,b]);
-      return;
-    }
-    Sound.gemSwap(); vibrate(8);
-    moves--; combo=0;
-    resolveCascade();
-    hud();
-  }
-  function swap(a,b){ const t=grid[a].c; grid[a].c=grid[b].c; grid[b].c=t; }
-
-  /* ── каскад ────────────────────────────────── */
-  function resolveCascade(){
-    const m=findMatches();
-    if(!m.length){ checkEnd(); return; }
-    combo++; comboMax=Math.max(comboMax,combo);
-    Sound.gemMatch(m.length); if(combo>1) Sound.gemCascade(combo);
-    vibrate(combo>1?[6,20,6]:6);
-
-    // очки + миссия
-    const gain=m.length*30*combo; score+=gain;
-    m.forEach(i=>{
-      const x=i%N,y=(i/N|0);
-      spawnBurst(ox+x*cell+cell/2, oy+y*cell+cell/2, grid[i].c);
-      grid[i].glow=1;
-      // миссии color/clear
-      if(opts.mission){
-        const mi=opts.mission;
-        if(mi.type==='color'&&grid[i].c===mi.color) progress++;
-        if(mi.type==='clear') progress++;
-      }
-    });
-    if(opts.mission){
-      const mi=opts.mission;
-      if(mi.type==='score') progress=score;
-      if(mi.type==='combo') progress=comboMax;
-    }
-
-    // удалить и обрушить
-    anim=true;
-    setTimeout(()=>{
-      m.forEach(i=>grid[i].c=-1);
-      collapse();
-      anim=false;
-      hud();
-      setTimeout(()=>resolveCascade(),120);
-    },140);
-  }
-
-  function collapse(){
-    for(let x=0;x<N;x++){
-      let write=N-1;
-      for(let y=N-1;y>=0;y--){
-        if(grid[idx(x,y)].c!==-1){
-          if(write!==y){ grid[idx(x,write)].c=grid[idx(x,y)].c;
-            grid[idx(x,write)].dy=(write-y)*cell; }
-          write--;
-        }
-      }
-      for(let y=write;y>=0;y--){ grid[idx(x,y)].c=rnd(); grid[idx(x,y)].dy=(write+2)*cell; }
-    }
-    Sound.gemFall();
-  }
-
-  /* ── бустер: разбить ячейку и соседей ──────── */
-  function useBooster(i){
-    if(booster<=0){ Sound.error(); return; }
-    booster--; boosterMode=null; Sound.booster(); vibrate([10,30,10]);
-    const x=i%N,y=(i/N|0); const hit=[];
-    for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
-      if(inb(x+dx,y+dy)) hit.push(idx(x+dx,y+dy)); }
-    hit.forEach(k=>{ const xx=k%N,yy=(k/N|0);
-      spawnBurst(ox+xx*cell+cell/2,oy+yy*cell+cell/2,grid[k].c);
-      grid[k].c=-1; });
-    score+=hit.length*40;
-    if(opts.mission&&opts.mission.type==='clear') progress+=hit.length;
-    anim=true; setTimeout(()=>{ collapse(); anim=false; resolveCascade(); hud(); },140);
-  }
-
-  /* ── конец ─────────────────────────────────── */
-  function checkEnd(){
-    const mi=opts.mission||{type:'score',target:600};
-    const target=mi.target||600;
-    if(progress>=target){ win(); return; }
-    if(moves<=0){ lose(); }
-  }
-  function win(){ running=false; Sound.win(); vibrate([10,40,10,40]);
-    overlay(true); setTimeout(()=>{ opts.onWin&&opts.onWin(); },900); }
-  function lose(){ running=false; Sound.deny(); overlay(false);
-    setTimeout(()=>{ opts.onLose&&opts.onLose(); },1400); }
-
-  function overlay(ok){
-    const o=document.createElement('div');
-    o.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;'+
-      'align-items:center;justify-content:center;gap:14px;text-align:center;'+
-      'background:rgba(7,9,13,.82);backdrop-filter:blur(6px);z-index:5;'+
-      'font-family:Unbounded,sans-serif;color:#f2f5fb';
-    o.innerHTML=ok
-      ? `<div style="font-size:54px">🔍</div><div style="font-size:22px;color:#35d49b">УЛИКИ НАЙДЕНЫ</div>
-         <div style="font-size:13px;color:#b7c0d4">Очки: ${score} · Каскад x${comboMax}</div>`
-      : `<div style="font-size:54px">🚫</div><div style="font-size:22px;color:#ff5d6c">ХОДЫ ЗАКОНЧИЛИСЬ</div>
-         <div style="font-size:13px;color:#b7c0d4">Попробуйте ещё раз</div>`;
-    cvs.parentNode.appendChild(o);
-  }
-
-  /* ── input: тап + свайп ───────────────────── */
-  let down=null;
-  function bindInput(){
-    cvs.onpointerdown=e=>{ if(!running||anim)return;
-      const c=hitCell(e); if(!c)return; down={...c,sx:e.clientX,sy:e.clientY}; };
-    cvs.onpointerup=e=>{ handleUp(e.clientX,e.clientY); };
-    cvs.oncontextmenu=e=>e.preventDefault();
-
-    // ── Touch fallback (некоторые мобильные браузеры глушат pointer-события) ──
-    cvs.addEventListener('touchstart',e=>{
-      if(!running||anim)return;
-      const t=e.changedTouches[0]; const c=hitCell(t);
-      if(c) down={...c,sx:t.clientX,sy:t.clientY};
-    },{passive:true});
-    cvs.addEventListener('touchend',e=>{
-      const t=e.changedTouches[0];
-      handleUp(t.clientX,t.clientY);
-      e.preventDefault();
-    },{passive:false});
-  }
-
-  function handleUp(cx,cy){
-    if(!running||anim||!down){ down=null; return; }
-    const c=hitCell({clientX:cx,clientY:cy});
-    const dx=cx-down.sx, dy=cy-down.sy;
-    const dist=Math.hypot(dx,dy);
-    if(boosterMode){ if(c) useBooster(c.i); down=null; return; }
-    if(dist<14){ // ТАП
-      if(sel==null){ sel=down.i; grid[sel].glow=.6; Sound.gemSelect(); }
-      else if(sel===down.i){ grid[sel].glow=0; sel=null; }
-      else { grid[sel].glow=0; const a=sel; sel=null; trySwap(a,down.i); }
-    }else{ // СВАЙП
-      let nx=down.x,ny=down.y;
-      if(Math.abs(dx)>Math.abs(dy)) nx+=dx>0?1:-1; else ny+=dy>0?1:-1;
-      if(inb(nx,ny)){ if(sel!=null){grid[sel].glow=0;sel=null;} trySwap(down.i,idx(nx,ny)); }
-    }
-    down=null;
-  }
-  function hitCell(e){
-    const r=cvs.getBoundingClientRect();
-    const px=e.clientX-r.left, py=e.clientY-r.top;
-    const x=Math.floor((px-ox)/cell), y=Math.floor((py-oy)/cell);
-    if(!inb(x,y)) return null; return {x,y,i:idx(x,y)};
-  }
-
-  /* ── частицы ───────────────────────────────── */
-  function spawnBurst(x,y,c){
-    const col=COLORS[c]?COLORS[c].a:'#fff';
-    for(let i=0;i<6;i++){ const a=Math.random()*Math.PI*2,s=1+Math.random()*3;
-      particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1,life:1,col,r:2+Math.random()*3}); }
-  }
-  function shakeCells(arr){ arr.forEach(i=>grid[i].glow=.4); setTimeout(()=>arr.forEach(i=>grid[i].glow=0),200); }
-
-  /* ── HUD (поверх canvas, лёгкий DOM) ───────── */
-  function hud(){
-    let bar=cvs.parentNode.querySelector('.m3-hud');
-    const mi=opts.mission||{type:'score',target:600}; const target=mi.target||600;
-    if(!bar){ bar=document.createElement('div'); bar.className='m3-hud';
-      bar.style.cssText='position:absolute;top:0;left:0;right:0;height:60px;display:flex;'+
-        'align-items:center;justify-content:space-between;padding:0 16px;'+
-        'font-family:Manrope,sans-serif;color:#f2f5fb;z-index:4;pointer-events:none';
-      cvs.parentNode.appendChild(bar); }
-    const pct=Math.min(100,progress/target*100);
-    bar.innerHTML=`
-      <div style="text-align:left">
-        <div style="font-size:10px;letter-spacing:1px;color:#7d8699;text-transform:uppercase">${mi.label||'Цель'}</div>
-        <div style="width:130px;height:6px;background:rgba(255,255,255,.08);border-radius:6px;margin-top:5px;overflow:hidden">
-          <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#b3741c,#ffcf6b);border-radius:6px"></div></div>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <div style="text-align:center"><div style="font-family:Unbounded;font-weight:700;font-size:18px;color:#ffcf6b">${moves}</div>
-          <div style="font-size:9px;color:#7d8699">ХОДЫ</div></div>
-        <div style="text-align:center"><div style="font-family:Unbounded;font-weight:700;font-size:18px">${score}</div>
-          <div style="font-size:9px;color:#7d8699">ОЧКИ</div></div>
-        <button class="m3-lamp" style="pointer-events:auto;border:none;cursor:pointer;
-          background:rgba(255,255,255,.06);color:#ffcf6b;
-          border:1px solid rgba(240,169,58,.4);border-radius:10px;padding:6px 9px;font-weight:800;font-size:13px"
-          title="Лампа: +3 хода">💡 ${lamp}</button>
-        <button class="m3-boost" style="pointer-events:auto;border:none;cursor:pointer;
-          background:${boosterMode?'#ffcf6b':'rgba(255,255,255,.06)'};color:${boosterMode?'#1a1206':'#ffcf6b'};
-          border:1px solid rgba(240,169,58,.4);border-radius:10px;padding:6px 9px;font-weight:800;font-size:13px"
-          title="Бомба: убрать книгу">💥 ${booster}</button>
-      </div>`;
-    const bb=bar.querySelector('.m3-boost');
-    if(bb) bb.onclick=()=>{ if(booster<=0){Sound.error();return;}
-      boosterMode=boosterMode?null:'bomb'; Sound.tap(); hud(); };
-    const lb=bar.querySelector('.m3-lamp');
-    if(lb) lb.onclick=()=>{ if(lamp<=0){Sound.error();return;}
-      lamp--; moves+=3; Sound.booster&&Sound.booster(); vibrate([10,20]); hud(); };
-  }
-
-  /* ── render loop ───────────────────────────── */
-  function loop(t){
-    if(!running && particles.length===0){ draw(); return; }
-    raf=requestAnimationFrame(loop);
-    const dt=Math.min(40,(t||0)-last); last=t||0;
-    // плавное падение
-    for(const g of grid){ if(g.dy>0){ g.dy=Math.max(0,g.dy-cell*0.04*(dt/16)*4); }
-      if(g.glow>0) g.glow=Math.max(0,g.glow-0.04); g.scale+=(1-g.scale)*0.2; }
-    // частицы
-    particles=particles.filter(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.25; p.life-=0.03; return p.life>0; });
-    draw();
-  }
-
-  function draw(){
-    ctx.clearRect(0,0,W,H);
-    // фон поля
-    roundRect(ox-8,oy-8,cell*N+16,cell*N+16,18);
-    ctx.fillStyle='rgba(18,22,32,.55)'; ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.lineWidth=1; ctx.stroke();
-
-    for(let y=0;y<N;y++)for(let x=0;x<N;x++){
-      const g=grid[idx(x,y)]; if(g.c<0) continue;
-      const cx=ox+x*cell+cell/2, cy=oy+y*cell+cell/2 - g.dy;
-      drawGem(cx,cy,g,(sel===idx(x,y)));
-    }
-    // частицы
-    for(const p of particles){ ctx.globalAlpha=Math.max(0,p.life);
-      ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); }
-    ctx.globalAlpha=1;
-
-    if(boosterMode){ ctx.fillStyle='rgba(240,169,58,.06)'; ctx.fillRect(0,0,W,H); }
-  }
-
-  function drawGem(cx,cy,g,selected){
-    const col=COLORS[g.c];
-    const s=cell*0.42*g.scale;          // полу-высота книги
-    const w=s*1.55, h=s*2;              // ширина/высота обложки
-    const x=cx-w/2, y=cy-h/2;
-    const sp=w*0.16;                    // ширина корешка
-
-    // glow при матче/выборе
-    if(g.glow>0||selected){
-      ctx.save(); ctx.globalAlpha=(selected?0.55:g.glow);
-      ctx.fillStyle=col.a;
-      ctx.beginPath(); ctx.arc(cx,cy,s*1.7,0,7); ctx.fill(); ctx.restore();
-    }
-
-    ctx.save();
-    // тень книги
-    ctx.fillStyle='rgba(0,0,0,.35)';
-    bookPath(x+2,y+3,w,h,w*0.12); ctx.fill();
-
-    // страницы (низ, белые полоски справа)
-    ctx.fillStyle=col.pg;
-    roundRectC(x+w*0.5,y+h*0.1,w*0.52,h*0.84,w*0.06); ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=1;
-    for(let i=1;i<=3;i++){ const yy=y+h*0.1+ (h*0.84)*(i/4);
-      ctx.beginPath(); ctx.moveTo(x+w*0.55,yy); ctx.lineTo(x+w*0.98,yy); ctx.stroke(); }
-
-    // обложка (градиент)
-    const grd=ctx.createLinearGradient(x,y,x+w,y+h);
-    grd.addColorStop(0,col.a); grd.addColorStop(1,col.b);
-    bookPath(x,y,w,h,w*0.12); ctx.fillStyle=grd; ctx.fill();
-
-    // корешок (темнее) + золотые перетяжки
-    ctx.fillStyle=col.b;
-    roundRectC(x,y,sp,h,w*0.08); ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=1.2;
-    ctx.beginPath(); ctx.moveTo(x+sp*1.4,y+h*0.04); ctx.lineTo(x+sp*1.4,y+h*0.96); ctx.stroke();
-    ctx.fillStyle='#ffcf6b';
-    for(let i=1;i<=3;i++){ const yy=y+h*(0.22*i);
-      roundRectC(x-w*0.02,yy,sp*1.5,h*0.06,2); ctx.fill(); }
-
-    // блик на обложке
-    ctx.fillStyle='rgba(255,255,255,.16)';
-    ctx.beginPath(); ctx.ellipse(cx+w*0.05,y+h*0.2,w*0.28,h*0.1,-0.4,0,7); ctx.fill();
-
-    // эмблема по центру обложки
-    drawEmblem(cx+w*0.12, cy, s*0.7, EMBLEM[g.c], col);
-
-    ctx.restore();
-
-    if(selected){
-      ctx.strokeStyle='#fff'; ctx.lineWidth=2.5;
-      bookPath(x,y,w,h,w*0.12); ctx.stroke();
-    }
-  }
-
-  function bookPath(x,y,w,h,r){
-    ctx.beginPath();
-    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
-  }
-
-  function drawEmblem(cx,cy,r,kind,col){
-    ctx.save();
-    ctx.fillStyle='#ffcf6b';
-    ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=1;
-    if(kind==='star'||kind==='bigstar'){
-      // белый овал + звезда (как в референсе)
-      if(kind==='star'){ ctx.fillStyle='#fff';
-        ctx.beginPath(); ctx.ellipse(cx,cy-r*0.5,r*0.6,r*0.42,0,0,7); ctx.fill(); }
-      drawStar(cx,cy-(kind==='star'?r*0.5:0),(kind==='star'?r*0.28:r*0.6),5,'#ffcf6b');
-    } else if(kind==='sparkle'){
-      drawSpark(cx,cy,r*0.7);
-    } else if(kind==='triangle'){
-      ctx.beginPath(); ctx.moveTo(cx,cy-r*0.6); ctx.lineTo(cx+r*0.55,cy+r*0.45);
-      ctx.lineTo(cx-r*0.55,cy+r*0.45); ctx.closePath(); ctx.fill();
-    } else if(kind==='pentagon'){
-      ctx.beginPath();
-      for(let i=0;i<5;i++){ const a=-Math.PI/2+i*2*Math.PI/5;
-        const px=cx+Math.cos(a)*r*0.6, py=cy+Math.sin(a)*r*0.6;
-        i?ctx.lineTo(px,py):ctx.moveTo(px,py); }
-      ctx.closePath(); ctx.fill();
-    } else if(kind==='question'){
-      // белый овал + звезда сверху + знак вопроса (чёрная книга)
-      ctx.fillStyle='#fff';
-      ctx.beginPath(); ctx.ellipse(cx,cy-r*0.7,r*0.45,r*0.32,0,0,7); ctx.fill();
-      drawStar(cx,cy-r*0.7,r*0.2,5,'#ffcf6b');
-      ctx.fillStyle='#ffcf6b'; ctx.font=`bold ${Math.floor(r*1.1)}px sans-serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('?',cx,cy+r*0.25);
-    }
-    ctx.restore();
-  }
-
-  function drawStar(cx,cy,r,n,fill){
-    ctx.fillStyle=fill; ctx.beginPath();
-    for(let i=0;i<n*2;i++){ const rr=i%2?r*0.45:r;
-      const a=-Math.PI/2+i*Math.PI/n;
-      const px=cx+Math.cos(a)*rr, py=cy+Math.sin(a)*rr;
-      i?ctx.lineTo(px,py):ctx.moveTo(px,py); }
-    ctx.closePath(); ctx.fill();
-  }
-
-  function drawSpark(cx,cy,r){
-    // четырёхлучевой бриллиант-блеск
-    ctx.fillStyle='#ffcf6b'; ctx.beginPath();
-    ctx.moveTo(cx,cy-r); ctx.quadraticCurveTo(cx+r*0.18,cy-r*0.18,cx+r,cy);
-    ctx.quadraticCurveTo(cx+r*0.18,cy+r*0.18,cx,cy+r);
-    ctx.quadraticCurveTo(cx-r*0.18,cy+r*0.18,cx-r,cy);
-    ctx.quadraticCurveTo(cx-r*0.18,cy-r*0.18,cx,cy-r);
-    ctx.closePath(); ctx.fill();
-  }
-
-  function roundRect(x,y,w,h,r){ ctx.beginPath();
-    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-  function roundRectC(x,y,w,h,r){ ctx.beginPath();
-    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-
-  function vibrate(ms){ try{ navigator.vibrate&&navigator.vibrate(ms);}catch(e){} }
-})();
-
-EOF_SDVIG
-
 echo ""
 echo "✅  Готово!"
-echo "  git add -A && git commit -m \"feat: level+money HUD, bottom tools, lamp in match3, premium card bg\" && git push"
+echo "  git add -A && git commit -m \"fix: swipe first-touch, thick border, deck anim, deep card bg, tools lower\" && git push"

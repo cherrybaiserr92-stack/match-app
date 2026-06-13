@@ -253,7 +253,7 @@ function enterMain(){
   bindTools();
   if(window.BgFx) BgFx.init();
   Icons.paint();
-  try{ buildDeck(); renderCard(); }catch(e){ console.error('renderCard',e); }
+  try{ buildDeck(); renderCard(); dealDeck(); }catch(e){ console.error('renderCard',e); }
   try{ renderHUD(); }catch(e){ console.error('renderHUD',e); }
   try{ renderGameList(); }catch(e){ console.error('renderGameList',e); }
   try{ renderProfile(); }catch(e){ console.error('renderProfile',e); }
@@ -373,62 +373,77 @@ function buildDeck(){
 /* ═══════════════════════════════════════════════
    РЕНДЕР КАРТОЧКИ ДЕЛА
 ═══════════════════════════════════════════════ */
+/* анимация набора колоды-подложки при входе */
+function dealDeck(){
+  const cards=document.querySelectorAll('.stack-card');
+  cards.forEach(el=>{ el.classList.remove('deal','dealt'); void el.offsetWidth; });
+  cards.forEach(el=>{
+    el.classList.add('deal');
+    el.addEventListener('animationend',()=>{ el.classList.remove('deal'); el.classList.add('dealt'); },{once:true});
+  });
+}
+
 /* премиум SVG-фоны для карточек по типу дела */
 function cardBackground(type){
-  const A={
-    crime:    {c1:'#3a0e12',c2:'#1a0508',ac:'#ff5d6c'},
-    evidence: {c1:'#0e2a33',c2:'#06141a',ac:'#6be0ff'},
-    suspect:  {c1:'#241040',c2:'#0e0620',ac:'#a98bff'},
-    witness:  {c1:'#0e3325',c2:'#061a12',ac:'#35d49b'},
-    revelation:{c1:'#3a2c0a',c2:'#1a1404',ac:'#ffcf6b'},
-    ending:   {c1:'#2a2410',c2:'#141005',ac:'#ffcf6b'}
-  }[type] || {c1:'#1a1e2a',c2:'#0a0d14',ac:'#c8860a'};
+  // Глубокие атмосферные фоны (вдохновлено Reigns / Cultist Simulator):
+  // несколько слоёв радиальных градиентов, мягкие пятна света, дымка, виньетка.
+  const P={
+    crime:     {base:'#1a0608',glow:'#ff5d6c',glow2:'#7a1020',spot:'#ff8a95'},
+    evidence:  {base:'#04141a',glow:'#6be0ff',glow2:'#0a4a63',spot:'#9af0ff'},
+    suspect:   {base:'#0e0620',glow:'#a98bff',glow2:'#3d2470',spot:'#c4aaff'},
+    witness:   {base:'#04160f',glow:'#35d49b',glow2:'#0c4a32',spot:'#7af0c0'},
+    revelation:{base:'#1a1404',glow:'#ffcf6b',glow2:'#7a5410',spot:'#ffe6a0'},
+    ending:    {base:'#140f04',glow:'#ffcf6b',glow2:'#6a4a10',spot:'#ffe6a0'}
+  }[type] || {base:'#0a0d14',glow:'#c8860a',glow2:'#5a3d08',spot:'#ffcf6b'};
 
-  // тематический паттерн
-  let pattern='';
-  if(type==='crime'){
-    // силуэт мелового контура тела + брызги
-    pattern=`<path d="M120 230 q-30 -10 -20 -50 q5 -25 30 -20 q10 -40 35 -25 q25 -50 50 -15 q30 -5 20 35 q25 15 5 45 q10 35 -30 30 q-20 25 -50 5 q-30 20 -40 -20 z" fill="none" stroke="${A.ac}" stroke-width="2" opacity=".12"/>
-      <circle cx="80" cy="120" r="3" fill="${A.ac}" opacity=".25"/><circle cx="250" cy="90" r="4" fill="${A.ac}" opacity=".2"/><circle cx="270" cy="280" r="2.5" fill="${A.ac}" opacity=".22"/>`;
-  } else if(type==='evidence'){
-    // отпечаток пальца
-    pattern=`<g fill="none" stroke="${A.ac}" stroke-width="1.6" opacity=".14">
-      ${[...Array(7)].map((_,i)=>`<ellipse cx="200" cy="200" rx="${30+i*16}" ry="${40+i*18}" transform="rotate(${i*4} 200 200)"/>`).join('')}
-    </g>`;
-  } else if(type==='suspect'){
-    // силуэт головы в профиль
-    pattern=`<path d="M150 90 q60 -10 70 50 q5 40 -10 70 q-5 30 -40 35 l5 40 -60 0 q5 -50 -10 -70 q-25 -30 -15 -85 q10 -45 60 -40z" fill="none" stroke="${A.ac}" stroke-width="2" opacity=".13"/>`;
-  } else if(type==='witness'){
-    // глаз
-    pattern=`<g fill="none" stroke="${A.ac}" stroke-width="2" opacity=".14">
-      <path d="M90 200 q110 -90 220 0 q-110 90 -220 0z"/><circle cx="200" cy="200" r="42"/><circle cx="200" cy="200" r="18" fill="${A.ac}" opacity=".3"/></g>`;
-  } else if(type==='revelation'||type==='ending'){
-    // лучи-вспышка
-    pattern=`<g stroke="${A.ac}" stroke-width="2" opacity=".12">
-      ${[...Array(12)].map((_,i)=>{const a=i*30*Math.PI/180;return `<line x1="200" y1="200" x2="${200+Math.cos(a)*180}" y2="${200+Math.sin(a)*180}"/>`;}).join('')}</g>
-      <circle cx="200" cy="200" r="30" fill="${A.ac}" opacity=".15"/>`;
-  } else {
-    // папка/документы по умолчанию
-    pattern=`<g fill="none" stroke="${A.ac}" stroke-width="1.6" opacity=".12">
-      <rect x="120" y="120" width="160" height="200" rx="8" transform="rotate(-8 200 220)"/>
-      <rect x="130" y="100" width="160" height="200" rx="8" transform="rotate(4 200 200)"/>
-      <line x1="150" y1="160" x2="260" y2="160"/><line x1="150" y1="190" x2="260" y2="190"/><line x1="150" y1="220" x2="230" y2="220"/></g>`;
-  }
-
-  return `<svg viewBox="0 0 400 480" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">
+  return `<svg viewBox="0 0 400 520" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">
     <defs>
-      <radialGradient id="cbg-${type}" cx="50%" cy="35%" r="80%">
-        <stop offset="0" stop-color="${A.c1}"/><stop offset="1" stop-color="${A.c2}"/>
+      <radialGradient id="bg-base-${type}" cx="50%" cy="30%" r="95%">
+        <stop offset="0" stop-color="${P.glow2}" stop-opacity=".55"/>
+        <stop offset="45%" stop-color="${P.base}"/>
+        <stop offset="100%" stop-color="#04060a"/>
       </radialGradient>
-      <filter id="cgrain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="n"/>
+      <radialGradient id="bg-spot-${type}" cx="50%" cy="22%" r="42%">
+        <stop offset="0" stop-color="${P.spot}" stop-opacity=".5"/>
+        <stop offset="100%" stop-color="${P.spot}" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="bg-glow2-${type}" cx="78%" cy="68%" r="55%">
+        <stop offset="0" stop-color="${P.glow}" stop-opacity=".28"/>
+        <stop offset="100%" stop-color="${P.glow}" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="bg-vig-${type}" cx="50%" cy="50%" r="75%">
+        <stop offset="55%" stop-color="#000" stop-opacity="0"/>
+        <stop offset="100%" stop-color="#000" stop-opacity=".6"/>
+      </radialGradient>
+      <filter id="bg-soft-${type}"><feGaussianBlur stdDeviation="22"/></filter>
+      <filter id="bg-grain-${type}">
+        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" result="n"/>
         <feColorMatrix in="n" type="saturate" values="0"/>
-        <feComponentTransfer><feFuncA type="linear" slope="0.04"/></feComponentTransfer>
-        <feComposite operator="over" in2="SourceGraphic"/></filter>
+        <feComponentTransfer><feFuncA type="linear" slope="0.05"/></feComponentTransfer>
+        <feComposite operator="over" in2="SourceGraphic"/>
+      </filter>
     </defs>
-    <rect width="400" height="480" fill="url(#cbg-${type})"/>
-    ${pattern}
-    <rect width="400" height="480" filter="url(#cgrain)" opacity=".5"/>
-    <rect width="400" height="480" fill="url(#cbg-${type})" opacity="0"/>
+    <!-- базовый глубокий градиент -->
+    <rect width="400" height="520" fill="url(#bg-base-${type})"/>
+    <!-- большие мягкие световые пятна (глубина) -->
+    <g filter="url(#bg-soft-${type})">
+      <ellipse cx="120" cy="90" rx="130" ry="110" fill="${P.glow}" opacity=".14"/>
+      <ellipse cx="320" cy="380" rx="150" ry="140" fill="${P.glow2}" opacity=".5"/>
+      <ellipse cx="200" cy="250" rx="180" ry="160" fill="${P.base}" opacity=".4"/>
+    </g>
+    <!-- верхний прожектор -->
+    <rect width="400" height="520" fill="url(#bg-spot-${type})"/>
+    <!-- нижнее цветное свечение -->
+    <rect width="400" height="520" fill="url(#bg-glow2-${type})"/>
+    <!-- тонкая дымка-полосы для атмосферы -->
+    <g opacity=".06" fill="none" stroke="${P.spot}" stroke-width="1">
+      <path d="M-20 150 Q200 100 420 170"/>
+      <path d="M-20 300 Q200 250 420 320"/>
+    </g>
+    <!-- зерно плёнки -->
+    <rect width="400" height="520" filter="url(#bg-grain-${type})" opacity=".6"/>
+    <!-- виньетка для глубины -->
+    <rect width="400" height="520" fill="url(#bg-vig-${type})"/>
   </svg>`;
 }
 
@@ -504,10 +519,14 @@ function unlockSwipe(){
    СВАЙПЫ (left / right / up = спецприём)
 ═══════════════════════════════════════════════ */
 function bindSwipe(card,c){
-  let sx=0,sy=0,dx=0,dy=0,drag=false;
+  let sx=0,sy=0,dx=0,dy=0,drag=false,pid=null;
   const TH=90, UPTH=110;
 
-  const start=(x,y)=>{ if(!App.swipeUnlocked){ return; } drag=true; sx=x; sy=y; dx=dy=0; card.style.transition='none'; };
+  const start=(x,y)=>{
+    if(!App.swipeUnlocked) return;
+    drag=true; sx=x; sy=y; dx=dy=0;
+    card.style.transition='none';
+  };
   const move=(x,y)=>{
     if(!drag) return;
     dx=x-sx; dy=y-sy;
@@ -517,9 +536,7 @@ function bindSwipe(card,c){
     card.classList.toggle('tilt-right',dx>30);
     card.classList.toggle('tilt-up',c.special&&dy<-40&&Math.abs(dx)<60);
     setStampOpacity(card,dx,dy,c);
-    // параллакс фона следует за свайпом
     if(window.BgFxDrag) BgFxDrag(-dx/180, -dy/180);
-    if(Math.abs(dx)>TH||(c.special&&dy<-UPTH)) vibrate(6);
   };
   const end=()=>{
     if(!drag) return; drag=false;
@@ -527,21 +544,31 @@ function bindSwipe(card,c){
     if(c.special && dy<-UPTH && Math.abs(dx)<70){ flySpecial(card,c); return; }
     if(dx>TH){ flyOut(card,'right',c); return; }
     if(dx<-TH){ flyOut(card,'left',c); return; }
-    // вернуть на место
     card.style.transform=`translate(-50%,-50%) rotate(-.4deg)`;
     card.className='case-card ct-'+(c.type||'evidence');
     resetStamps(card);
     if(window.BgFxDrag) BgFxDrag(0,0);
   };
 
-  card.addEventListener('pointerdown',e=>{
-    // не начинать свайп если жмём кнопку «Найти улики»
+  // pointerdown на карточке, move/up на window — не зависим от pointer-capture
+  const onDown=e=>{
     if(e.target.closest('#play-gems')) return;
-    start(e.clientX,e.clientY); card.setPointerCapture?.(e.pointerId);
-  });
-  card.addEventListener('pointermove',e=>move(e.clientX,e.clientY));
-  card.addEventListener('pointerup',end);
-  card.addEventListener('pointercancel',end);
+    if(!App.swipeUnlocked) return;
+    pid=e.pointerId;
+    start(e.clientX,e.clientY);
+    window.addEventListener('pointermove',onMove);
+    window.addEventListener('pointerup',onUp);
+    window.addEventListener('pointercancel',onUp);
+  };
+  const onMove=e=>{ if(pid!=null&&e.pointerId!==pid) return; move(e.clientX,e.clientY); };
+  const onUp=e=>{
+    if(pid!=null&&e.pointerId!==pid) return;
+    end(); pid=null;
+    window.removeEventListener('pointermove',onMove);
+    window.removeEventListener('pointerup',onUp);
+    window.removeEventListener('pointercancel',onUp);
+  };
+  card.addEventListener('pointerdown',onDown);
 }
 
 function setStampOpacity(card,dx,dy,c){
