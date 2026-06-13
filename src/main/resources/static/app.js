@@ -706,56 +706,47 @@ function renderMap(){
   const total=totalLevels();
   const scroll=$('#map-scroll');
   const W=inner.clientWidth || (scroll&&scroll.clientWidth) || window.innerWidth || 360;
-  const rowH=110, padTop=84;
-  const H=padTop+total*rowH+120;
+  const rowH=120, padTop=90;
+  const H=padTop+total*rowH+140;
   inner.style.height=H+'px';
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
 
   const cur=App.profile.mapNode||0;
-  const stars=App.profile.mapStars||{};   // {idx: 1..3}
-  const cols=[W*0.24, W*0.5, W*0.76];
+  const stars=App.profile.mapStars||{};
+  const cols=[W*0.24, W*0.52, W*0.78];
   const colPattern=[0,1,2,1];
-  let idx=0, pts=[], zones=[];
+  let idx=0, pts=[];
 
+  // ── 2D-сцена: рисуем землю, кварталы, дома, улицы по главам ──
+  let scene='';
   CHAPTERS.forEach((ch,ci)=>{
-    const startIdx=idx;
-    const unlocked = idx<=cur;
-    // цветовая зона-район (полупрозрачная подложка за главой)
-    const zoneTop = padTop + startIdx*rowH - 56;
-    const zoneH = ch.levels*rowH + 8;
-    const zone=el('div','map-zone');
-    zone.style.cssText=`position:absolute;left:8px;right:8px;top:${zoneTop}px;height:${zoneH}px;`+
-      `border-radius:24px;z-index:0;`+
-      `background:radial-gradient(120% 60% at 50% 0%, ${ch.tint}1f, transparent 70%);`+
-      `border:1px solid ${ch.tint}1a;`;
-    inner.appendChild(zone);
+    const yTop = padTop + idx*rowH - 60;
+    const yBot = yTop + ch.levels*rowH + 30;
+    scene += drawDistrict(ci, ch, W, yTop, yBot);
+    idx += ch.levels;
+  });
 
-    // заголовок-табличка района
-    const head=el('div','map-chapter'+(unlocked?'':' mc-locked'),
-      `<div class="mc-dist" style="color:${ch.tint}">${ch.district}</div>`+
-      `<div class="mc-title">${ch.title.split('·')[1]||ch.title}</div>`);
-    head.style.left='50%'; head.style.top=(zoneTop+4)+'px';
+  // ── узлы и путь ──
+  idx=0;
+  CHAPTERS.forEach((ch,ci)=>{
+    const yTop = padTop + idx*rowH - 60;
+    const head=el('div','map-chapter', `<div class="mc-dist" style="color:${ch.tint}">${ch.district}</div><div class="mc-title">${(ch.title.split('·')[1]||ch.title).trim()}</div>`);
+    head.style.left='50%'; head.style.top=(yTop-4)+'px';
     inner.appendChild(head);
 
     for(let l=0;l<ch.levels;l++){
       const y=padTop+idx*rowH;
       const x=cols[colPattern[idx%colPattern.length]];
-      const isMilestone = (l===ch.levels-1);   // последний уровень главы — ключевое дело
+      const isMile=(l===ch.levels-1);
       pts.push({x,y,idx,tint:ch.tint});
       const state = idx<cur?'done':idx===cur?'current':'locked';
-      const node=el('div','map-node '+state+(isMilestone?' milestone':''));
+      const node=el('div','map-node '+state+(isMile?' milestone':''));
       node.style.setProperty('--nt',ch.tint);
       if(state==='locked'){ node.innerHTML=Icons.get('lock'); }
       else { node.innerHTML=`<span class="mn-num">${idx+1}</span>`; }
-      // звёзды под пройденными
-      if(state==='done'){
-        const st=stars[idx]||1;
-        node.innerHTML+=`<span class="mn-stars">${'★'.repeat(st)}${'☆'.repeat(3-st)}</span>`;
-      }
-      // маркер текущего уровня (аватар-булавка)
-      if(state==='current'){
-        node.innerHTML+=`<span class="mn-pin">${Icons.get('agent')}</span>`;
-      }
+      if(state==='done'){ const st=stars[idx]||1;
+        node.innerHTML+=`<span class="mn-stars">${'★'.repeat(st)}${'☆'.repeat(3-st)}</span>`; }
+      if(state==='current'){ node.innerHTML+=`<span class="mn-pin">${Icons.get('agent')}</span>`; }
       node.style.left=x+'px'; node.style.top=y+'px';
       const myIdx=idx, myState=state;
       node.onclick=()=>{
@@ -769,7 +760,7 @@ function renderMap(){
     }
   });
 
-  // путь = красная нить расследования (как на пробковой доске)
+  // тропа (дорожка) через узлы
   let pathD = pts.length ? `M ${pts[0].x} ${pts[0].y}` : '';
   for(let i=0;i<pts.length-1;i++){
     const p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||p2;
@@ -777,25 +768,75 @@ function renderMap(){
     const c2x=p2.x-(p3.x-p1.x)/6, c2y=p2.y-(p3.y-p1.y)/6;
     pathD+=` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
   }
-  // булавки на каждом узле
-  let pins='';
-  pts.forEach(p=>{ pins+=`<circle cx="${p.x}" cy="${p.y}" r="4" fill="#1a1008" stroke="#d4452f" stroke-width="2"/>`; });
-
   const prog = total>1 ? cur/(total-1) : 0;
   svg.innerHTML=`
     <defs>
-      <filter id="thread-sh" x="-20%" y="-20%" width="140%" height="140%">
-        <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000" flood-opacity="0.5"/>
+      <filter id="pathsh" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.4"/>
       </filter>
     </defs>
-    <!-- бледная нить (весь маршрут) -->
-    <path d="${pathD}" fill="none" stroke="rgba(212,69,47,.18)" stroke-width="3" stroke-linecap="round"/>
-    <!-- красная нить расследования (пройденный путь) -->
-    <path d="${pathD}" fill="none" stroke="#d4452f" stroke-width="2.6" stroke-linecap="round"
-          filter="url(#thread-sh)"
+    ${scene}
+    <!-- мощёная дорожка -->
+    <path d="${pathD}" fill="none" stroke="#2a2418" stroke-width="22" stroke-linecap="round" opacity=".55"/>
+    <path d="${pathD}" fill="none" stroke="#46402c" stroke-width="17" stroke-linecap="round" filter="url(#pathsh)"/>
+    <path d="${pathD}" fill="none" stroke="#5a5238" stroke-width="13" stroke-linecap="round"
+          stroke-dasharray="2 17" opacity=".5"/>
+    <!-- пройденная часть — золотой свет -->
+    <path d="${pathD}" fill="none" stroke="#ffcf6b" stroke-width="4" stroke-linecap="round"
           stroke-dasharray="100000" stroke-dashoffset="${100000*(1-prog)}" pathLength="100000"
-          style="transition:stroke-dashoffset .8s ease"/>
-    ${pins}`;
+          opacity=".8" style="transition:stroke-dashoffset .8s ease"/>`;
+}
+
+/* рисует 2D-квартал (землю, дома, фонари) для главы */
+function drawDistrict(ci, ch, W, yTop, yBot){
+  const h=yBot-yTop;
+  const t=ch.tint;
+  // палитра земли по району
+  const ground = ['#1c2535','#241a30','#16241f','#2a1a1c','#2a2418'][ci%5];
+  const ground2= ['#28344a','#321f44','#1f3830','#3a2326','#3a3322'][ci%5];
+  let s=`<g>`;
+  // подложка-земля квартала
+  s+=`<rect x="6" y="${yTop}" width="${W-12}" height="${h}" rx="20" fill="${ground}"/>`;
+  s+=`<rect x="6" y="${yTop}" width="${W-12}" height="${h}" rx="20" fill="url(#dg${ci})" opacity=".5"/>`;
+  s+=`<defs><radialGradient id="dg${ci}" cx="50%" cy="0%" r="90%">
+      <stop offset="0" stop-color="${t}" stop-opacity=".18"/><stop offset="1" stop-color="${t}" stop-opacity="0"/>
+    </radialGradient></defs>`;
+  // дома-силуэты (несколько прямоугольников с окнами)
+  const seed=ci*7+3;
+  for(let i=0;i<5;i++){
+    const bw=28+((seed*i*13)%34);
+    const bh=40+((seed*i*7)%60);
+    const bx=14 + ((seed*i*29)% (W-60));
+    const by=yBot-bh-14;
+    const side = i%2? -3:3;
+    s+=`<g opacity=".9">
+      <rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="3" fill="${ground2}"/>
+      <polygon points="${bx-2},${by} ${bx+bw+2},${by} ${bx+bw/2},${by-12}" fill="${ground2}"/>`;
+    // окна (некоторые светятся янтарём)
+    for(let wy=by+8; wy<by+bh-8; wy+=14){
+      for(let wx=bx+5; wx<bx+bw-6; wx+=11){
+        const lit=((wx+wy+seed)%5===0);
+        s+=`<rect x="${wx}" y="${wy}" width="6" height="8" rx="1" fill="${lit?'#ffcf6b':'#0c1018'}" opacity="${lit?'.9':'.6'}"/>`;
+      }
+    }
+    s+=`</g>`;
+  }
+  // деревья/кусты-кружки
+  for(let i=0;i<4;i++){
+    const tx=20+((seed*i*53)%(W-40));
+    const ty=yTop+30+((seed*i*37)%(h-80));
+    const tr=8+((seed*i)%8);
+    s+=`<circle cx="${tx}" cy="${ty}" r="${tr}" fill="#1a2a1c" opacity=".7"/>`;
+  }
+  // фонари вдоль (точки света)
+  for(let i=0;i<3;i++){
+    const lx=30+((seed*i*71)%(W-60));
+    const ly=yTop+50+i*(h/3);
+    s+=`<circle cx="${lx}" cy="${ly}" r="20" fill="#ffcf6b" opacity=".06"/>
+        <circle cx="${lx}" cy="${ly}" r="3" fill="#ffcf6b" opacity=".5"/>`;
+  }
+  s+=`</g>`;
+  return s;
 }
 
 function advanceMap(){ App.profile.mapNode=Math.min(totalLevels()-1,(App.profile.mapNode||0)+1); }
