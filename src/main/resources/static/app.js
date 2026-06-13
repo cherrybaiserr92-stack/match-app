@@ -61,8 +61,8 @@ function fatal(msg){
 /* ═══════════════════════════════════════════════
    SPLASH → кинематографичный переход → LOGIN
 ═══════════════════════════════════════════════ */
-const SPLASH_BG = '/img/splash.jpg';   // фон №1 (экран загрузки)
-const LOGIN_BG  = '/img/login.jpg';    // фон №2 (экран входа)
+const SPLASH_BG = '/img/bg-splash.jpg';   // фон №1 (экран загрузки)
+const LOGIN_BG  = '/img/bg-login.jpg';    // фон №2 (экран входа)
 
 const wait = ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -359,6 +359,7 @@ function renderCard(){
     <div class="card-actions-area" id="card-actions"></div>
   `;
   zone.appendChild(card);
+  resetStamps(card);
   renderCardActions(card,c);
   bindSwipe(card,c);
   Sound.tap();

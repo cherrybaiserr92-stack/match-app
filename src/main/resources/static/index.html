@@ -10,14 +10,14 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 <script>window.SDVIG_BOT_USERNAME="sdvig_game_bot";</script>
-<link rel="stylesheet" href="/zzz-reset.css">
 </head>
 <body>
-<div id="bg-fx" style="position:fixed;inset:0;z-index:0;pointer-events:none!important"></div>
+
+<!-- фон Phaser (никогда не ловит клики) -->
+<div id="bg-fx"></div>
 
 <!-- ══ SPLASH ══ -->
 <div id="splash-screen" class="screen active">
-  <div class="splash-photo"></div>
   <div class="splash-scene">
     <div class="splash-emblem" id="splash-emblem">
       <div class="emblem-inner"><span class="emblem-letter">С</span></div>
@@ -28,12 +28,11 @@
       <div class="splash-status" id="splash-status">Инициализация</div>
     </div>
   </div>
+  <div class="splash-flash" id="splash-flash"></div>
 </div>
-<div class="splash-flash" id="splash-flash"></div>
 
 <!-- ══ LOGIN ══ -->
 <div id="login-screen" class="screen">
-  <div class="login-photo"></div>
   <div class="login-wrap">
     <div class="login-header">
       <div class="login-badge">С</div>
@@ -44,10 +43,9 @@
       <div class="login-card-label">Вход</div>
       <div class="tg-widget-area" id="tg-widget-area"></div>
       <div class="tg-tip" id="tg-status">Загрузка способов входа…</div>
-      <button class="btn btn-bronze" id="tg-browser-btn" type="button" style="display:none">Войти через Telegram</button>
       <div class="divider">или</div>
       <button class="btn btn-outline" id="guest-btn" type="button">Войти как гость</button>
-      <div class="login-hint">Гостевой прогресс хранится только на этом устройстве.</div>
+      <div class="login-hint">Гостевой прогресс хранится на этом устройстве.</div>
     </div>
   </div>
 </div>
@@ -65,7 +63,6 @@
 <!-- ══ MAIN ══ -->
 <div id="main-screen" class="screen">
 
-  <!-- topbar -->
   <div class="topbar">
     <div class="topbar-left">
       <div class="topbar-emblem">С</div>
@@ -80,36 +77,29 @@
     </div>
   </div>
 
-  <!-- xp band -->
   <div class="xp-band">
     <div class="xp-track"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
     <div class="xp-info" id="xp-info">УР 1 · 0/100</div>
   </div>
 
-  <!-- tabs -->
   <div class="tab-area">
 
-    <!-- ── ДЕЛА ── -->
     <div class="tab-pane active" id="tab-cases">
       <div class="swipe-zone" id="swipe-zone">
         <div class="stack-card sc3"></div>
         <div class="stack-card sc2"></div>
         <div class="stack-card sc1"></div>
-        <!-- активная карточка вставляется из JS -->
       </div>
     </div>
 
-    <!-- ── КАРТА ── -->
     <div class="tab-pane" id="tab-map">
       <div class="map-scroll" id="map-scroll">
         <div class="map-inner" id="map-inner">
           <svg class="map-path-svg" id="map-path"></svg>
-          <!-- узлы и главы вставляются из JS -->
         </div>
       </div>
     </div>
 
-    <!-- ── ИГРЫ ── -->
     <div class="tab-pane" id="tab-games">
       <div class="pane-hd">
         <div class="pane-title">Аркады</div>
@@ -118,7 +108,6 @@
       <div class="game-list" id="game-list"></div>
     </div>
 
-    <!-- ── АГЕНТ ── -->
     <div class="tab-pane" id="tab-profile">
       <div class="profile-hero">
         <div class="profile-av" id="prof-av">С</div>
@@ -140,7 +129,6 @@
       <div class="ach-grid" id="ach-grid"></div>
     </div>
 
-    <!-- ── МАГАЗИН ── -->
     <div class="tab-pane" id="tab-shop">
       <div class="pane-hd">
         <div class="pane-title">Лавка</div>
@@ -151,7 +139,6 @@
 
   </div>
 
-  <!-- bottom nav -->
   <nav class="bottom-nav">
     <button class="nb active" data-tab="cases"><span data-ico="cards"></span><span class="nb-lbl">Дела</span></button>
     <button class="nb" data-tab="map"><span data-ico="map"></span><span class="nb-lbl">Карта</span></button>
@@ -178,9 +165,6 @@
 </div>
 <div class="modal-bg hidden" id="daily-modal"></div>
 
-<!-- ══ background canvas (Phaser parallax) ══ -->
-
-
 <script src="/icons.js"></script>
 <script src="/sound.js"></script>
 <script src="/phaser-bg.js"></script>
@@ -192,3 +176,4 @@
 <script src="/games/arcade.js"></script>
 </body>
 </html>
+

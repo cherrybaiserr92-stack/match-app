@@ -1,124 +1,711 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-#  СДВИГ · deploy.sh — ФИКС: кнопки в играх не нажимались
+#  СДВИГ · deploy.sh — ЧИСТАЯ ПЕРЕСБОРКА фронтенда
+#  Убраны костыли (zzz-reset, inline-HOTFIX). Единый стиль.
+#  Фиксы: клики, экран входа, залипшие штампы, карта, фоны.
 #  Запускай из корня репозитория:  bash deploy.sh
 # ═══════════════════════════════════════════════════════════════
 set -e
 S="src/main/resources/static"
 echo ""
-echo "🔧  СДВИГ — применяем фиксы ввода и производительности…"
+echo "🧹  СДВИГ — чистая пересборка фронтенда…"
 echo ""
-echo "  ✦ $S/phaser-bg.js"
-mkdir -p $(dirname "$S/phaser-bg.js")
-cat > "$S/phaser-bg.js" << 'EOF_SDVIG'
+
+# Удаляем устаревший костыль (если был)
+rm -f "$S/zzz-reset.css" 2>/dev/null && echo "  ✗ удалён zzz-reset.css (костыль)" || true
+echo ""
+echo "  ✦ $S/index.html"
+mkdir -p $(dirname "$S/index.html")
+cat > "$S/index.html" << 'EOF_SDVIG'
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#07090d">
+<title>СДВИГ</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/card-design.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script>window.SDVIG_BOT_USERNAME="sdvig_game_bot";</script>
+</head>
+<body>
+
+<!-- фон Phaser (никогда не ловит клики) -->
+<div id="bg-fx"></div>
+
+<!-- ══ SPLASH ══ -->
+<div id="splash-screen" class="screen active">
+  <div class="splash-scene">
+    <div class="splash-emblem" id="splash-emblem">
+      <div class="emblem-inner"><span class="emblem-letter">С</span></div>
+    </div>
+    <div class="splash-title-row" id="splash-title"></div>
+    <div class="splash-progress-wrap">
+      <div class="splash-track"><div class="splash-fill" id="splash-fill"></div></div>
+      <div class="splash-status" id="splash-status">Инициализация</div>
+    </div>
+  </div>
+  <div class="splash-flash" id="splash-flash"></div>
+</div>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen" class="screen">
+  <div class="login-wrap">
+    <div class="login-header">
+      <div class="login-badge">С</div>
+      <div class="login-h1">СДВИГ</div>
+      <div class="login-tagline">Детективное агентство</div>
+    </div>
+    <div class="login-card">
+      <div class="login-card-label">Вход</div>
+      <div class="tg-widget-area" id="tg-widget-area"></div>
+      <div class="tg-tip" id="tg-status">Загрузка способов входа…</div>
+      <div class="divider">или</div>
+      <button class="btn btn-outline" id="guest-btn" type="button">Войти как гость</button>
+      <div class="login-hint">Гостевой прогресс хранится на этом устройстве.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ERROR ══ -->
+<div id="error-screen" class="screen">
+  <div class="err-center">
+    <div class="err-icon">⚠️</div>
+    <div class="err-title">Что-то пошло не так</div>
+    <div class="err-msg" id="error-msg">Не удалось загрузить данные.</div>
+    <button class="btn btn-bronze" onclick="location.reload()" style="max-width:200px">Перезапустить</button>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div id="main-screen" class="screen">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-emblem">С</div>
+      <div class="topbar-brand">СДВИГ</div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-stats">
+        <div class="stat-pill" id="pill-energy"><span data-ico="bolt"></span><span id="hud-energy">5</span></div>
+        <div class="stat-pill" id="pill-credits"><span data-ico="gem"></span><span id="hud-credits">0</span></div>
+      </div>
+      <button class="sound-btn" id="sound-btn" type="button">🔊</button>
+    </div>
+  </div>
+
+  <div class="xp-band">
+    <div class="xp-track"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
+    <div class="xp-info" id="xp-info">УР 1 · 0/100</div>
+  </div>
+
+  <div class="tab-area">
+
+    <div class="tab-pane active" id="tab-cases">
+      <div class="swipe-zone" id="swipe-zone">
+        <div class="stack-card sc3"></div>
+        <div class="stack-card sc2"></div>
+        <div class="stack-card sc1"></div>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="tab-map">
+      <div class="map-scroll" id="map-scroll">
+        <div class="map-inner" id="map-inner">
+          <svg class="map-path-svg" id="map-path"></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="tab-games">
+      <div class="pane-hd">
+        <div class="pane-title">Аркады</div>
+        <div class="pane-sub">Тренируй навыки — открывай свайпы дел</div>
+      </div>
+      <div class="game-list" id="game-list"></div>
+    </div>
+
+    <div class="tab-pane" id="tab-profile">
+      <div class="profile-hero">
+        <div class="profile-av" id="prof-av">С</div>
+        <div>
+          <div class="profile-name" id="prof-name">Агент</div>
+          <div class="profile-arch" id="prof-arch">Новичок</div>
+          <div class="profile-id" id="prof-id">#000000</div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="sg"><div class="sg-val" id="st-cases">0</div><div class="sg-lbl">Дел</div></div>
+        <div class="sg"><div class="sg-val" id="st-streak">0</div><div class="sg-lbl">Серия</div></div>
+        <div class="sg"><div class="sg-val" id="st-prestige">0</div><div class="sg-lbl">Престиж</div></div>
+        <div class="sg"><div class="sg-val" id="st-lvl">1</div><div class="sg-lbl">Уровень</div></div>
+      </div>
+      <div class="pane-hd" style="margin-top:6px"><div class="pane-title" style="font-size:16px">Навыки</div></div>
+      <div class="skill-list" id="skill-list"></div>
+      <div class="pane-hd" style="margin-top:18px"><div class="pane-title" style="font-size:16px">Достижения</div></div>
+      <div class="ach-grid" id="ach-grid"></div>
+    </div>
+
+    <div class="tab-pane" id="tab-shop">
+      <div class="pane-hd">
+        <div class="pane-title">Лавка</div>
+        <div class="pane-sub">Трать кредиты с умом</div>
+      </div>
+      <div class="shop-grid" id="shop-grid"></div>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nb active" data-tab="cases"><span data-ico="cards"></span><span class="nb-lbl">Дела</span></button>
+    <button class="nb" data-tab="map"><span data-ico="map"></span><span class="nb-lbl">Карта</span></button>
+    <button class="nb" data-tab="games"><span data-ico="gem"></span><span class="nb-lbl">Аркады</span></button>
+    <button class="nb" data-tab="profile"><span data-ico="agent"></span><span class="nb-lbl">Агент</span></button>
+    <button class="nb" data-tab="shop"><span data-ico="bag"></span><span class="nb-lbl">Лавка</span></button>
+  </nav>
+</div>
+
+<!-- ══ HINT GAME SHEET ══ -->
+<div class="hint-modal hidden" id="hint-modal">
+  <div class="hm-header">
+    <div class="hm-title"><span data-ico="gem"></span><span>Найди улики</span></div>
+    <button class="hm-close" id="hint-close" type="button">✕</button>
+  </div>
+  <div class="hm-vp" id="hint-vp"></div>
+  <div class="hm-footer"><div class="hm-footer-text" id="hint-footer">Собери комбинацию, чтобы разблокировать свайп</div></div>
+</div>
+
+<!-- ══ TOAST / OVERLAYS ══ -->
+<div class="toast" id="toast">
+  <div class="toast-icon" id="toast-icon">✦</div>
+  <div><div class="toast-title" id="toast-title">Уведомление</div><div class="toast-desc" id="toast-desc"></div></div>
+</div>
+<div class="modal-bg hidden" id="daily-modal"></div>
+
+<script src="/icons.js"></script>
+<script src="/sound.js"></script>
+<script src="/phaser-bg.js"></script>
+<script src="/games/match3.js"></script>
+<script src="/app.js"></script>
+<script src="/games/detective-mahjong.js"></script>
+<script src="/games/torn-letter.js"></script>
+<script src="/games/crime-board.js"></script>
+<script src="/games/arcade.js"></script>
+</body>
+</html>
+
+EOF_SDVIG
+
+echo "  ✦ $S/style.css"
+mkdir -p $(dirname "$S/style.css")
+cat > "$S/style.css" << 'EOF_SDVIG'
 /* ═══════════════════════════════════════════════
-   СДВИГ · phaser-bg.js v7 — фон-параллакс
-   ✓ input ПОЛНОСТЬЮ отключён (не крадёт тач у игр)
-   ✓ при pause() — input.enabled=false + canvas убирается
-   ✓ лёгкий: спрайты двигаются, graphics не перерисовывается
+   СДВИГ · style.css — чистая версия
+   Тёмное стекло · янтарь · единый стиль
 ═══════════════════════════════════════════════ */
-(function(){
-  let game=null, scene=null, layers=[], rain=null, lamp=null, paused=false;
-  let px=0.5, py=0.5, tx=0, ty=0;
-  let frame=0;
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
-  function boot(){
-    if(game || !window.Phaser) return;
-    game = new Phaser.Game({
-      type:Phaser.AUTO, parent:'bg-fx',
-      width:window.innerWidth, height:window.innerHeight,
-      transparent:true, banner:false,
-      // ═══ КРИТИЧНО: полностью выключаем подсистему ввода ═══
-      // иначе фоновый Phaser вешает touch-listener на window с capture
-      // и перехватывает тачи у второго (игрового) Phaser и DOM-кнопок
-      input:false,
-      fps:{ target:24, forceSetTimeOut:true },
-      render:{ powerPreference:'low-power', antialias:false },
-      scale:{ mode:Phaser.Scale.RESIZE },
-      scene:{ create, update }
-    });
-    // canvas НИКОГДА не ловит клики
-    const kill=()=>{ document.querySelectorAll('#bg-fx canvas,#bg-fx *').forEach(c=>{
-      c.style.pointerEvents='none'; c.style.touchAction='none'; }); };
-    [40,200,600].forEach(t=>setTimeout(kill,t));
-  }
+:root{
+  --bg0:#06080c; --bg1:#0a0e14;
+  --glass:rgba(18,22,32,.62);
+  --glass-2:rgba(22,27,38,.78);
+  --glass-line:rgba(255,255,255,.10);
+  --glass-line-2:rgba(255,255,255,.06);
+  --glass-blur:18px;
 
-  function makeTex(scene){
-    const W=scene.scale.width, H=scene.scale.height;
-    let g=scene.add.graphics();
-    g.fillStyle(0x0d1424,1).fillRect(0,0,W,H);
-    g.fillStyle(0x16243f,0.5);
-    for(let i=0;i<3;i++) g.fillRect(W*0.6,H*0.1+i*H*0.22,W*0.34,H*0.18);
-    g.generateTexture('bgwin',W,H); g.destroy();
-    g=scene.add.graphics();
-    for(let s=0;s<4;s++){ const y=H*0.2+s*H*0.18;
-      g.fillStyle(0x0a0e16,0.7).fillRect(W*0.04,y,W*0.42,8);
-      for(let b=0;b<7;b++){ g.fillStyle(0x1a2336,0.45)
-        .fillRect(W*0.05+b*W*0.055,y-28-(b%3)*6,W*0.04,28+(b%3)*6);} }
-    g.generateTexture('shelf',W,H); g.destroy();
-  }
+  --ink:#f2f5fb; --ink2:#c2cbda; --ink3:#7d8699; --ink4:#4a5364;
 
-  function create(){
-    scene=this; const W=scene.scale.width, H=scene.scale.height;
-    makeTex(scene);
-    const win=scene.add.image(W/2,H/2,'bgwin').setDepth(0);
-    const shelf=scene.add.image(W/2,H/2,'shelf').setDepth(1);
-    layers=[{o:win,d:0.02},{o:shelf,d:0.05}];
+  --acc:#c8860a; --acc-2:#ffcf6b; --acc-d:#b3741c;
+  --acc-dim:rgba(200,134,10,.14); --acc-glow:rgba(255,207,107,.4);
 
-    rain=scene.add.graphics().setDepth(2);
-    scene._rain=[]; for(let i=0;i<28;i++) scene._rain.push({
-      x:Math.random()*W, y:Math.random()*H, l:8+Math.random()*8, s:5+Math.random()*5});
-    drawRain(W,H);
+  --gem:#6be0ff; --info:#4d8ef7;
+  --ok:#35d49b; --ok-dim:rgba(53,212,155,.14);
+  --no:#ff5d6c; --no-dim:rgba(255,93,108,.14);
 
-    const lg=scene.add.graphics();
-    for(let i=6;i>0;i--){ lg.fillStyle(0xf0a93a,0.04*i/6); lg.fillCircle(140,140,60*i); }
-    lg.generateTexture('lamp',280,280); lg.destroy();
-    lamp=scene.add.image(W*0.5,H*0.16,'lamp').setDepth(3).setAlpha(0.7);
+  --r:10px; --rl:14px; --rxl:18px; --r2xl:24px; --rfull:999px;
+  --sh-1:0 8px 30px rgba(0,0,0,.4);
+  --sh-2:0 16px 50px rgba(0,0,0,.55);
 
-    // НЕ слушаем scene.input (его нет — input:false). Параллакс — только от наклона.
-    if(window.DeviceOrientationEvent){
-      window.addEventListener('deviceorientation',e=>{
-        if(e.gamma!=null) tx=Math.max(-1,Math.min(1,e.gamma/40));
-        if(e.beta!=null)  ty=Math.max(-1,Math.min(1,(e.beta-45)/40));
-      },{passive:true});
-    }
-    scene.tweens.add({targets:lamp,alpha:0.45,duration:2600,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
-  }
+  --navh:64px;
+  --safet:env(safe-area-inset-top,0px);
+  --safeb:env(safe-area-inset-bottom,0px);
+}
 
-  // публичный хук: app.js двигает фон при свайпе карточки
-  window.BgFxDrag=function(nx,ny){ tx=Math.max(-1,Math.min(1,nx)); ty=Math.max(-1,Math.min(1,ny)); };
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden}
+body{
+  font-family:'Manrope',system-ui,sans-serif;
+  background:var(--bg0); color:var(--ink);
+  position:fixed; inset:0;
+  -webkit-user-select:none; user-select:none;
+}
 
-  function drawRain(W,H){
-    if(!rain) return;
-    rain.clear(); rain.lineStyle(1.3,0x5a7bb0,0.30);
-    scene._rain.forEach(r=>{ rain.beginPath();
-      rain.moveTo(r.x,r.y); rain.lineTo(r.x-2,r.y+r.l); rain.strokePath(); });
-  }
+/* фон Phaser — НИКОГДА не ловит клики */
+#bg-fx{
+  position:fixed; inset:0; z-index:0;
+  pointer-events:none;
+}
+#bg-fx canvas{ pointer-events:none !important; touch-action:none; }
 
-  function update(){
-    if(!scene||paused) return;
-    const W=scene.scale.width, H=scene.scale.height;
-    const ox=tx*0.5, oy=ty*0.5;
-    layers.forEach(l=>{ l.o.x=W/2-ox*W*l.d; l.o.y=H/2-oy*H*l.d; });
-    if(lamp) lamp.x=W*0.5+ox*30;
-    frame++; if(frame%2===0){
-      scene._rain.forEach(r=>{ r.y+=r.s*2; if(r.y>H){r.y=-r.l;r.x=Math.random()*W;} });
-      drawRain(W,H);
-    }
-  }
+/* ── базовый фон (фолбэк, если Phaser не загрузился) ── */
+body::before{
+  content:''; position:fixed; inset:0; z-index:-1;
+  background:
+    radial-gradient(900px 500px at 50% -10%, rgba(200,134,10,.08), transparent 60%),
+    linear-gradient(180deg,#0a0e14,#06080c);
+}
 
-  window.BgFx={
-    init:boot,
-    pause(){ paused=true;
-      if(game){ try{ game.loop.sleep(); }catch(e){}
-        const c=document.querySelector('#bg-fx canvas'); if(c) c.style.visibility='hidden'; } },
-    resume(){ paused=false;
-      if(game){ try{ game.loop.wake(); }catch(e){}
-        const c=document.querySelector('#bg-fx canvas'); if(c) c.style.visibility='visible'; } },
-    setMood(){}
-  };
-  window.addEventListener('resize',()=>{ if(game) game.scale.resize(innerWidth,innerHeight); });
-})();
+.hidden{ display:none !important; }
+
+/* ═══ ЭКРАНЫ ═══ */
+.screen{
+  position:fixed; inset:0; z-index:10;
+  display:flex; flex-direction:column;
+  opacity:0; pointer-events:none;
+  transition:opacity .35s ease;
+}
+.screen.active{ opacity:1; pointer-events:auto; }
+/* неактивные экраны полностью убираем из потока — не перехватывают клики */
+.screen:not(.active){ display:none; }
+
+/* ═══ SPLASH ═══ */
+#splash-screen{
+  z-index:200; align-items:center; justify-content:center;
+  background:
+    linear-gradient(180deg,rgba(6,8,12,.55),rgba(6,8,12,.85)),
+    var(--splash-img,none) center/cover no-repeat, #06080c;
+}
+.splash-scene{ position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:18px; }
+.splash-emblem{
+  width:96px; height:96px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--glass-2); border:2px solid var(--acc);
+  box-shadow:0 0 40px var(--acc-dim);
+  opacity:0; transform:scale(.7);
+  transition:opacity .5s ease, transform .5s cubic-bezier(.22,1.1,.36,1);
+}
+.splash-emblem.visible{ opacity:1; transform:scale(1); }
+.splash-emblem.pulse{ animation:emPulse .22s ease; }
+@keyframes emPulse{ 50%{ transform:scale(1.08); box-shadow:0 0 60px var(--acc-glow);} }
+.emblem-letter{ font-family:'Unbounded',sans-serif; font-weight:800; font-size:46px; color:var(--acc-2); }
+.splash-title-row{ display:flex; gap:4px; }
+.title-letter{
+  font-family:'Unbounded',sans-serif; font-weight:800; font-size:34px; letter-spacing:4px; color:var(--ink);
+  opacity:0; transform:translateY(14px);
+  transition:opacity .35s ease, transform .35s cubic-bezier(.22,1.1,.36,1);
+}
+.title-letter.in{ opacity:1; transform:none; }
+.splash-progress-wrap{ width:200px; display:flex; flex-direction:column; align-items:center; gap:10px; }
+.splash-track{ width:100%; height:4px; border-radius:4px; background:rgba(255,255,255,.08); overflow:hidden; }
+.splash-fill{ height:100%; width:0; border-radius:4px; background:linear-gradient(90deg,var(--acc-d),var(--acc-2)); transition:width .35s ease; }
+.splash-status{ font-size:11px; letter-spacing:2px; color:var(--ink3); text-transform:uppercase; font-family:'JetBrains Mono',monospace; }
+.splash-flash{ position:absolute; inset:0; z-index:5; background:#fff; opacity:0; pointer-events:none; }
+
+/* ═══ LOGIN ═══ */
+#login-screen{
+  z-index:100; align-items:center; justify-content:center;
+  background:
+    linear-gradient(180deg,rgba(6,8,12,.6),rgba(6,8,12,.9)),
+    var(--login-img,none) center/cover no-repeat, #06080c;
+}
+.login-wrap{ position:relative; z-index:2; width:min(92%,400px); display:flex; flex-direction:column; gap:22px; }
+.login-header{ text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.login-badge{
+  width:64px; height:64px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--glass-2); border:2px solid var(--acc);
+  font-family:'Unbounded',sans-serif; font-weight:800; font-size:30px; color:var(--acc-2);
+  box-shadow:0 0 30px var(--acc-dim);
+}
+.login-h1{ font-family:'Unbounded',sans-serif; font-weight:800; font-size:30px; letter-spacing:5px; }
+.login-tagline{ font-size:13px; color:var(--ink3); letter-spacing:1px; }
+.login-card{
+  background:var(--glass); -webkit-backdrop-filter:blur(var(--glass-blur)); backdrop-filter:blur(var(--glass-blur));
+  border:1px solid var(--glass-line); border-radius:var(--r2xl);
+  padding:24px 22px; display:flex; flex-direction:column; gap:14px;
+  box-shadow:var(--sh-2);
+}
+.login-card-label{ font-size:12px; letter-spacing:2px; color:var(--ink3); text-transform:uppercase; text-align:center; }
+.tg-widget-area{ display:flex; justify-content:center; min-height:10px; }
+.tg-tip{ font-size:12px; color:var(--ink3); text-align:center; line-height:1.5; }
+.divider{ display:flex; align-items:center; gap:12px; color:var(--ink4); font-size:12px; }
+.divider::before,.divider::after{ content:''; flex:1; height:1px; background:var(--glass-line); }
+.login-hint{ font-size:11px; color:var(--ink4); text-align:center; line-height:1.5; }
+
+/* ═══ КНОПКИ ═══ */
+.btn{
+  border:none; cursor:pointer; font-family:inherit; font-weight:700; font-size:15px;
+  padding:14px 18px; border-radius:var(--rl); width:100%;
+  transition:transform .12s ease, filter .2s ease;
+}
+.btn:active{ transform:scale(.97); }
+.btn-bronze{ background:linear-gradient(135deg,var(--acc),var(--acc-d)); color:#1a1206; box-shadow:0 6px 20px var(--acc-dim); }
+.btn-outline{ background:rgba(255,255,255,.04); color:var(--ink); border:1px solid var(--glass-line); }
+
+/* ═══ ERROR ═══ */
+#error-screen{ z-index:150; align-items:center; justify-content:center; }
+.err-center{ display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; padding:24px; }
+.err-icon{ font-size:54px; }
+.err-title{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:20px; }
+.err-msg{ font-size:14px; color:var(--ink3); }
+
+/* ═══ MAIN ═══ */
+#main-screen{ z-index:10; }
+
+.topbar{
+  flex:0 0 auto; height:54px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:calc(6px + var(--safet)) 14px 6px;
+  background:var(--glass-2); -webkit-backdrop-filter:blur(var(--glass-blur)); backdrop-filter:blur(var(--glass-blur));
+  border-bottom:1px solid var(--glass-line-2);
+}
+.topbar-left{ display:flex; align-items:center; gap:10px; }
+.topbar-emblem{ width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:var(--glass); border:1.5px solid var(--acc); color:var(--acc-2); font-family:'Unbounded',sans-serif; font-weight:800; }
+.topbar-brand{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:18px; letter-spacing:3px; }
+.topbar-right{ display:flex; align-items:center; gap:8px; }
+.topbar-stats{ display:flex; gap:8px; }
+.stat-pill{ display:flex; align-items:center; gap:5px; padding:6px 11px; border-radius:var(--rfull);
+  background:var(--glass); border:1px solid var(--glass-line-2); font-weight:700; font-size:13px; }
+.stat-pill [data-ico]{ width:15px; height:15px; display:inline-flex; }
+.sound-btn{ width:38px; height:38px; border-radius:50%; border:1px solid var(--glass-line-2);
+  background:var(--glass); cursor:pointer; font-size:16px; }
+
+.xp-band{ flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:8px 14px;
+  background:var(--glass-2); border-bottom:1px solid var(--glass-line-2); }
+.xp-track{ flex:1; height:6px; border-radius:6px; background:rgba(255,255,255,.07); overflow:hidden; }
+.xp-fill{ height:100%; border-radius:6px; background:linear-gradient(90deg,var(--acc-d),var(--acc-2)); }
+.xp-info{ font-size:11px; color:var(--ink3); font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+
+/* tab area занимает оставшееся место между topbar/xp и nav */
+.tab-area{ flex:1 1 auto; position:relative; overflow:hidden; }
+.tab-pane{
+  position:absolute; inset:0;
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+  padding:16px 14px calc(var(--navh) + var(--safeb) + 24px);
+  opacity:0; pointer-events:none; transform:translateY(6px);
+  transition:opacity .25s ease, transform .25s ease;
+}
+.tab-pane.active{ opacity:1; pointer-events:auto; transform:none; }
+.tab-pane::-webkit-scrollbar,.map-scroll::-webkit-scrollbar{ width:0; height:0; }
+
+/* свайп-зона (вкладка Дела) — НЕ скроллится */
+#tab-cases{ overflow:hidden; padding:0; }
+.swipe-zone{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+
+.pane-hd{ margin-bottom:14px; }
+.pane-title{ font-family:'Unbounded',sans-serif; font-weight:600; font-size:20px; }
+.pane-sub{ font-size:12px; color:var(--ink3); margin-top:3px; }
+
+/* ═══ BOTTOM NAV ═══ */
+.bottom-nav{
+  flex:0 0 auto;
+  position:fixed; left:0; right:0; bottom:0; z-index:120;
+  display:flex; align-items:stretch;
+  height:calc(var(--navh) + var(--safeb));
+  padding-bottom:var(--safeb);
+  background:var(--glass-2); -webkit-backdrop-filter:blur(var(--glass-blur)); backdrop-filter:blur(var(--glass-blur));
+  border-top:1px solid var(--glass-line);
+}
+.nb{
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  background:none; border:none; cursor:pointer; color:var(--ink4);
+  font-family:inherit; transition:color .2s ease;
+}
+.nb [data-ico]{ width:24px; height:24px; display:inline-flex; }
+.nb-lbl{ font-size:10px; font-weight:600; letter-spacing:.5px; }
+.nb.active{ color:var(--acc-2); }
+
+/* ═══ PROFILE ═══ */
+.profile-hero{ display:flex; align-items:center; gap:14px; padding:16px; border-radius:var(--rxl);
+  background:var(--glass); border:1px solid var(--glass-line); margin-bottom:16px; }
+.profile-av{ width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:var(--glass-2); border:2px solid var(--acc); color:var(--acc-2); font-family:'Unbounded',sans-serif; font-weight:800; font-size:26px; }
+.profile-name{ font-family:'Unbounded',sans-serif; font-weight:600; font-size:18px; }
+.profile-arch{ font-size:13px; color:var(--acc-2); margin-top:2px; }
+.profile-id{ font-size:11px; color:var(--ink4); font-family:'JetBrains Mono',monospace; margin-top:2px; }
+.stats-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.sg{ background:var(--glass); border:1px solid var(--glass-line-2); border-radius:var(--rl); padding:14px 8px; text-align:center; }
+.sg-val{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:22px; color:var(--acc-2); }
+.sg-lbl{ font-size:10px; color:var(--ink3); margin-top:4px; }
+.skill-list{ display:flex; flex-direction:column; gap:10px; }
+.skill-row{ display:flex; align-items:center; gap:12px; padding:14px; border-radius:var(--rl);
+  background:var(--glass); border:1px solid var(--glass-line-2); }
+.sk-info{ flex:1; }
+.sk-name{ font-weight:700; font-size:14px; }
+.sk-bar{ height:5px; border-radius:5px; background:rgba(255,255,255,.07); overflow:hidden; margin-top:6px; }
+.sk-fill{ height:100%; background:linear-gradient(90deg,var(--acc-d),var(--acc-2)); }
+.sk-lvl{ font-size:12px; color:var(--ink3); font-family:'JetBrains Mono',monospace; }
+.up-btn{ border:none; cursor:pointer; background:var(--acc-dim); color:var(--acc-2);
+  border:1px solid rgba(240,169,58,.3); border-radius:var(--r); padding:8px 12px; font-weight:700; font-family:inherit; }
+.ach-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.ach-cell{ aspect-ratio:1; border-radius:var(--rl); background:var(--glass); border:1px solid var(--glass-line-2);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; padding:6px; }
+.ach-cell.locked{ opacity:.35; }
+.ach-ico{ font-size:24px; }
+.ach-name{ font-size:9px; color:var(--ink3); line-height:1.2; }
+
+/* ═══ SHOP ═══ */
+.shop-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+.shop-item{ background:var(--glass); border:1px solid var(--glass-line); border-radius:var(--rxl);
+  padding:18px 14px; text-align:center; cursor:pointer; transition:transform .15s ease; }
+.shop-item:active{ transform:scale(.97); }
+.shop-ico{ font-size:38px; }
+.shop-name{ font-weight:700; font-size:14px; margin-top:8px; }
+.shop-desc{ font-size:11px; color:var(--ink3); margin-top:4px; min-height:28px; }
+.shop-price{ margin-top:10px; padding:8px; border-radius:var(--r); background:var(--acc-dim);
+  color:var(--acc-2); font-weight:800; font-size:13px; border:1px solid rgba(240,169,58,.3); }
+
+/* ═══ MAP ═══ */
+.map-scroll{ position:absolute; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+.map-inner{ position:relative; width:100%; }
+.map-path-svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; }
+.map-chapter{ position:absolute; transform:translate(-50%,-50%); z-index:2; text-align:center; white-space:nowrap; }
+.mc-title{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:15px; color:var(--acc-2); }
+.mc-sub{ font-size:11px; color:var(--ink3); }
+.mc-locked .mc-title{ color:var(--ink4); }
+.map-node{ position:absolute; transform:translate(-50%,-50%); z-index:2;
+  width:54px; height:54px; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Unbounded',sans-serif; font-weight:700; font-size:18px;
+  background:var(--glass-2); border:2px solid var(--glass-line); color:var(--ink3);
+  transition:transform .15s ease; }
+.map-node:active{ transform:translate(-50%,-50%) scale(.92); }
+.map-node.done{ border-color:var(--acc); color:var(--acc-2); background:var(--acc-dim); }
+.map-node.current{ border-color:var(--acc-2); color:var(--acc-2); box-shadow:0 0 24px var(--acc-glow);
+  animation:nodePulse 1.8s ease-in-out infinite; }
+@keyframes nodePulse{ 50%{ box-shadow:0 0 36px var(--acc-glow); } }
+.map-node.locked [data-ico]{ width:20px; height:20px; color:var(--ink4); }
+
+/* ═══ TOAST ═══ */
+.toast{
+  position:fixed; left:50%; bottom:calc(var(--navh) + var(--safeb) + 16px); transform:translateX(-50%) translateY(20px);
+  z-index:500; display:flex; align-items:center; gap:12px;
+  padding:12px 18px; border-radius:var(--rfull); max-width:90%;
+  background:var(--glass-2); -webkit-backdrop-filter:blur(var(--glass-blur)); backdrop-filter:blur(var(--glass-blur));
+  border:1px solid var(--glass-line); box-shadow:var(--sh-2);
+  opacity:0; pointer-events:none; transition:opacity .3s ease, transform .3s ease;
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.toast-icon{ font-size:22px; }
+.toast-title{ font-weight:700; font-size:13px; }
+.toast-desc{ font-size:12px; color:var(--ink3); }
+
+/* ═══ DAILY MODAL ═══ */
+.modal-bg{ position:fixed; inset:0; z-index:450; display:flex; align-items:center; justify-content:center;
+  background:rgba(4,6,10,.7); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); padding:20px; }
+.modal-bg.hidden{ display:none; }
+
+/* ═══ ARCADE OVERLAY ═══ */
+#arcade-overlay{
+  position:fixed; inset:0; z-index:9000;
+  display:flex; flex-direction:column;
+  background:radial-gradient(800px 600px at 50% 0%, #11161f, #06080c);
+  padding-top:var(--safet); padding-bottom:var(--safeb);
+}
+.arc-bar{ flex:0 0 auto; height:52px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 12px; background:var(--glass-2); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--glass-line); }
+.arc-close{ border:none; cursor:pointer; font-family:inherit; font-weight:700; font-size:14px;
+  color:var(--acc-2); background:rgba(255,255,255,.06); border:1px solid rgba(240,169,58,.35); border-radius:10px; padding:8px 14px; }
+.arc-title{ font-weight:700; font-size:15px; }
+.arc-stage{ flex:1 1 auto; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+.arc-stage canvas{ max-width:100% !important; max-height:100% !important; }
+
+EOF_SDVIG
+
+echo "  ✦ $S/card-design.css"
+mkdir -p $(dirname "$S/card-design.css")
+cat > "$S/card-design.css" << 'EOF_SDVIG'
+/* ═══════════════════════════════════════════════
+   СДВИГ · card-design.css — карточки дел
+   Тёмное стекло · штампы скрыты до свайпа
+═══════════════════════════════════════════════ */
+
+/* ── стопка-подложка ── */
+.stack-card{
+  position:absolute; top:50%; left:50%;
+  width:min(86%,360px); height:62%;
+  border-radius:var(--r2xl);
+  background:var(--glass); border:1px solid var(--glass-line-2);
+  pointer-events:none;
+}
+.sc1{ transform:translate(-50%,-50%) translateY(10px) scale(.965); opacity:.7; }
+.sc2{ transform:translate(-50%,-50%) translateY(20px) scale(.93);  opacity:.45; }
+.sc3{ transform:translate(-50%,-50%) translateY(30px) scale(.895); opacity:.25; }
+
+/* ── активная карточка ── */
+.case-card{
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%) rotate(-.4deg);
+  width:min(86%,360px); min-height:62%;
+  display:flex; flex-direction:column;
+  padding:20px 18px 18px;
+  border-radius:var(--r2xl);
+  background:linear-gradient(160deg, rgba(24,29,40,.82), rgba(12,15,22,.9));
+  -webkit-backdrop-filter:blur(var(--glass-blur)); backdrop-filter:blur(var(--glass-blur));
+  border:1px solid var(--glass-line);
+  box-shadow:var(--sh-2);
+  touch-action:none;
+  z-index:6;
+}
+.case-card.card-enter{ animation:cardIn .5s cubic-bezier(.22,1.1,.36,1) both; }
+@keyframes cardIn{
+  from{ opacity:0; transform:translate(-50%,-50%) translateY(40px) scale(.92) rotate(2deg); }
+  to{ opacity:1; transform:translate(-50%,-50%) rotate(-.4deg); }
+}
+
+/* акцентная рамка по типу */
+.case-card::before{
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  border:1px solid transparent;
+}
+.ct-crime::before{ box-shadow:inset 0 0 0 1px rgba(255,93,108,.3); }
+.ct-suspect::before{ box-shadow:inset 0 0 0 1px rgba(168,139,255,.3); }
+.ct-evidence::before{ box-shadow:inset 0 0 0 1px rgba(107,224,255,.3); }
+.ct-witness::before{ box-shadow:inset 0 0 0 1px rgba(53,212,155,.3); }
+.ct-revelation::before{ box-shadow:inset 0 0 0 1px rgba(255,207,107,.35); }
+
+/* tilt-подсветка при свайпе */
+.case-card.tilt-left{ box-shadow:var(--sh-2),-20px 0 60px -20px var(--no); }
+.case-card.tilt-right{ box-shadow:var(--sh-2),20px 0 60px -20px var(--ok); }
+.case-card.tilt-up{ box-shadow:var(--sh-2),0 -20px 60px -20px var(--acc-2); }
+
+/* ── шапка ── */
+.card-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; position:relative; z-index:2; }
+.card-act{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink3); }
+.card-type-badge{ font-size:11px; font-weight:700; padding:4px 10px; border-radius:var(--rfull);
+  background:var(--acc-dim); color:var(--acc-2); border:1px solid rgba(240,169,58,.25); }
+.card-divider{ height:1px; background:var(--glass-line-2); margin:14px 0; position:relative; z-index:2; }
+
+/* ── тело ── */
+.card-body{ flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px;
+  position:relative; z-index:2; overflow-y:auto; }
+.card-icon-box{ font-size:56px; line-height:1; margin-top:6px; }
+.card-case-title{ font-family:'Unbounded',sans-serif; font-weight:600; font-size:20px; }
+.card-text{ font-size:14.5px; color:var(--ink2); line-height:1.6; }
+
+/* ── ШТАМПЫ: скрыты по умолчанию (opacity:0!) ── */
+.stamp-wrap{
+  position:absolute; top:54px; z-index:5;
+  pointer-events:none;
+  opacity:0;                              /* ← ключевой фикс залипших надписей */
+  transition:opacity .1s ease;
+}
+.stamp-right{ right:24px; transform:rotate(14deg); }
+.stamp-left{ left:24px; transform:rotate(-14deg); }
+.stamp-up{ left:50%; top:30px; transform:translateX(-50%) rotate(-3deg); }
+.stamp{
+  font-family:'Unbounded',sans-serif; font-weight:800; font-size:22px; letter-spacing:2px;
+  padding:8px 16px; border-radius:10px; border:3px solid; text-transform:uppercase;
+}
+.stamp-approve-text{ color:var(--ok); border-color:var(--ok); text-shadow:0 0 14px var(--ok-dim); }
+.stamp-deny-text{ color:var(--no); border-color:var(--no); text-shadow:0 0 14px var(--no-dim); }
+.stamp-special-text{ color:var(--acc-2); border-color:var(--acc-2); text-shadow:0 0 14px var(--acc-glow); }
+
+/* ── действия ── */
+.card-actions-area{ position:relative; z-index:2; margin-top:12px; display:flex; flex-direction:column; gap:10px; }
+.btn-play-gems{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  border:none; cursor:pointer; font-family:inherit; font-weight:700; font-size:15px;
+  padding:14px; border-radius:var(--rl); width:100%;
+  background:linear-gradient(135deg,var(--gem),var(--info)); color:#04121a;
+  box-shadow:0 6px 20px rgba(107,224,255,.2);
+}
+.btn-play-gems [data-ico]{ width:18px; height:18px; }
+.swipe-indicator{ display:flex; align-items:center; justify-content:space-between; gap:8px;
+  font-size:12px; color:var(--ink3); padding:4px 2px; }
+.swipe-indicator .si-center [data-ico]{ width:20px; height:20px; }
+.si-deny{ color:var(--no); font-weight:700; }
+.si-approve{ color:var(--ok); font-weight:700; }
+.si-locked{ display:flex; align-items:center; gap:6px; justify-content:center; width:100%; color:var(--ink4); }
+.si-locked [data-ico]{ width:15px; height:15px; }
+.si-special{ display:block; text-align:center; font-size:11px; color:var(--acc-2); margin-top:4px; }
+
+/* ── подсказка после мини-игры ── */
+.hint-revealed-panel{ display:flex; gap:10px; align-items:flex-start; margin-top:6px;
+  padding:11px 13px; border-radius:var(--rl); background:var(--acc-dim); border:1px solid rgba(240,169,58,.25); }
+.hrp-icon{ font-size:16px; }
+.hrp-text{ font-size:12.5px; color:var(--ink2); line-height:1.5; }
+
+/* ── оверлей результата ── */
+.result-overlay{ position:absolute; inset:0; z-index:8; border-radius:var(--r2xl);
+  background:linear-gradient(160deg, rgba(20,24,34,.96), rgba(8,10,16,.98));
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+  padding:30px 24px; text-align:center; animation:roIn .4s cubic-bezier(.22,1.1,.36,1) both; }
+@keyframes roIn{ from{ opacity:0; transform:scale(.94); } to{ opacity:1; transform:none; } }
+.ro-stamp-text{ font-family:'Unbounded',sans-serif; font-weight:800; font-size:24px; letter-spacing:2px;
+  color:var(--acc-2); text-shadow:0 0 20px var(--acc-glow); }
+.ro-text{ font-size:15px; color:var(--ink2); line-height:1.6; }
+.ro-rewards{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.ro-chip{ padding:8px 14px; border-radius:var(--rfull); font-size:13px; font-weight:800; border:1px solid var(--glass-line); }
+.ro-xp{ color:var(--acc-2); background:var(--acc-dim); }
+.ro-cr{ color:var(--gem); background:rgba(107,224,255,.1); }
+.ro-en{ color:var(--no); background:var(--no-dim); }
+.ro-next{ margin-top:6px; }
+
+/* ── GAME LIST (Аркады) ── */
+.game-list{ display:flex; flex-direction:column; gap:12px; }
+.game-row{ display:flex; align-items:center; gap:14px; cursor:pointer; padding:16px; border-radius:var(--rxl);
+  background:var(--glass); -webkit-backdrop-filter:blur(var(--glass-blur)); backdrop-filter:blur(var(--glass-blur));
+  border:1px solid var(--glass-line); box-shadow:var(--sh-1); position:relative; overflow:hidden;
+  transition:transform .15s ease; }
+.game-row:active{ transform:scale(.985); }
+.gr-stripe{ position:absolute; left:0; top:0; bottom:0; width:4px; }
+.gr-s-v{ background:linear-gradient(180deg,var(--gem),var(--info)); }
+.gr-icon{ font-size:34px; width:52px; text-align:center; flex:0 0 auto; }
+.gr-info{ flex:1; min-width:0; }
+.gr-name{ font-family:'Unbounded',sans-serif; font-weight:600; font-size:16px; }
+.gr-desc{ font-size:11.5px; color:var(--ink3); margin:2px 0 8px; }
+.gr-prog{ display:flex; align-items:center; gap:8px; }
+.gr-bar{ flex:1; height:5px; border-radius:5px; background:rgba(255,255,255,.07); overflow:hidden; }
+.gr-fill{ height:100%; border-radius:5px; background:linear-gradient(90deg,var(--gem),var(--info)); }
+.gr-lvl{ font-size:11px; color:var(--ink3); font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+.gr-arrow{ font-size:22px; color:var(--ink4); }
+
+/* ── HINT GAME bottom-sheet ── */
+.hint-modal{
+  position:fixed; left:0; right:0; bottom:0; z-index:300;
+  height:92vh; border-radius:var(--r2xl) var(--r2xl) 0 0;
+  background:linear-gradient(180deg,#0c0f16,#070910);
+  border:1px solid var(--glass-line); box-shadow:0 -10px 50px rgba(0,0,0,.6);
+  display:flex; flex-direction:column;
+  transform:translateY(100%); transition:transform .4s cubic-bezier(.4,0,.2,1);
+}
+.hint-modal:not(.hidden){ transform:translateY(0); }
+.hint-modal.hidden{ pointer-events:none; }
+.hm-header{ display:flex; align-items:center; justify-content:space-between; padding:16px 18px;
+  border-bottom:1px solid var(--glass-line-2); }
+.hm-title{ display:flex; align-items:center; gap:8px; font-family:'Unbounded',sans-serif; font-weight:600; font-size:16px; }
+.hm-title [data-ico]{ width:18px; height:18px; }
+.hm-close{ border:none; cursor:pointer; background:rgba(255,255,255,.04); border:1px solid var(--glass-line-2);
+  color:var(--ink2); font-family:inherit; font-weight:700; font-size:16px; padding:6px 14px; border-radius:var(--rl); }
+.hm-vp{ flex:1; position:relative; overflow:hidden; }
+.hm-footer{ padding:12px 18px calc(12px + var(--safeb)); border-top:1px solid var(--glass-line-2); }
+.hm-footer-text{ font-size:12px; color:var(--ink3); text-align:center; }
+
+/* ── DAILY ── */
+.daily-card{ width:min(92%,360px); border-radius:var(--r2xl); padding:26px 22px; text-align:center;
+  background:linear-gradient(160deg,rgba(28,33,46,.92),rgba(12,15,22,.96));
+  border:1px solid var(--glass-line); box-shadow:var(--sh-2);
+  display:flex; flex-direction:column; align-items:center; gap:12px; animation:roIn .4s cubic-bezier(.22,1.1,.36,1) both; }
+.daily-icon{ font-size:48px; }
+.daily-h{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:20px; }
+.daily-streak{ font-size:13px; color:var(--ink3); }
+.daily-week{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+.dw-day{ width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; background:rgba(255,255,255,.04); border:1px solid var(--glass-line-2); color:var(--ink3); }
+.dw-day.done{ background:var(--acc-dim); border-color:rgba(240,169,58,.4); color:var(--acc-2); }
+.daily-chips{ display:flex; gap:10px; }
+.dc-chip{ padding:8px 14px; border-radius:var(--rfull); font-size:13px; font-weight:800; color:var(--acc-2);
+  background:var(--acc-dim); border:1px solid rgba(240,169,58,.3); }
+
+/* ── частицы / след / конфетти ── */
+.swipe-trail{ position:absolute; border-radius:50%; pointer-events:none; z-index:7; }
+.confetti{ position:fixed; width:9px; height:14px; z-index:400; pointer-events:none; border-radius:2px; }
 
 EOF_SDVIG
 
@@ -188,8 +775,8 @@ function fatal(msg){
 /* ═══════════════════════════════════════════════
    SPLASH → кинематографичный переход → LOGIN
 ═══════════════════════════════════════════════ */
-const SPLASH_BG = '/img/splash.jpg';   // фон №1 (экран загрузки)
-const LOGIN_BG  = '/img/login.jpg';    // фон №2 (экран входа)
+const SPLASH_BG = '/img/bg-splash.jpg';   // фон №1 (экран загрузки)
+const LOGIN_BG  = '/img/bg-login.jpg';    // фон №2 (экран входа)
 
 const wait = ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -486,6 +1073,7 @@ function renderCard(){
     <div class="card-actions-area" id="card-actions"></div>
   `;
   zone.appendChild(card);
+  resetStamps(card);
   renderCardActions(card,c);
   bindSwipe(card,c);
   Sound.tap();
@@ -898,71 +1486,117 @@ window.goToTab=goToTab;
 
 EOF_SDVIG
 
-echo "  ✦ $S/zzz-reset.css"
-mkdir -p $(dirname "$S/zzz-reset.css")
-cat > "$S/zzz-reset.css" << 'EOF_SDVIG'
-/* zzz-reset.css — грузится ПОСЛЕДНИМ, перебивает всё */
+echo "  ✦ $S/phaser-bg.js"
+mkdir -p $(dirname "$S/phaser-bg.js")
+cat > "$S/phaser-bg.js" << 'EOF_SDVIG'
+/* ═══════════════════════════════════════════════
+   СДВИГ · phaser-bg.js v7 — фон-параллакс
+   ✓ input ПОЛНОСТЬЮ отключён (не крадёт тач у игр)
+   ✓ при pause() — input.enabled=false + canvas убирается
+   ✓ лёгкий: спрайты двигаются, graphics не перерисовывается
+═══════════════════════════════════════════════ */
+(function(){
+  let game=null, scene=null, layers=[], rain=null, lamp=null, paused=false;
+  let px=0.5, py=0.5, tx=0, ty=0;
+  let frame=0;
 
-/* 1. Любой фоновый/оверлейный слой не ловит клики */
-#bg-fx, #bg-fx *,
-.splash-flash,
-.splash-photo,
-.login-photo,
-#splash-screen,
-#splash-screen *{
-  pointer-events:none !important;
-}
+  function boot(){
+    if(game || !window.Phaser) return;
+    game = new Phaser.Game({
+      type:Phaser.AUTO, parent:'bg-fx',
+      width:window.innerWidth, height:window.innerHeight,
+      transparent:true, banner:false,
+      // ═══ КРИТИЧНО: полностью выключаем подсистему ввода ═══
+      // иначе фоновый Phaser вешает touch-listener на window с capture
+      // и перехватывает тачи у второго (игрового) Phaser и DOM-кнопок
+      input:false,
+      fps:{ target:24, forceSetTimeOut:true },
+      render:{ powerPreference:'low-power', antialias:false },
+      scale:{ mode:Phaser.Scale.RESIZE },
+      scene:{ create, update }
+    });
+    // canvas НИКОГДА не ловит клики
+    const kill=()=>{ document.querySelectorAll('#bg-fx canvas,#bg-fx *').forEach(c=>{
+      c.style.pointerEvents='none'; c.style.touchAction='none'; }); };
+    [40,200,600].forEach(t=>setTimeout(kill,t));
+  }
 
-/* 2. Splash прячем жёстко, если он не активен по логике */
-#splash-screen:not(.active){
-  display:none !important;
-}
+  function makeTex(scene){
+    const W=scene.scale.width, H=scene.scale.height;
+    let g=scene.add.graphics();
+    g.fillStyle(0x0d1424,1).fillRect(0,0,W,H);
+    g.fillStyle(0x16243f,0.5);
+    for(let i=0;i<3;i++) g.fillRect(W*0.6,H*0.1+i*H*0.22,W*0.34,H*0.18);
+    g.generateTexture('bgwin',W,H); g.destroy();
+    g=scene.add.graphics();
+    for(let s=0;s<4;s++){ const y=H*0.2+s*H*0.18;
+      g.fillStyle(0x0a0e16,0.7).fillRect(W*0.04,y,W*0.42,8);
+      for(let b=0;b<7;b++){ g.fillStyle(0x1a2336,0.45)
+        .fillRect(W*0.05+b*W*0.055,y-28-(b%3)*6,W*0.04,28+(b%3)*6);} }
+    g.generateTexture('shelf',W,H); g.destroy();
+  }
 
-/* 3. Канвас Phaser-фона — никогда не перехватывает */
-#bg-fx canvas{ pointer-events:none !important; }
+  function create(){
+    scene=this; const W=scene.scale.width, H=scene.scale.height;
+    makeTex(scene);
+    const win=scene.add.image(W/2,H/2,'bgwin').setDepth(0);
+    const shelf=scene.add.image(W/2,H/2,'shelf').setDepth(1);
+    layers=[{o:win,d:0.02},{o:shelf,d:0.05}];
 
-/* 4. Логин и его кнопки — всегда кликабельны и поверх */
-#login-screen{ pointer-events:auto !important; z-index:50 !important; }
-#login-screen .login-photo,
-#login-screen::after{ pointer-events:none !important; }
-.login-wrap, .login-card,
-#guest-btn, #tg-browser-btn, #tg-widget-area, #tg-widget-area *{
-  position:relative !important;
-  z-index:9999 !important;
-  pointer-events:auto !important;
-}
+    rain=scene.add.graphics().setDepth(2);
+    scene._rain=[]; for(let i=0;i<28;i++) scene._rain.push({
+      x:Math.random()*W, y:Math.random()*H, l:8+Math.random()*8, s:5+Math.random()*5});
+    drawRain(W,H);
 
-/* 5. Нижняя навигация и её кнопки */
-.bottom-nav{ pointer-events:auto !important; z-index:9000 !important; }
-.bottom-nav *{ pointer-events:auto !important; }
+    const lg=scene.add.graphics();
+    for(let i=6;i>0;i--){ lg.fillStyle(0xf0a93a,0.04*i/6); lg.fillCircle(140,140,60*i); }
+    lg.generateTexture('lamp',280,280); lg.destroy();
+    lamp=scene.add.image(W*0.5,H*0.16,'lamp').setDepth(3).setAlpha(0.7);
 
-/* 6. Любой брошенный arcade-overlay, если игра не идёт — убрать */
-#arcade-overlay:empty{ display:none !important; }
+    // НЕ слушаем scene.input (его нет — input:false). Параллакс — только от наклона.
+    if(window.DeviceOrientationEvent){
+      window.addEventListener('deviceorientation',e=>{
+        if(e.gamma!=null) tx=Math.max(-1,Math.min(1,e.gamma/40));
+        if(e.beta!=null)  ty=Math.max(-1,Math.min(1,(e.beta-45)/40));
+      },{passive:true});
+    }
+    scene.tweens.add({targets:lamp,alpha:0.45,duration:2600,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+  }
 
-/* 7. Активный экран кликабелен, неактивные — нет */
-.screen.active{ pointer-events:auto !important; }
-.screen:not(.active){ pointer-events:none !important; }
+  // публичный хук: app.js двигает фон при свайпе карточки
+  window.BgFxDrag=function(nx,ny){ tx=Math.max(-1,Math.min(1,nx)); ty=Math.max(-1,Math.min(1,ny)); };
 
-/* 8. Hint-modal (мини-игра) и её canvas — кликабельны поверх всего */
-#hint-modal:not(.hidden){ pointer-events:auto !important; z-index:500 !important; }
-#hint-modal *{ pointer-events:auto !important; }
-#hint-vp, #hint-vp canvas{ pointer-events:auto !important; touch-action:none !important; }
+  function drawRain(W,H){
+    if(!rain) return;
+    rain.clear(); rain.lineStyle(1.3,0x5a7bb0,0.30);
+    scene._rain.forEach(r=>{ rain.beginPath();
+      rain.moveTo(r.x,r.y); rain.lineTo(r.x-2,r.y+r.l); rain.strokePath(); });
+  }
 
-/* 9. Игровой оверлей аркад поверх всего, канвас кликабелен */
-#arcade-overlay{ pointer-events:auto !important; z-index:10000 !important; }
-#arcade-overlay *{ pointer-events:auto !important; }
-#arc-stage canvas{ pointer-events:auto !important; touch-action:none !important; }
+  function update(){
+    if(!scene||paused) return;
+    const W=scene.scale.width, H=scene.scale.height;
+    const ox=tx*0.5, oy=ty*0.5;
+    layers.forEach(l=>{ l.o.x=W/2-ox*W*l.d; l.o.y=H/2-oy*H*l.d; });
+    if(lamp) lamp.x=W*0.5+ox*30;
+    frame++; if(frame%2===0){
+      scene._rain.forEach(r=>{ r.y+=r.s*2; if(r.y>H){r.y=-r.l;r.x=Math.random()*W;} });
+      drawRain(W,H);
+    }
+  }
 
-/* 10. Активная карточка дела — кликабельна (кнопка «Найти улики») */
-#swipe-zone{ pointer-events:auto !important; }
-.case-card{ pointer-events:auto !important; }
-.case-card *{ pointer-events:auto !important; }
-.btn-play-gems{ pointer-events:auto !important; cursor:pointer; }
-
-/* 11. Игровые вкладки и их содержимое */
-.tab-pane.active{ pointer-events:auto !important; }
-.tab-pane.active *{ pointer-events:auto; }
-.game-row, .arcade-card{ pointer-events:auto !important; cursor:pointer; }
+  window.BgFx={
+    init:boot,
+    pause(){ paused=true;
+      if(game){ try{ game.loop.sleep(); }catch(e){}
+        const c=document.querySelector('#bg-fx canvas'); if(c) c.style.visibility='hidden'; } },
+    resume(){ paused=false;
+      if(game){ try{ game.loop.wake(); }catch(e){}
+        const c=document.querySelector('#bg-fx canvas'); if(c) c.style.visibility='visible'; } },
+    setMood(){}
+  };
+  window.addEventListener('resize',()=>{ if(game) game.scale.resize(innerWidth,innerHeight); });
+})();
 
 EOF_SDVIG
 
@@ -1464,10 +2098,15 @@ cat > "$S/games/arcade.js" << 'EOF_SDVIG'
 
 EOF_SDVIG
 
-echo "✅  Фиксы применены!"
+echo ""
+echo "✅  Чистая пересборка применена!"
+echo ""
+echo "  ⚠️  ВАЖНО: после открытия сбрось старую сессию —"
+echo "     в браузере: DevTools → Application → Local Storage → Clear"
+echo "     или просто открой в режиме инкогнито для проверки."
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  git add -A"
-echo "  git commit -m \"fix: input capture conflict — buttons now clickable in games\""
+echo "  git commit -m \"fix: clean rebuild — clicks, login, stamps, map, backgrounds\""
 echo "  git push"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
