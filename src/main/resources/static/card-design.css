@@ -52,6 +52,13 @@
 }
 /* все дочерние элементы карточки передают свайп родителю */
 .case-card *{ touch-action:none; }
+/* премиум-фон карточки (SVG-текстура по типу дела) */
+.card-bg{ position:absolute; inset:0; border-radius:inherit; overflow:hidden; z-index:0; opacity:.92; }
+.card-bg svg{ display:block; width:100%; height:100%; }
+.case-card>.card-head,
+.case-card>.card-divider,
+.case-card>.card-body,
+.case-card>.card-actions-area{ position:relative; z-index:2; }
 .case-card.card-enter{ animation:cardIn .5s cubic-bezier(.22,1.1,.36,1) both; }
 @keyframes cardIn{
   from{ opacity:0; transform:translate(-50%,-50%) translateY(40px) scale(.92) rotate(2deg); }

@@ -290,7 +290,7 @@ function bindTools(){
   const bar=document.querySelector('.tools-bar');
   if(!bar || bar.dataset.bound) return;
   bar.dataset.bound='1';
-  App.profile.tools = App.profile.tools || {magnify:2,lamp:3,file:1,hourglass:1};
+  App.profile.tools = App.profile.tools || {magnify:2,file:1,hourglass:1};
   refreshTools();
   bar.addEventListener('click',e=>{
     const b=e.target.closest('.tool-btn'); if(!b) return;
@@ -305,7 +305,7 @@ function bindTools(){
 }
 function refreshTools(){
   const T=(App.profile&&App.profile.tools)||{};
-  ['magnify','lamp','file','hourglass'].forEach(k=>{
+  ['magnify','file','hourglass'].forEach(k=>{
     const el=$('#tool-'+k+'-n'); if(el){ const n=T[k]||0; el.textContent=n; el.style.display=n>0?'':'none'; }
   });
 }
@@ -314,7 +314,6 @@ function useTool(t){
   if((T[t]||0)<=0){ toast('Инструменты','Нет в наличии — загляни в Лавку','🛠️'); return; }
   if(t==='hourglass'){ T[t]--; addEnergy(20); toast('Песочные часы','+20 энергии','⏳'); }
   else if(t==='magnify'){ T[t]--; App.flags.hintNext=true; toast('Лупа','Подсказка активна','🔍'); }
-  else if(t==='lamp'){ T[t]--; App.flags.extraMove=true; toast('Лампа','+1 ход в Самоцветах','💡'); }
   else if(t==='file'){ T[t]--; App.swipeUnlocked=true;
     const c=App.deck[App.cardIndex]; const card=document.querySelector('.case-card');
     if(card&&c) renderCardActions(card,c);
@@ -374,6 +373,65 @@ function buildDeck(){
 /* ═══════════════════════════════════════════════
    РЕНДЕР КАРТОЧКИ ДЕЛА
 ═══════════════════════════════════════════════ */
+/* премиум SVG-фоны для карточек по типу дела */
+function cardBackground(type){
+  const A={
+    crime:    {c1:'#3a0e12',c2:'#1a0508',ac:'#ff5d6c'},
+    evidence: {c1:'#0e2a33',c2:'#06141a',ac:'#6be0ff'},
+    suspect:  {c1:'#241040',c2:'#0e0620',ac:'#a98bff'},
+    witness:  {c1:'#0e3325',c2:'#061a12',ac:'#35d49b'},
+    revelation:{c1:'#3a2c0a',c2:'#1a1404',ac:'#ffcf6b'},
+    ending:   {c1:'#2a2410',c2:'#141005',ac:'#ffcf6b'}
+  }[type] || {c1:'#1a1e2a',c2:'#0a0d14',ac:'#c8860a'};
+
+  // тематический паттерн
+  let pattern='';
+  if(type==='crime'){
+    // силуэт мелового контура тела + брызги
+    pattern=`<path d="M120 230 q-30 -10 -20 -50 q5 -25 30 -20 q10 -40 35 -25 q25 -50 50 -15 q30 -5 20 35 q25 15 5 45 q10 35 -30 30 q-20 25 -50 5 q-30 20 -40 -20 z" fill="none" stroke="${A.ac}" stroke-width="2" opacity=".12"/>
+      <circle cx="80" cy="120" r="3" fill="${A.ac}" opacity=".25"/><circle cx="250" cy="90" r="4" fill="${A.ac}" opacity=".2"/><circle cx="270" cy="280" r="2.5" fill="${A.ac}" opacity=".22"/>`;
+  } else if(type==='evidence'){
+    // отпечаток пальца
+    pattern=`<g fill="none" stroke="${A.ac}" stroke-width="1.6" opacity=".14">
+      ${[...Array(7)].map((_,i)=>`<ellipse cx="200" cy="200" rx="${30+i*16}" ry="${40+i*18}" transform="rotate(${i*4} 200 200)"/>`).join('')}
+    </g>`;
+  } else if(type==='suspect'){
+    // силуэт головы в профиль
+    pattern=`<path d="M150 90 q60 -10 70 50 q5 40 -10 70 q-5 30 -40 35 l5 40 -60 0 q5 -50 -10 -70 q-25 -30 -15 -85 q10 -45 60 -40z" fill="none" stroke="${A.ac}" stroke-width="2" opacity=".13"/>`;
+  } else if(type==='witness'){
+    // глаз
+    pattern=`<g fill="none" stroke="${A.ac}" stroke-width="2" opacity=".14">
+      <path d="M90 200 q110 -90 220 0 q-110 90 -220 0z"/><circle cx="200" cy="200" r="42"/><circle cx="200" cy="200" r="18" fill="${A.ac}" opacity=".3"/></g>`;
+  } else if(type==='revelation'||type==='ending'){
+    // лучи-вспышка
+    pattern=`<g stroke="${A.ac}" stroke-width="2" opacity=".12">
+      ${[...Array(12)].map((_,i)=>{const a=i*30*Math.PI/180;return `<line x1="200" y1="200" x2="${200+Math.cos(a)*180}" y2="${200+Math.sin(a)*180}"/>`;}).join('')}</g>
+      <circle cx="200" cy="200" r="30" fill="${A.ac}" opacity=".15"/>`;
+  } else {
+    // папка/документы по умолчанию
+    pattern=`<g fill="none" stroke="${A.ac}" stroke-width="1.6" opacity=".12">
+      <rect x="120" y="120" width="160" height="200" rx="8" transform="rotate(-8 200 220)"/>
+      <rect x="130" y="100" width="160" height="200" rx="8" transform="rotate(4 200 200)"/>
+      <line x1="150" y1="160" x2="260" y2="160"/><line x1="150" y1="190" x2="260" y2="190"/><line x1="150" y1="220" x2="230" y2="220"/></g>`;
+  }
+
+  return `<svg viewBox="0 0 400 480" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">
+    <defs>
+      <radialGradient id="cbg-${type}" cx="50%" cy="35%" r="80%">
+        <stop offset="0" stop-color="${A.c1}"/><stop offset="1" stop-color="${A.c2}"/>
+      </radialGradient>
+      <filter id="cgrain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="n"/>
+        <feColorMatrix in="n" type="saturate" values="0"/>
+        <feComponentTransfer><feFuncA type="linear" slope="0.04"/></feComponentTransfer>
+        <feComposite operator="over" in2="SourceGraphic"/></filter>
+    </defs>
+    <rect width="400" height="480" fill="url(#cbg-${type})"/>
+    ${pattern}
+    <rect width="400" height="480" filter="url(#cgrain)" opacity=".5"/>
+    <rect width="400" height="480" fill="url(#cbg-${type})" opacity="0"/>
+  </svg>`;
+}
+
 function renderCard(){
   const zone=$('#swipe-zone');
   zone.querySelector('.case-card')?.remove();
@@ -385,6 +443,7 @@ function renderCard(){
   const type=c.type||'evidence';
   const card=el('div','case-card card-enter ct-'+type);
   card.innerHTML=`
+    <div class="card-bg">${cardBackground(type)}</div>
     <div class="stamp-wrap stamp-left"><div class="stamp stamp-deny-text">${c.leftStamp||'ОТКАЗ'}</div></div>
     <div class="stamp-wrap stamp-right"><div class="stamp stamp-approve-text">${c.rightStamp||'ПРИНЯТЬ'}</div></div>
     <div class="stamp-wrap stamp-up"><div class="stamp stamp-special-text">СПЕЦ</div></div>

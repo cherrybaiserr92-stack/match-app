@@ -63,26 +63,19 @@
 <!-- ══ MAIN ══ -->
 <div id="main-screen" class="screen">
 
-  <div class="tools-bar" id="tools-bar">
-    <button class="tool-btn" data-tool="magnify" title="Лупа — подсветит важную улику">
-      <span class="tool-ico" data-tico="magnify"></span>
-      <span class="tool-badge" id="tool-magnify-n">2</span>
-    </button>
-    <button class="tool-btn" data-tool="lamp" title="Лампа — +ход в Самоцветах">
-      <span class="tool-ico" data-tico="lamp"></span>
-      <span class="tool-badge" id="tool-lamp-n">3</span>
-    </button>
-    <button class="tool-btn" data-tool="file" title="Досье — пропустить мини-игру">
-      <span class="tool-ico" data-tico="file"></span>
-      <span class="tool-badge" id="tool-file-n">1</span>
-    </button>
-    <button class="tool-btn" data-tool="hourglass" title="Песочные часы — +20 энергии">
-      <span class="tool-ico" data-tico="hourglass"></span>
-      <span class="tool-badge" id="tool-hourglass-n">1</span>
-    </button>
-    <button class="tool-btn tool-shop" data-tool="shop" title="Купить инструменты">
-      <span class="tool-ico" data-tico="plus"></span>
-    </button>
+  <div class="top-hud">
+    <div class="th-level">
+      <div class="th-lvl-badge"><span id="hud-level">1</span></div>
+      <div class="th-xp">
+        <div class="th-xp-track"><div class="th-xp-fill" id="xp-fill" style="width:0%"></div></div>
+        <div class="th-xp-info" id="xp-info">0 / 100 XP</div>
+      </div>
+    </div>
+    <div class="th-money">
+      <span class="th-coin" data-tico="coin"></span>
+      <span id="hud-credits">0</span>
+    </div>
+    <button class="snd-btn" id="sound-btn" type="button">🔊</button>
   </div>
 
   <div class="tab-area">
@@ -92,6 +85,23 @@
         <div class="stack-card sc3"></div>
         <div class="stack-card sc2"></div>
         <div class="stack-card sc1"></div>
+      </div>
+      <div class="tools-bar" id="tools-bar">
+        <button class="tool-btn" data-tool="magnify" title="Лупа — подсветит важную улику">
+          <span class="tool-ico" data-tico="magnify"></span>
+          <span class="tool-badge" id="tool-magnify-n">2</span>
+        </button>
+        <button class="tool-btn" data-tool="file" title="Досье — пропустить мини-игру">
+          <span class="tool-ico" data-tico="file"></span>
+          <span class="tool-badge" id="tool-file-n">1</span>
+        </button>
+        <button class="tool-btn" data-tool="hourglass" title="Песочные часы — +20 энергии">
+          <span class="tool-ico" data-tico="hourglass"></span>
+          <span class="tool-badge" id="tool-hourglass-n">1</span>
+        </button>
+        <button class="tool-btn tool-shop" data-tool="shop" title="Купить инструменты">
+          <span class="tool-ico" data-tico="plus"></span>
+        </button>
       </div>
     </div>
 

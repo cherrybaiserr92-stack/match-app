@@ -20,7 +20,7 @@
   let sel=null;                // выбранная ячейка
   let anim=false, raf=null;
   let opts=null, moves=0, score=0, progress=0, combo=0, comboMax=0;
-  let booster=0, boosterMode=null;
+  let booster=0, boosterMode=null, lamp=2;
   let running=false;
   let particles=[];
   let last=0;
@@ -30,7 +30,7 @@
     start(container,o){
       opts=o||{}; const m=opts.mission||{type:'score',target:600,moves:14};
       moves=m.moves||14; score=0; progress=0; combo=0; comboMax=0;
-      booster=opts.boosters||0; boosterMode=null; particles=[];
+      booster=opts.boosters||0; boosterMode=null; lamp=2; particles=[];
       running=true;
       try{ if(window.BgFx&&BgFx.pause) BgFx.pause(); }catch(e){}
       buildCanvas(container);
@@ -287,19 +287,26 @@
         <div style="width:130px;height:6px;background:rgba(255,255,255,.08);border-radius:6px;margin-top:5px;overflow:hidden">
           <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#b3741c,#ffcf6b);border-radius:6px"></div></div>
       </div>
-      <div style="display:flex;gap:14px;align-items:center">
+      <div style="display:flex;gap:10px;align-items:center">
         <div style="text-align:center"><div style="font-family:Unbounded;font-weight:700;font-size:18px;color:#ffcf6b">${moves}</div>
           <div style="font-size:9px;color:#7d8699">ХОДЫ</div></div>
         <div style="text-align:center"><div style="font-family:Unbounded;font-weight:700;font-size:18px">${score}</div>
           <div style="font-size:9px;color:#7d8699">ОЧКИ</div></div>
+        <button class="m3-lamp" style="pointer-events:auto;border:none;cursor:pointer;
+          background:rgba(255,255,255,.06);color:#ffcf6b;
+          border:1px solid rgba(240,169,58,.4);border-radius:10px;padding:6px 9px;font-weight:800;font-size:13px"
+          title="Лампа: +3 хода">💡 ${lamp}</button>
         <button class="m3-boost" style="pointer-events:auto;border:none;cursor:pointer;
           background:${boosterMode?'#ffcf6b':'rgba(255,255,255,.06)'};color:${boosterMode?'#1a1206':'#ffcf6b'};
-          border:1px solid rgba(240,169,58,.4);border-radius:10px;padding:6px 9px;font-weight:800;font-size:13px">
-          💥 ${booster}</button>
+          border:1px solid rgba(240,169,58,.4);border-radius:10px;padding:6px 9px;font-weight:800;font-size:13px"
+          title="Бомба: убрать книгу">💥 ${booster}</button>
       </div>`;
     const bb=bar.querySelector('.m3-boost');
     if(bb) bb.onclick=()=>{ if(booster<=0){Sound.error();return;}
       boosterMode=boosterMode?null:'bomb'; Sound.tap(); hud(); };
+    const lb=bar.querySelector('.m3-lamp');
+    if(lb) lb.onclick=()=>{ if(lamp<=0){Sound.error();return;}
+      lamp--; moves+=3; Sound.booster&&Sound.booster(); vibrate([10,20]); hud(); };
   }
 
   /* ── render loop ───────────────────────────── */
