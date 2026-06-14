@@ -76,17 +76,23 @@ body::before{
 }
 .splash-scene{ position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:18px; }
 .splash-emblem{
-  width:96px; height:96px; border-radius:50%;
+  width:172px; height:172px;
   display:flex; align-items:center; justify-content:center;
-  background:var(--glass-2); border:2px solid var(--acc);
-  box-shadow:0 0 40px var(--acc-dim);
+  position:relative;
   opacity:0; transform:scale(.7);
-  transition:opacity .5s ease, transform .5s cubic-bezier(.22,1.1,.36,1);
+  transition:opacity .6s ease, transform .6s cubic-bezier(.22,1.1,.36,1);
 }
+/* амбровый ореол за медальоном */
+.splash-emblem::before{
+  content:''; position:absolute; inset:-22%;
+  background:radial-gradient(circle, rgba(255,180,90,.35), rgba(255,180,90,0) 68%);
+  filter:blur(8px); z-index:0;
+}
+.emblem-img{ position:relative; z-index:1; width:100%; height:100%; object-fit:contain;
+  filter:drop-shadow(0 8px 24px rgba(0,0,0,.6)); }
 .splash-emblem.visible{ opacity:1; transform:scale(1); }
 .splash-emblem.pulse{ animation:emPulse .22s ease; }
-@keyframes emPulse{ 50%{ transform:scale(1.08); box-shadow:0 0 60px var(--acc-glow);} }
-.emblem-letter{ font-family:'Unbounded',sans-serif; font-weight:800; font-size:46px; color:var(--acc-2); }
+@keyframes emPulse{ 50%{ transform:scale(1.06); } }
 .splash-title-row{ display:flex; gap:4px; }
 .title-letter{
   font-family:'Unbounded',sans-serif; font-weight:800; font-size:34px; letter-spacing:4px; color:var(--ink);
