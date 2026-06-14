@@ -338,33 +338,52 @@ body::before{
 .shop-price{ margin-top:10px; padding:8px; border-radius:var(--r); background:var(--acc-dim);
   color:var(--acc-2); font-weight:800; font-size:13px; border:1px solid rgba(240,169,58,.3); }
 
-/* ═══ MAP — 2D карта-город ═══ */
+/* ═══ MAP — нарисованная 2D карта-город ═══ */
 .map-scroll{ position:absolute; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
-  background:linear-gradient(180deg, #0a0e16 0%, #0d1018 40%, #0a0c12 100%);
-}
-.map-inner{ position:relative; width:100%; }
+  background:#080b12; }
+.map-inner{ position:relative; width:100%; background-size:100% auto; }
 .map-path-svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; }
 .map-zone{ pointer-events:none; }
 
 /* табличка района */
-.map-chapter{ position:absolute; transform:translate(-50%,0) rotate(-1deg); z-index:3; text-align:center; white-space:nowrap;
-  background:linear-gradient(180deg,#fdf6e3,#e8dcc0); color:#2a2012;
-  padding:7px 18px; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.6); }
-.map-chapter::before{ content:''; position:absolute; top:-6px; left:50%; transform:translateX(-50%);
-  width:11px; height:11px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ff8a7a, #c0301c);
-  box-shadow:0 2px 4px rgba(0,0,0,.5); }
-.mc-dist{ font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; opacity:.7; }
-.mc-title{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:13px; color:#2a2012; }
+/* латунная табличка главы — на стыке секций, прячет шов */
+.map-plaque{ position:absolute; left:50%; transform:translateX(-50%); z-index:4;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  width:78%; max-width:340px; padding:9px 16px; border-radius:7px;
+  /* латунь с гравировкой */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.18), transparent 40%),
+    linear-gradient(180deg, #c79a52, #8a6a2e 55%, #6e521f);
+  border:1px solid #d9b873;
+  box-shadow:
+    0 6px 20px rgba(0,0,0,.7),
+    inset 0 1px 0 rgba(255,247,220,.6),
+    inset 0 -2px 4px rgba(0,0,0,.4),
+    0 0 0 3px rgba(20,14,6,.55);
+  color:#2a1d08; font-family:'Unbounded',sans-serif; font-weight:700;
+  text-shadow:0 1px 0 rgba(255,240,200,.5);
+}
+/* винтовые «заклёпки» по углам */
+.map-plaque::before,.map-plaque::after{ content:''; position:absolute; top:50%; transform:translateY(-50%);
+  width:7px; height:7px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #ffeab0, #6e521f);
+  box-shadow:0 1px 2px rgba(0,0,0,.6); }
+.map-plaque::before{ left:7px; }
+.map-plaque::after{ right:7px; }
+.mp-text{ font-size:13px; letter-spacing:1.5px; text-transform:uppercase; white-space:nowrap; }
+.mp-orn{ color:#5a4015; font-size:11px; opacity:.8; }
+.map-plaque.locked{ filter:grayscale(.5) brightness(.62); }
+.map-plaque.locked .mp-text::after{ content:' 🔒'; font-size:11px; }
 
 /* узел-уровень — кружок-жетон, приколотый к доске */
 .map-node{ position:absolute; transform:translate(-50%,-50%); z-index:2;
-  width:56px; height:56px; border-radius:50%; cursor:pointer;
+  width:38px; height:38px; border-radius:50%; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
-  background:radial-gradient(circle at 38% 30%, #2a3142, #141823);
-  border:2.5px solid var(--glass-line); color:var(--ink3);
-  box-shadow:0 6px 16px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12);
+  background:radial-gradient(circle at 38% 30%, rgba(42,49,66,.85), rgba(14,18,28,.92));
+  border:1.5px solid rgba(255,207,107,.5); color:var(--ink2);
+  box-shadow:0 4px 10px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12);
   transition:transform .15s ease; }
-.mn-num{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:18px; }
+.mn-num{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:14px; }
 .map-node:active{ transform:translate(-50%,-50%) scale(.9); }
 .map-node.done{ border-color:var(--nt,#c8860a); color:#fff;
   background:radial-gradient(circle at 38% 30%, #2a3142, #10141d);
@@ -377,18 +396,18 @@ body::before{
 @keyframes nodePulse{ 50%{ box-shadow:0 0 0 10px transparent, 0 8px 22px rgba(0,0,0,.55); } }
 .map-node.locked{ background:radial-gradient(circle at 38% 30%, #1a1e28, #0e1119); }
 .map-node.locked [data-ico]{ width:20px; height:20px; color:var(--ink4); }
-.map-node.milestone{ width:66px; height:66px; border-radius:18px; }
-.map-node.milestone .mn-num{ font-size:20px; }
+.map-node.milestone{ width:44px; height:44px; border-radius:50%; }
+.map-node.milestone .mn-num{ font-size:15px; }
 /* звёзды под пройденным узлом */
-.mn-stars{ position:absolute; bottom:-15px; left:50%; transform:translateX(-50%);
-  font-size:11px; color:#ffcf6b; letter-spacing:1px; text-shadow:0 1px 3px rgba(0,0,0,.6); white-space:nowrap; }
+.mn-stars{ position:absolute; bottom:-12px; left:50%; transform:translateX(-50%);
+  font-size:9px; color:#ffcf6b; letter-spacing:.5px; text-shadow:0 1px 3px rgba(0,0,0,.7); white-space:nowrap; }
 /* булавка-аватар на текущем уровне */
-.mn-pin{ position:absolute; top:-26px; left:50%; transform:translateX(-50%);
-  width:30px; height:30px; border-radius:50%; background:var(--glass-2); border:2px solid #fff;
+.mn-pin{ position:absolute; top:-24px; left:50%; transform:translateX(-50%);
+  width:26px; height:26px; border-radius:50%; background:var(--glass-2); border:2px solid #fff;
   display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,.5); }
-.mn-pin [data-ico]{ width:16px; height:16px; color:#fff; }
-.mn-pin::after{ content:''; position:absolute; bottom:-7px; left:50%; transform:translateX(-50%);
-  border:5px solid transparent; border-top-color:#fff; }
+.mn-pin [data-ico]{ width:14px; height:14px; color:#fff; }
+.mn-pin::after{ content:''; position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
+  border:4px solid transparent; border-top-color:#fff; }
 
 /* ═══ TOAST ═══ */
 .toast{

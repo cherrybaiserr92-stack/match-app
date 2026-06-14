@@ -690,20 +690,21 @@ function spawnTrail(dir){
    КАРТА ПРОГРЕССА
 ═══════════════════════════════════════════════ */
 const CHAPTERS=[
-  {title:'Глава I · Музейный квартал', levels:7, district:'Музейный квартал', tint:'#6be0ff'},
-  {title:'Глава II · Ночные доки',     levels:6, district:'Доки',             tint:'#35d49b'},
-  {title:'Глава III · Особняк',        levels:7, district:'Особняк',          tint:'#ffcf6b'}
+  {title:'Глава I · Музейный квартал', levels:6, district:'Музейный квартал', tint:'#6be0ff'},
+  {title:'Глава II · Старый город',    levels:6, district:'Старый город',     tint:'#a98bff'},
+  {title:'Глава III · Ночные доки',    levels:6, district:'Доки',             tint:'#35d49b'},
+  {title:'Глава IV · Особняк',         levels:6, district:'Особняк',          tint:'#ffcf6b'}
 ];
 
 function totalLevels(){ return CHAPTERS.reduce((s,c)=>s+c.levels,0); }
 
 // нормализованные точки узлов на нарисованной дороге (из map-art/nodes.json)
-const MAP_NODES=[[0.5,0.952],[0.42,0.902],[0.55,0.857],[0.47,0.808],[0.57,0.772],[0.45,0.737],[0.55,0.703],[0.52,0.602],[0.57,0.527],[0.5,0.483],[0.52,0.438],[0.62,0.392],[0.55,0.358],[0.46,0.325],[0.48,0.285],[0.45,0.247],[0.5,0.205],[0.53,0.177],[0.4,0.137],[0.48,0.103]];
-const MAP_ASPECT=4876/843;  // высота карты = ширина × 4
+const MAP_NODES=[[0.5,0.966],[0.5,0.9275],[0.5,0.8882],[0.5,0.8488],[0.5,0.8093],[0.5,0.7698],[0.5,0.728],[0.5,0.6875],[0.5,0.6462],[0.5,0.605],[0.5,0.565],[0.5,0.5238],[0.5,0.4828],[0.5,0.4313],[0.5,0.3937],[0.5,0.356],[0.5,0.329],[0.5,0.2805],[0.5,0.2152],[0.5,0.186],[0.5,0.1555],[0.5,0.1245],[0.5,0.094],[0.5,0.073]];
+const MAP_ASPECT=6688/941;  // высота карты = ширина × 4
 
 function renderMap(){
   const inner=$('#map-inner'); const svg=$('#map-path');
-  inner.querySelectorAll('.map-node,.map-chapter').forEach(e=>e.remove());
+  inner.querySelectorAll('.map-node,.map-chapter,.map-plaque').forEach(e=>e.remove());
   if(svg) svg.innerHTML='';
 
   const total=Math.min(totalLevels(), MAP_NODES.length);
@@ -717,24 +718,25 @@ function renderMap(){
   const cur=App.profile.mapNode||0;
   const stars=App.profile.mapStars||{};
 
-  // границы районов (по N глав) — для табличек
+  // границы районов (по N глав)
   let bounds=[], acc=0;
   CHAPTERS.forEach(ch=>{ bounds.push(acc); acc+=ch.levels; });
+
+  // ── таблички глав на стыках секций (прячут шов + обозначают район) ──
+  // секций 4, швы на 0.25/0.50/0.75; названия районов снизу вверх
+  // район i показывается на ВЕРХНЕЙ границе своей секции (по ходу снизу вверх)
+  const seamY=[0.75,0.50,0.25,0.012]; // музей, старый город, доки, особняк(верх)
+  CHAPTERS.forEach((ch,ci)=>{
+    const y=seamY[ci]*H;
+    const plq=el('div','map-plaque'+(bounds[ci]<=cur?' unlocked':' locked'),
+      `<span class="mp-orn">✦</span><span class="mp-text">${ch.district}</span><span class="mp-orn">✦</span>`);
+    plq.style.top=(y-20)+'px';
+    inner.appendChild(plq);
+  });
 
   for(let idx=0; idx<total; idx++){
     const [nx,ny]=MAP_NODES[idx];
     const x=nx*W, y=ny*H;
-
-    // табличка района на первом узле главы
-    const chI=bounds.indexOf(idx);
-    if(chI>=0){
-      const ch=CHAPTERS[chI];
-      const head=el('div','map-chapter',
-        `<div class="mc-dist" style="color:${ch.tint}">${ch.district}</div>`+
-        `<div class="mc-title">${(ch.title.split('·')[1]||ch.title).trim()}</div>`);
-      head.style.left='50%'; head.style.top=(y-46)+'px';
-      inner.appendChild(head);
-    }
 
     const tint=CHAPTERS[Math.max(0,bounds.filter(b=>b<=idx).length-1)]?.tint||'#ffcf6b';
     const isMile=bounds.includes(idx+1)||idx===total-1;
