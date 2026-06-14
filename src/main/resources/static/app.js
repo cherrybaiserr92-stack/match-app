@@ -728,18 +728,17 @@ function renderMap(){
     {name:'Особняк',          y:0.25, tint:'#ffcf6b'},
     {name:'Ночные доки',      y:0.50, tint:'#35d49b'},
     {name:'Старый город',     y:0.75, tint:'#a98bff'},
-    {name:'Музейный квартал', y:0.965, tint:'#6be0ff'},
+    {name:'Музейный квартал', y:0.99, tint:'#6be0ff'},
   ];
   PLAQUES.forEach((p)=>{
     const plq=el('div','map-plaque',
       `<span class="mp-orn">✦</span><span class="mp-text">${p.name}</span><span class="mp-orn">✦</span>`);
-    plq.style.top=(p.y*H-20)+'px';
+    plq.style.top=(p.y*100)+'%';
     inner.appendChild(plq);
   });
 
   for(let idx=0; idx<total; idx++){
     const [nx,ny]=MAP_NODES[idx];
-    const x=nx*W, y=ny*H;
 
     const tint=CHAPTERS[Math.max(0,bounds.filter(b=>b<=idx).length-1)]?.tint||'#ffcf6b';
     const isMile=bounds.includes(idx+1)||idx===total-1;
@@ -751,7 +750,7 @@ function renderMap(){
     if(state==='done'){ const st=stars[idx]||1;
       node.innerHTML+=`<span class="mn-stars">${'★'.repeat(st)}${'☆'.repeat(3-st)}</span>`; }
     if(state==='current'){ node.innerHTML+=`<span class="mn-pin">${Icons.get('agent')}</span>`; }
-    node.style.left=x+'px'; node.style.top=y+'px';
+    node.style.left=(nx*100)+'%'; node.style.top=(ny*100)+'%';
     const myIdx=idx, myState=state;
     node.onclick=()=>{
       if(myState==='locked'){ try{Sound.error();}catch(_){} vibrate(15); toast('Закрыто','Пройдите предыдущие дела','🔒'); return; }
