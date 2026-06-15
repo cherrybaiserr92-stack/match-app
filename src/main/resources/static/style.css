@@ -412,17 +412,17 @@ body::before{
 .map-node.done::after{ border-color:var(--nt,#c8860a);
   box-shadow:0 0 8px var(--nt,#c8860a); }
 
-/* текущий — крупнее, светится, пульсирует */
-.map-node.current{ width:50px; height:50px; color:#1a1206;
+/* текущий — тот же размер, только свечение + пульсация */
+.map-node.current{ color:#1a1206;
   background:radial-gradient(circle at 38% 30%, #ffe6a8, var(--nt,#ffcf6b) 60%, #b3741c);
   box-shadow:
     0 5px 0 #6e4a12, 0 10px 16px rgba(0,0,0,.6),
     0 0 0 4px rgba(255,207,107,.25),
     inset 0 2px 3px rgba(255,255,255,.5);
   animation:nodePulse 1.9s ease-in-out infinite; z-index:3; }
-.map-node.current .mn-num{ font-size:17px; color:#1a1206; text-shadow:0 1px 0 rgba(255,255,255,.4); }
+.map-node.current .mn-num{ font-size:15px; color:#1a1206; text-shadow:0 1px 0 rgba(255,255,255,.4); }
 .map-node.current::after{ border-color:rgba(255,255,255,.6); }
-@keyframes nodePulse{ 50%{ box-shadow:0 5px 0 #6e4a12, 0 10px 16px rgba(0,0,0,.6), 0 0 0 9px rgba(255,207,107,0), inset 0 2px 3px rgba(255,255,255,.5);} }
+@keyframes nodePulse{ 50%{ box-shadow:0 5px 0 #6e4a12, 0 10px 16px rgba(0,0,0,.6), 0 0 0 10px rgba(255,207,107,0), inset 0 2px 3px rgba(255,255,255,.5);} }
 
 /* закрытый — тёмный, тусклый, с замком */
 .map-node.locked{ color:var(--ink4);
@@ -431,9 +431,7 @@ body::before{
 .map-node.locked::after{ border-color:rgba(255,255,255,.08); }
 .map-node.locked [data-ico]{ width:18px; height:18px; color:var(--ink4); position:relative; z-index:1; }
 
-/* ключевое дело — крупнее */
-.map-node.milestone{ width:50px; height:50px; }
-.map-node.milestone .mn-num{ font-size:17px; }
+/* ключевое дело — тот же размер, только звезда сверху */
 .map-node.milestone::before{ content:'★'; position:absolute; top:-13px; left:50%;
   transform:translateX(-50%); font-size:11px; color:#ffcf6b; text-shadow:0 1px 2px rgba(0,0,0,.7); }
 /* звёзды под пройденным узлом */
