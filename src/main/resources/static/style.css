@@ -386,50 +386,51 @@ body::before{
 .map-node{ position:absolute; transform:translate(-50%,-50%); z-index:2;
   width:42px; height:42px; border-radius:50%; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
-  /* объёмная латунная шайба: верхняя площадка + тёмный «бок» снизу */
-  background:
-    radial-gradient(circle at 38% 32%, #5a4a2c, #2c2516 70%);
-  border:none; color:#f0e3c0;
+  /* матовое полупрозрачное стекло — сквозь жетон просвечивает дорога */
+  background:radial-gradient(circle at 38% 30%, rgba(78,86,104,.40), rgba(15,19,27,.50) 74%);
+  -webkit-backdrop-filter:blur(5px) saturate(1.2);
+  backdrop-filter:blur(5px) saturate(1.2);
+  border:1px solid rgba(255,255,255,.16); color:#ece0c4;
   box-shadow:
-    0 5px 0 #1a140a,            /* толщина-бок жетона */
-    0 8px 12px rgba(0,0,0,.6),  /* падающая тень */
-    inset 0 2px 2px rgba(255,235,180,.45),  /* верхний блик */
-    inset 0 -3px 4px rgba(0,0,0,.5);
+    0 4px 0 rgba(7,9,13,.5),
+    0 7px 14px rgba(0,0,0,.45),
+    inset 0 2px 3px rgba(255,255,255,.22),
+    inset 0 -4px 6px rgba(0,0,0,.32);
   transition:transform .1s ease, box-shadow .1s ease;
 }
-/* тонкое золотое кольцо-кант */
-.map-node::after{ content:''; position:absolute; inset:3px; border-radius:50%;
-  border:1.5px solid rgba(255,207,107,.4); pointer-events:none; }
+/* кант + ореол цветом района (даже у закрытых — мягкая подсветка) */
+.map-node::after{ content:''; position:absolute; inset:2px; border-radius:50%;
+  border:1.5px solid var(--nt,#ffcf6b); opacity:.6; pointer-events:none;
+  box-shadow:0 0 8px var(--nt,#ffcf6b), inset 0 0 6px var(--nt,#ffcf6b); }
 .mn-num{ font-family:'Unbounded',sans-serif; font-weight:800; font-size:15px;
-  text-shadow:0 1px 1px rgba(0,0,0,.6); position:relative; z-index:1; }
-/* нажатие — жетон «вдавливается» */
-.map-node:active{ transform:translate(-50%,-50%) translateY(4px) scale(.97);
-  box-shadow:0 1px 0 #1a140a, 0 3px 6px rgba(0,0,0,.5), inset 0 2px 3px rgba(0,0,0,.4); }
+  text-shadow:0 1px 2px rgba(0,0,0,.7); position:relative; z-index:1; }
+.map-node:active{ transform:translate(-50%,-50%) translateY(3px) scale(.97);
+  box-shadow:0 1px 0 rgba(7,9,13,.5), 0 3px 7px rgba(0,0,0,.5), inset 0 2px 3px rgba(0,0,0,.32); }
 
-/* пройденный — горит цветом района */
+/* пройденный — стекло горит цветом района */
 .map-node.done{ color:#fff;
-  background:radial-gradient(circle at 38% 32%, #6a5a38, #2c2516 72%); }
-.map-node.done::after{ border-color:var(--nt,#c8860a);
-  box-shadow:0 0 8px var(--nt,#c8860a); }
+  background:radial-gradient(circle at 38% 30%, rgba(255,255,255,.16), rgba(20,24,32,.5) 74%); }
+.map-node.done::after{ opacity:.95;
+  box-shadow:0 0 11px var(--nt,#c8860a), inset 0 0 9px var(--nt,#c8860a); }
 
-/* текущий — тот же размер, только свечение + пульсация */
-.map-node.current{ color:#1a1206;
-  background:radial-gradient(circle at 38% 30%, #ffe6a8, var(--nt,#ffcf6b) 60%, #b3741c);
+/* текущий — плотный янтарь, пульсация (акцент, без прозрачности) */
+.map-node.current{ color:#1a1206; -webkit-backdrop-filter:none; backdrop-filter:none;
+  border-color:rgba(255,255,255,.5);
+  background:radial-gradient(circle at 38% 28%, #ffe6a8, var(--nt,#ffcf6b) 58%, #b3741c);
   box-shadow:
-    0 5px 0 #6e4a12, 0 10px 16px rgba(0,0,0,.6),
-    0 0 0 4px rgba(255,207,107,.25),
-    inset 0 2px 3px rgba(255,255,255,.5);
+    0 5px 0 #6e4a12, 0 10px 16px rgba(0,0,0,.55),
+    0 0 0 4px rgba(255,207,107,.28),
+    inset 0 2px 3px rgba(255,255,255,.55);
   animation:nodePulse 1.9s ease-in-out infinite; z-index:3; }
 .map-node.current .mn-num{ font-size:15px; color:#1a1206; text-shadow:0 1px 0 rgba(255,255,255,.4); }
-.map-node.current::after{ border-color:rgba(255,255,255,.6); }
-@keyframes nodePulse{ 50%{ box-shadow:0 5px 0 #6e4a12, 0 10px 16px rgba(0,0,0,.6), 0 0 0 10px rgba(255,207,107,0), inset 0 2px 3px rgba(255,255,255,.5);} }
+.map-node.current::after{ border-color:rgba(255,255,255,.6); box-shadow:none; opacity:1; }
+@keyframes nodePulse{ 50%{ box-shadow:0 5px 0 #6e4a12, 0 10px 16px rgba(0,0,0,.55), 0 0 0 11px rgba(255,207,107,0), inset 0 2px 3px rgba(255,255,255,.55);} }
 
-/* закрытый — тёмный, тусклый, с замком */
-.map-node.locked{ color:var(--ink4);
-  background:radial-gradient(circle at 38% 32%, #2a2e38, #14181f 72%);
-  box-shadow:0 4px 0 #0c0e13, 0 7px 10px rgba(0,0,0,.55), inset 0 2px 2px rgba(255,255,255,.08), inset 0 -3px 4px rgba(0,0,0,.5); }
-.map-node.locked::after{ border-color:rgba(255,255,255,.08); }
-.map-node.locked [data-ico]{ width:18px; height:18px; color:var(--ink4); position:relative; z-index:1; }
+/* закрытый — затемнённое стекло, латунный замок + ореол района (не плоский чёрный) */
+.map-node.locked{ color:#c7a866;
+  background:radial-gradient(circle at 38% 30%, rgba(42,48,60,.44), rgba(10,13,19,.54) 74%); }
+.map-node.locked::after{ opacity:.38; box-shadow:0 0 6px var(--nt,#ffcf6b), inset 0 0 6px var(--nt,#ffcf6b); }
+.map-node.locked svg{ width:18px; height:18px; opacity:.85; }
 
 /* ключевое дело — тот же размер, только звезда сверху */
 .map-node.milestone::before{ content:'★'; position:absolute; top:-13px; left:50%;
