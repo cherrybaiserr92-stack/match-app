@@ -2,7 +2,7 @@
 set -e
 S="src/main/resources/static"
 echo ""
-echo "🗺  СДВИГ — карта без водяных знаков, узлы на дороге, единый размер…"
+echo "🗺  СДВИГ — узлы по дороге (21 ур.), таблички на стыках…"
 echo ""
 echo "  ✦ $S/app.js"
 mkdir -p $(dirname "$S/app.js")
@@ -699,17 +699,17 @@ function spawnTrail(dir){
    КАРТА ПРОГРЕССА
 ═══════════════════════════════════════════════ */
 const CHAPTERS=[
-  {title:'Глава I · Музейный квартал', levels:5, district:'Музейный квартал', tint:'#6be0ff'},
+  {title:'Глава I · Музейный квартал', levels:4, district:'Музейный квартал', tint:'#6be0ff'},
   {title:'Глава II · Старый город',    levels:5, district:'Старый город',     tint:'#a98bff'},
   {title:'Глава III · Ночные доки',    levels:5, district:'Доки',             tint:'#35d49b'},
-  {title:'Глава IV · Туманный лес',    levels:4, district:'Туманный лес',     tint:'#7ec88f'},
-  {title:'Глава V · Особняк',          levels:5, district:'Особняк',          tint:'#ffcf6b'}
+  {title:'Глава IV · Туманный лес',    levels:3, district:'Туманный лес',     tint:'#7ec88f'},
+  {title:'Глава V · Особняк',          levels:4, district:'Особняк',          tint:'#ffcf6b'}
 ];
 
 function totalLevels(){ return CHAPTERS.reduce((s,c)=>s+c.levels,0); }
 
 // нормализованные точки узлов на нарисованной дороге (из map-art/nodes.json)
-const MAP_NODES=[[0.4975,0.9547],[0.52,0.9208],[0.5006,0.8868],[0.5664,0.8529],[0.4748,0.8189],[0.4963,0.7613],[0.5138,0.7274],[0.5294,0.6934],[0.5326,0.6595],[0.4993,0.6255],[0.5391,0.5679],[0.4578,0.5339],[0.5939,0.5],[0.4711,0.4661],[0.4579,0.4321],[0.4989,0.3745],[0.5005,0.3292],[0.498,0.2839],[0.4904,0.2387],[0.5048,0.1811],[0.4182,0.1471],[0.4996,0.1132],[0.5015,0.0792],[0.509,0.0453]];
+const MAP_NODES=[[0.49,0.958],[0.49,0.92],[0.49,0.882],[0.49,0.84],[0.49,0.788],[0.48,0.748],[0.47,0.71],[0.48,0.672],[0.49,0.632],[0.49,0.582],[0.47,0.548],[0.45,0.508],[0.44,0.468],[0.47,0.43],[0.5,0.375],[0.5,0.34],[0.5,0.238],[0.47,0.178],[0.45,0.15],[0.45,0.115],[0.48,0.085]];
 const MAP_ASPECT=6080/768;  // высота карты = ширина × 4
 
 function renderMap(){
@@ -732,13 +732,13 @@ function renderMap(){
   let bounds=[], acc=0;
   CHAPTERS.forEach(ch=>{ bounds.push(acc); acc+=ch.levels; });
 
-  // ── таблички глав, привязаны к началу каждого района (снизу вверх) ──
+  // ── таблички: музей в самом низу, остальные на туманных стыках ──
   const PLAQUES=[
-    {name:'Музейный квартал', y:0.815},
-    {name:'Старый город',     y:0.607},
-    {name:'Ночные доки',      y:0.414},
-    {name:'Туманный лес',     y:0.221},
-    {name:'Особняк',          y:0.035},
+    {name:'Музейный квартал', y:0.975},
+    {name:'Старый город',     y:0.800},
+    {name:'Ночные доки',      y:0.600},
+    {name:'Туманный лес',     y:0.400},
+    {name:'Особняк',          y:0.200},
   ];
   PLAQUES.forEach((p)=>{
     const plq=el('div','map-plaque',
@@ -21982,4 +21982,4 @@ B64_SDVIG
 
 echo ""
 echo "✅  Готово!"
-echo "  git add -A && git commit -m \"fix: remove watermarks, nodes on-road uniform size, plaques placed, no avatar\" && git push"
+echo "  git add -A && git commit -m \"fix: nodes hand-placed on road (21 lvl), plaques on fog seams, museum bottom\" && git push"
