@@ -1,13 +1,3 @@
-#!/usr/bin/env bash
-# СДВИГ — прототип v7: вращающаяся карусель + КИНЕМАТОГРАФИЧНОЕ СЖИГАНИЕ
-#   неверный выбор -> карта медленно сгорает (огненный фронт + искры + дым, ~2.2с),
-#     текст читается пока горит (интрига держится); горит в сторону свайпа
-#   верный выбор -> карта плавно возвращается в карусель (ease-out + инерция по скорости свайпа)
-# Отдельная страница, боевую игру НЕ трогает. Открыть: https://sdvig.up.railway.app/sdvig-shift.html
-set -e
-D=src/main/resources/static
-[ -d "$D" ] || { echo "Запускай из корня репо (нет $D)"; exit 1; }
-cat > "$D/sdvig-shift.html" << '''EOF_SDVIG'''
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -538,6 +528,3 @@ buildBacks(); setProgress();
 </script>
 </body>
 </html>
-EOF_SDVIG
-echo "OK: /sdvig-shift.html (карусель + сжигание). Обнови с очисткой кэша."
-echo "git add -A && git commit -m 'shift proto: rotating carousel + cinematic burn' && git push"
