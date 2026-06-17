@@ -450,35 +450,22 @@ function cardBackground(type){
 function renderCard(){
   const zone=$('#swipe-zone');
   zone.querySelector('.case-card')?.remove();
-  if(!App.deck.length){ return; }
-
-  const c=App.deck[App.cardIndex];
-  App.currentCard=c; App.swipeUnlocked=false;
-
-  const type=c.type||'evidence';
-  const card=el('div','case-card card-enter ct-'+type);
+  // ── Портал в sdvig-shift.html (R9) ──
+  const card=el('div','case-card card-enter ct-crime case-launcher');
   card.innerHTML=`
-    <div class="card-bg">${cardBackground(type)}</div>
-    <div class="stamp-wrap stamp-left"><div class="stamp stamp-deny-text">${c.leftStamp||'ОТКАЗ'}</div></div>
-    <div class="stamp-wrap stamp-right"><div class="stamp stamp-approve-text">${c.rightStamp||'ПРИНЯТЬ'}</div></div>
-    <div class="stamp-wrap stamp-up"><div class="stamp stamp-special-text">СПЕЦ</div></div>
-    <div class="card-head">
-      <span class="card-act">Дело №${(App.cardIndex+1).toString().padStart(3,'0')}</span>
-      <span class="card-type-badge">${typeLabel(type)}</span>
+    <div class="card-bg">${cardBackground('crime')}</div>
+    <div class="launch-inner">
+      <div class="launch-eyebrow">АКТИВНОЕ ДЕЛО</div>
+      <div class="launch-num">№ 001</div>
+      <div class="launch-title">Звезда Севера</div>
+      <div class="launch-meta">Кража в музее · 3 ключевых момента</div>
+      <div class="launch-divider"></div>
+      <div class="launch-hint">Нажми, чтобы начать расследование</div>
     </div>
-    <div class="card-divider"></div>
-    <div class="card-body">
-      <div class="card-icon-box">${c.icon||'🗂'}</div>
-      <div class="card-case-title">${c.title||'Без названия'}</div>
-      <div class="card-text">${c.text||''}</div>
-    </div>
-    <div class="card-actions-area" id="card-actions"></div>
   `;
+  card.onclick=()=>{ try{Sound.tap();}catch(_){} window.location.href='/sdvig-shift.html'; };
   zone.appendChild(card);
-  resetStamps(card);
-  renderCardActions(card,c);
-  bindSwipe(card,c);
-  Sound.tap();
+  try{Sound.tap();}catch(_){}
 }
 
 function typeLabel(t){

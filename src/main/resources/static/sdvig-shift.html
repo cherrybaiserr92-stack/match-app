@@ -218,6 +218,18 @@ body::after{ content:''; position:fixed; inset:0; z-index:1; pointer-events:none
 @keyframes splashIn{ 0%{ opacity:0; transform:translateY(16px) scale(.93);} 100%{ opacity:1; transform:none;} }
 @keyframes glowPulse{ 0%,100%{ opacity:.55; transform:scale(1);} 50%{ opacity:1; transform:scale(1.05);} }
 @keyframes hintPulse{ 0%,100%{ opacity:.25;} 50%{ opacity:.7;} }
+
+/* ── back-btn (R9) ── */
+.back-btn{
+  display:flex;align-items:center;gap:4px;flex-shrink:0;
+  padding:6px 11px;border-radius:8px;cursor:pointer;
+  background:rgba(14,20,30,.55);border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(6px);color:var(--amber-lite);text-decoration:none;
+  font-size:12px;font-weight:700;letter-spacing:.05em;
+  transition:background .15s,border-color .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.back-btn:active{ background:rgba(200,134,10,.25); border-color:var(--amber); }
 </style>
 </head>
 <body>
@@ -232,7 +244,8 @@ body::after{ content:''; position:fixed; inset:0; z-index:1; pointer-events:none
 
 <div class="wrap">
   <div class="topbar">
-    <div>
+    <a class="back-btn" href="/" title="На главную">&#8592; Дела</a>
+    <div style="flex:1;min-width:0">
       <div class="case-name" id="case-name">Дело №001</div>
       <div class="case-sub">Музейный квартал · 12+</div>
     </div>
@@ -255,7 +268,7 @@ body::after{ content:''; position:fixed; inset:0; z-index:1; pointer-events:none
   <div class="e-meta" id="e-meta"></div>
   <button class="btn" id="e-restart">Заново</button>
 </div>
-<div class="proto-note">ПРОТОТИП «СДВИГ» · СБОРКА R8 · логотип+карты</div>
+<div class="proto-note">ПРОТОТИП «СДВИГ» · СБОРКА R9 · linked to app</div>
 
 <script>
 "use strict";
