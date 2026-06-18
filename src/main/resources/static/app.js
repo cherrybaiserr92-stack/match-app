@@ -438,9 +438,19 @@ function cPosFor(phi){
 }
 function cPhiOf(e){return cNorm((e-centerIndex)*CSTEPD);}
 function gframeHTML(){return '<div class="gframe"><i class="fil tl"></i><i class="fil tr"></i><i class="fil bl"></i><i class="fil br"></i></div>';}
-function backHTML(){return gframeHTML()+'<div class="cmono">С</div>';}
+function backHTML(){return gframeHTML()+'<div class="cback-emblem"></div>';}
 function cardHTML(ev){
   const scene='<div class="scene"><div class="grad"></div><div class="art" style="background-image:'+artBg(ev.t)+'"></div></div>';
+  if(ev.linear){
+    return gframeHTML()+scene+'<div class="pad">'
+      +'<span class="badge">'+ev.badge+'</span>'
+      +'<div class="title">'+ev.title+'</div>'
+      +'<div class="text scrollable">'+fill(ev.text,CState.flags)+'</div>'
+      +(ev.dialogue?'<div class="dlg">'+ev.dialogue.replace(/\n/g,'<br>')+'</div>':'')
+      +'<div class="spacer"></div>'
+      +'<button class="linear-next">Далее \u2192</button>'
+      +'</div>';
+  }
   if(ev.shift){
     return gframeHTML()+scene+'<div class="pad"><span class="badge">'+ev.badge+'</span>'
       +'<div class="title">'+ev.title+'</div>'
@@ -455,7 +465,7 @@ function cardHTML(ev){
     +'<span class="stamp r">'+(ev.right.label||'').replace(/\s*►$/,'')+'</span>'
     +'<div class="pad"><span class="badge">'+ev.badge+'</span>'
     +'<div class="title">'+ev.title+'</div>'
-    +'<div class="text">'+fill(ev.text,CState.flags)+'</div>'
+    +'<div class="text scrollable">'+fill(ev.text,CState.flags)+'</div>'
     +(ev.dialogue?'<div class="dlg">'+ev.dialogue.replace(/\n/g,'<br>')+'</div>':'')
     +'<div class="spacer"></div><div class="choices">'
     +'<div class="choice l"><span class="dir">СВАЙП ВЛЕВО</span>'+ev.left.label+'</div>'
@@ -466,9 +476,16 @@ function setBack(el){el.classList.remove("active","shift","grab","burning");el._
   el.innerHTML='<div class="cfinner">'+backHTML()+'</div>';}
 function setActive(el,ev){
   el.classList.add("active"); el.classList.toggle("shift",!!ev.shift);
+  el.classList.toggle("linear",!!ev.linear);
   el.innerHTML='<div class="cfinner">'+cardHTML(ev)+'</div>'; el._ev=ev; cActive=el;
   App.currentCard=ev; App.swipeUnlocked=false;
-  addLockOverlay(el);
+  if(ev.linear){
+    var btn=el.querySelector('.linear-next');
+    if(btn) btn.addEventListener('click',function(){ try{Sound.tap();}catch(_){} linearAdvance(ev); });
+    App.swipeUnlocked=false;
+  } else {
+    addLockOverlay(el);
+  }
 }
 function cLayout(animate){
   cfCards.forEach(function(c,e){
@@ -578,6 +595,22 @@ function burnCard(el,dir,done){ _runBurn(el,dir==='left','','','',done); }
 /* Синий огонь — свайп вправо */
 function burnCardBlue(el,dir,done){ _runBurn(el,false,'spark-blue','fire-blue','smoke-blue',done); }
 
+function linearAdvance(ev){
+  if(cBusy) return; cBusy=true;
+  var nextId=ev.next;
+  var c0=cfCards[centerIndex];
+  CState.step++; cSetProgress();
+  // лёгкий поворот кольца вперёд, без огня
+  centerIndex=(centerIndex+1+CN)%CN;
+  var resolve=(nextId==='__resolve__'||!nextId);
+  if(!resolve) setActive(cfCards[centerIndex],CASE.events[nextId]);
+  cLayout(true);
+  setTimeout(function(){
+    if(resolve) showEnding(computeEnding(CState.flags));
+    else if(c0!==cfCards[centerIndex]) setBack(c0);
+    cBusy=false;
+  }, Math.max(560,SPIN_DUR+40));
+}
 function cAdvance(dir,ev,opt){
   if(cBusy) return; cBusy=true;
   cApplyOption(opt);

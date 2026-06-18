@@ -581,3 +581,70 @@
   animation:noenergyPulse .9s ease-out forwards;
 }
 @keyframes noenergyPulse{ 0%{opacity:0}20%{opacity:1}100%{opacity:0} }
+
+/* R14 */
+
+/* ════════ R14 — финальный лейаут карт ════════ */
+
+/* 1. КАРТЫ НЕ ВЫЛЕЗАЮТ ЗА ВЕРХ: уменьшаем высоту + центр кольца ниже */
+:root{
+  --card-h: min(46vh, 366px) !important;
+  --card-w: min(58%, 206px) !important;
+}
+.ring-scene{ perspective-origin:50% 42% !important; }
+/* верхние боковые карты притушить, чтобы не лезли под HUD */
+.stage{ overflow:hidden !important; }
+
+/* 2. РУБАШКА БЕЗ «С» — тонкий ромб-эмблема по центру */
+.cmono{ display:none !important; }
+.cback-emblem{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(45deg);
+  width:54px; height:54px; border:1.5px solid rgba(240,205,130,.22);
+  border-radius:8px; z-index:2;
+}
+.cback-emblem::after{
+  content:''; position:absolute; inset:9px; border:1px solid rgba(240,205,130,.14); border-radius:5px;
+}
+
+/* 3. ТЕКСТ: правильное расположение + СКРОЛЛ если не влезает */
+.cfcard.active .cfinner .pad{
+  padding-top:46px !important;
+  padding-bottom:12px !important;
+  display:flex; flex-direction:column;
+}
+.cfcard.active .title{
+  font-size:17px !important; line-height:1.16 !important; margin:6px 0 8px !important;
+}
+.text.scrollable{
+  -webkit-line-clamp:unset !important; display:block !important;
+  overflow-y:auto !important; -webkit-overflow-scrolling:touch;
+  max-height:34vh; padding-right:4px;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 88%,transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 88%,transparent 100%);
+}
+.text.scrollable::-webkit-scrollbar{ width:3px; }
+.text.scrollable::-webkit-scrollbar-thumb{ background:rgba(200,134,10,.4); border-radius:3px; }
+/* во время свайпа активной карты — скролл не мешает жесту */
+.cfcard.active.grab .text.scrollable{ overflow:hidden !important; }
+
+/* 4. ДИАЛОГ компактнее, чтобы не выталкивал кнопку */
+.dlg{ margin-top:6px !important; font-size:11.5px !important; max-height:none; }
+
+/* 5. КНОПКА «ДАЛЕЕ» для линейных карт вступления */
+.linear-next{
+  width:100%; margin-top:8px; padding:13px 16px; border:none; border-radius:12px; cursor:pointer;
+  background:linear-gradient(180deg,#ffdf95,var(--acc,#c8860a)); color:#241701;
+  font-family:'Unbounded',sans-serif; font-weight:800; font-size:13px; letter-spacing:.04em;
+  box-shadow:0 8px 22px rgba(200,134,10,.32);
+}
+.linear-next:active{ filter:brightness(.92); }
+/* у линейных карт нет замка/выбора — pad выстроен под текст+кнопку */
+.cfcard.linear .pad{ justify-content:flex-start; }
+.cfcard.linear .scene .grad{
+  background:radial-gradient(95% 55% at 50% 0%,rgba(200,134,10,.1),transparent 62%),
+    linear-gradient(180deg,rgba(14,20,30,.2),rgba(5,8,13,.92)) !important;
+}
+
+/* 6. choices: исходы свайпа чуть крупнее и читаемее */
+.choice{ padding:9px 7px !important; }
+.choice .dir{ opacity:.85; }

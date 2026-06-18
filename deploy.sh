@@ -1,314 +1,300 @@
 #!/usr/bin/env bash
-# СДВИГ R13 — энергия на свайпах + реген + match-3 гейт + диалоги + отношения
+# СДВИГ R14 — вступление + лейаут карт + скролл текста + рубашка без «С» + разные исходы
 set -e
-echo ""; echo "══ app.js — механики из ТЗ п.3 ═════════════════════"
+
+echo ""; echo "══ 1/4  case001 — добавляем Уровень 1 «Знакомство» ══"
 python3 - << 'PYEOF'
-import sys
-path = "src/main/resources/static/app.js"
-with open(path, encoding="utf-8") as f:
-    txt = f.read()
-n = 0
+import json
+fp = "src/main/resources/static/scenarios/case001.json"
+with open(fp, encoding="utf-8") as f: d = json.load(f)
 
-# ════════════════════════════════════════════════════════
-# 1. ПРОФИЛЬ: поля энергии-времени + отношения со Сдвигом
-# ════════════════════════════════════════════════════════
-old_prof = ("  skills:{ insight:1, tech:1, charisma:1, nerve:1 },\n"
-            "  achievements:[], dailyStreak:0, lastDaily:null, sound:true")
-new_prof = ("  skills:{ insight:1, tech:1, charisma:1, nerve:1 },\n"
-            "  achievements:[], dailyStreak:0, lastDaily:null, sound:true,\n"
-            "  lastEnergyTs:0, rapport:0")
-if old_prof in txt:
-    txt = txt.replace(old_prof, new_prof, 1); n+=1; print("  + профиль: lastEnergyTs + rapport")
-
-# ════════════════════════════════════════════════════════
-# 2. РЕГЕН ЭНЕРГИИ: 1 кофе / 30 мин, максимум maxEnergy
-# ════════════════════════════════════════════════════════
-if "function regenEnergy" not in txt:
-    anchor = "function addEnergy(n){"
-    regen = (
-        "const ENERGY_MS=30*60*1000; /* 30 мин на 1 кофе */\n"
-        "function regenEnergy(){\n"
-        "  const p=App.profile; if(!p) return;\n"
-        "  if(!p.lastEnergyTs){ p.lastEnergyTs=Date.now(); return; }\n"
-        "  if(p.energy>=p.maxEnergy){ p.lastEnergyTs=Date.now(); return; }\n"
-        "  const elapsed=Date.now()-p.lastEnergyTs;\n"
-        "  const gained=Math.floor(elapsed/ENERGY_MS);\n"
-        "  if(gained>0){\n"
-        "    p.energy=clamp(p.energy+gained,0,p.maxEnergy);\n"
-        "    p.lastEnergyTs+=gained*ENERGY_MS;\n"
-        "    if(p.energy>=p.maxEnergy)p.lastEnergyTs=Date.now();\n"
-        "    renderHUD(); saveProfile();\n"
-        "  }\n"
-        "}\n"
-        "function energyMsLeft(){\n"
-        "  const p=App.profile; if(!p||p.energy>=p.maxEnergy) return 0;\n"
-        "  return ENERGY_MS-((Date.now()-(p.lastEnergyTs||Date.now()))%ENERGY_MS);\n"
-        "}\n"
-    )
-    txt = txt.replace(anchor, regen+anchor, 1); n+=1; print("  + регенерация энергии по времени")
-
-# запускаем тикер регена при входе в игру (enterMain → initCarousel рядом)
-old_init = "  try{ initCarousel(); }catch(e){ console.error('initCarousel',e); }"
-new_init = ("  try{ initCarousel(); }catch(e){ console.error('initCarousel',e); }\n"
-            "  try{ regenEnergy(); if(!App._energyTimer) App._energyTimer=setInterval(regenEnergy,60*1000); }catch(_){}")
-if old_init in txt and "_energyTimer" not in txt:
-    txt = txt.replace(old_init, new_init, 1); n+=1; print("  + тикер регена (раз в минуту)")
-
-# ════════════════════════════════════════════════════════
-# 3. СПИСАНИЕ ЭНЕРГИИ НА СВАЙПЕ + блок при нуле
-# ════════════════════════════════════════════════════════
-old_commit = ("  function commit(side){const ev=evc;if(!ev)return;\n"
-              "    const opt=ev.shift?(side===\"left\"?ev.a:ev.b):(side===\"left\"?ev.left:ev.right);\n"
-              "    const sp=Math.min(1,Math.abs(vx)/3800); SPIN_DUR=Math.round(660-sp*160);\n"
-              "    cAdvance(side,ev,opt);}")
-new_commit = ("  function commit(side){const ev=evc;if(!ev)return;\n"
-              "    const opt=ev.shift?(side===\"left\"?ev.a:ev.b):(side===\"left\"?ev.left:ev.right);\n"
-              "    /* энергия: 1 свайп = 1 кофе */\n"
-              "    const p=App.profile;\n"
-              "    if(p && p.energy<=0){ snap(); showNoEnergy(); return; }\n"
-              "    if(p){ p.energy=clamp(p.energy-1,0,p.maxEnergy); if(!p.lastEnergyTs)p.lastEnergyTs=Date.now(); renderHUD(); saveProfile(); }\n"
-              "    const sp=Math.min(1,Math.abs(vx)/3800); SPIN_DUR=Math.round(660-sp*160);\n"
-              "    cAdvance(side,ev,opt);}")
-if old_commit in txt:
-    txt = txt.replace(old_commit, new_commit, 1); n+=1; print("  + свайп тратит 1 энергию")
-
-# модалка «нет кофе»
-if "function showNoEnergy" not in txt:
-    anchor = "function unlockSwipe(){"
-    noe = (
-        "function showNoEnergy(){\n"
-        "  try{haptic('shift');}catch(_){}\n"
-        "  const mins=Math.ceil(energyMsLeft()/60000);\n"
-        "  if(window.toast) toast('Термос пуст','Сдвиг: «Без кофе ты проспишь улику». +1 \\u2615 через '+mins+' мин','\\u2615');\n"
-        "  const tab=document.getElementById('tab-cases');\n"
-        "  if(tab){ var b=document.createElement('div'); b.className='noenergy-flash'; tab.appendChild(b); setTimeout(function(){b.remove();},900); }\n"
-        "}\n"
-    )
-    txt = txt.replace(anchor, noe+anchor, 1); n+=1; print("  + модалка «нет кофе»")
-
-# ════════════════════════════════════════════════════════
-# 4. ДИАЛОГИ СДВИГА на карточке (поле ev.dialogue)
-# ════════════════════════════════════════════════════════
-# вставляем рендер реплики в cardHTML (не-shift ветка)
-old_text = ("    +'<div class=\"text\">'+fill(ev.text,CState.flags)+'</div>'\n"
-            "    +'<div class=\"spacer\"></div><div class=\"choices\">'")
-new_text = ("    +'<div class=\"text\">'+fill(ev.text,CState.flags)+'</div>'\n"
-            "    +(ev.dialogue?'<div class=\"dlg\">'+ev.dialogue.replace(/\\n/g,'<br>')+'</div>':'')\n"
-            "    +'<div class=\"spacer\"></div><div class=\"choices\">'")
-if old_text in txt:
-    txt = txt.replace(old_text, new_text, 1); n+=1; print("  + диалоги Сдвига на карточке")
-
-# ════════════════════════════════════════════════════════
-# 5. MATCH-3 ГЕЙТ НА КАЖДОМ УРОВНЕ (кроме linear)
-#    + поражение усложняет (минус энергия), победа = улика
-# ════════════════════════════════════════════════════════
-# 5a. карта получает mission из дела ИЛИ генерится по типу
-if "function missionFor" not in txt:
-    anchor = "function addLockOverlay(cardEl){"
-    mfn = (
-        "function missionFor(ev){\n"
-        "  if(ev && ev.mission) return ev.mission;\n"
-        "  /* генерация по типу события, если в сценарии не задано */\n"
-        "  const t=(ev&&ev.t)||'evidence';\n"
-        "  const M={\n"
-        "    crime:    {type:'score', target:700, moves:16, label:'Собери 700 очков — осмотри сцену'},\n"
-        "    evidence: {type:'clear', target:16, moves:18, label:'Очисти 16 ячеек — найди улику'},\n"
-        "    witness:  {type:'color', color:0, target:12, moves:16, label:'Собери 12 красных — разговори свидетеля'},\n"
-        "    suspect:  {type:'combo', target:3, moves:15, label:'Сделай 3 комбо — дожми подозреваемого'},\n"
-        "    revelation:{type:'score',target:900, moves:18, label:'Собери 900 очков — собери факты'},\n"
-        "    final:    {type:'score', target:1200,moves:20, label:'Собери 1200 очков — назови имя'}\n"
-        "  };\n"
-        "  return M[t]||M.evidence;\n"
-        "}\n"
-    )
-    txt = txt.replace(anchor, mfn+anchor, 1); n+=1; print("  + missionFor (гейт на каждой карте)")
-
-# 5b. openHintGame: брать mission через missionFor + поражение штрафует
-old_ohg = "  const mission = card.mission || pickMission();"
-new_ohg = "  const mission = missionFor(card);"
-if old_ohg in txt:
-    txt = txt.replace(old_ohg, new_ohg, 1); n+=1; print("  + openHintGame использует missionFor")
-
-old_lose = "      onLose:()=>{ /* остаётся закрытым */ }"
-new_lose = ("      onLose:()=>{ /* поражение усложняет путь: -1 кофе, репутация */\n"
-            "        try{ const p=App.profile; if(p){ p.energy=clamp(p.energy-1,0,p.maxEnergy); addRapport(-1); renderHUD(); saveProfile(); } }catch(_){}\n"
-            "        if(window.toast) toast('Улика ускользнула','Сдвиг недоволен. Попробуй снова.','\\ud83d\\udd0d');\n"
-            "      }")
-if old_lose in txt:
-    txt = txt.replace(old_lose, new_lose, 1); n+=1; print("  + поражение в match-3 штрафует")
-
-# ════════════════════════════════════════════════════════
-# 6. СИСТЕМА ОТНОШЕНИЙ со Сдвигом (rapport)
-#    растёт за «верные» (не-bad) выборы и победы, падает за поражения
-# ════════════════════════════════════════════════════════
-if "function addRapport" not in txt:
-    anchor = "function cApplyOption(o){"
-    rap = (
-        "function addRapport(n){\n"
-        "  const p=App.profile; if(!p) return;\n"
-        "  p.rapport=clamp((p.rapport||0)+n,-10,20); saveProfile();\n"
-        "}\n"
-        "function rapportTitle(){\n"
-        "  const r=(App.profile&&App.profile.rapport)||0;\n"
-        "  if(r>=12) return 'Напарник';\n"
-        "  if(r>=6)  return 'Доверие';\n"
-        "  if(r>=1)  return 'Интерес';\n"
-        "  if(r<=-3) return 'Раздражение';\n"
-        "  return 'Новичок';\n"
-        "}\n"
-    )
-    txt = txt.replace(anchor, rap+anchor, 1); n+=1; print("  + система отношений (rapport)")
-
-# выбор без bad повышает rapport; bad — понижает
-old_apply = ("function cApplyOption(o){\n"
-             "  if(o.set) Object.assign(CState.flags,o.set);\n"
-             "  if(o.evidence) cAddEvidence(o.evidence);\n"
-             "}")
-new_apply = ("function cApplyOption(o){\n"
-             "  if(o.set) Object.assign(CState.flags,o.set);\n"
-             "  if(o.evidence) cAddEvidence(o.evidence);\n"
-             "  try{ addRapport(o.bad?-1:1); }catch(_){}\n"
-             "}")
-if old_apply in txt:
-    txt = txt.replace(old_apply, new_apply, 1); n+=1; print("  + выборы влияют на отношения")
-
-# ════════════════════════════════════════════════════════
-# 7. отношения в концовке + бонус за высокий rapport
-# ════════════════════════════════════════════════════════
-old_meta = '  const meta=document.getElementById("e-meta");if(meta)meta.innerHTML="Сходимость: <b>"+r.align+" / 3</b> · улик: <b>"+CState.evidence.length+"</b>";'
-new_meta = '  const meta=document.getElementById("e-meta");if(meta)meta.innerHTML="Сходимость: <b>"+r.align+" / 3</b> · улик: <b>"+CState.evidence.length+"</b> · Сдвиг: <b>"+rapportTitle()+"</b>";'
-if old_meta in txt:
-    txt = txt.replace(old_meta, new_meta, 1); n+=1; print("  + отношения в концовке")
-
-with open(path, "w", encoding="utf-8") as f:
-    f.write(txt)
-print("✓ app.js сохранён  (применено патчей: %d)" % n)
+# Уже добавлено?
+if "L1_c1" in d.get("events",{}):
+    print("  · вступление уже есть"); 
+else:
+    # 8 линейных карт вступления (тап «Далее», без свайпа/энергии/match-3)
+    intro = {
+      "L1_c1":{"linear":True,"t":"intro","badge":"Октябрь 1987","title":"Дождь над кварталом",
+        "text":"Дождь смывал грязь с улиц, но не из людей. Дворники полицейского «Форда» размазывали воду по стеклу — туда, обратно, как маятник, который никуда не ведёт.",
+        "dialogue":"Рекрут: «Почти на месте, агент Сдвиг».","next":"L1_c2"},
+      "L1_c2":{"linear":True,"t":"intro","badge":"Напарник","title":"Щелчок диктофона",
+        "text":"Человек на пассажирском сиденье не шевелился. Он слушал кассету. Щелчок. Тишина. Щелчок. Будто разбирал чужую речь на детали.",
+        "dialogue":"Сдвиг: «Веришь в призраков, малыш? Городской департамент верит. Они боятся войти в музей».","next":"L1_c3"},
+      "L1_c3":{"linear":True,"t":"intro","badge":"Музей","title":"Готическая глыба",
+        "text":"Здание нависло над улицей. Каменные львы у входа казались мокрыми от крови — но это лишь отсветы мигалок ползли по их мордам.",
+        "dialogue":"Рекрут: «По рации сказали — тело висит в воздухе. Никаких тросов».","next":"L1_c4"},
+      "L1_c4":{"linear":True,"t":"intro","badge":"Метод","title":"Сухой смешок",
+        "text":"Сдвиг усмехнулся — звук как треск ломающейся ветки.",
+        "dialogue":"Сдвиг: «Левитация. Банально. Люди готовы поверить в магию, лишь бы не думать. Пошли».","next":"L1_c5"},
+      "L1_c5":{"linear":True,"t":"intro","badge":"Запах","title":"Гроза в помещении",
+        "text":"Под лентой — запах старой бумаги, нафталина и чего-то едкого. Озон. Воздух будто наэлектризован.",
+        "dialogue":"Сдвиг: «Чувствуешь? Пахнет грозой за закрытой дверью. Запомни этот запах».","next":"L1_c6"},
+      "L1_c6":{"linear":True,"t":"crime","badge":"Главный зал","title":"Тело под куполом",
+        "text":"Зал с колоннами. На высоте тридцати футов, раскинув руки, парил мёртвый директор музея. Под ним — только холодный мраморный пол.",
+        "dialogue":"Патрульный: «Клянусь, он просто висит! Горгульи… это проклятие семьи основателя!»","next":"L1_c7"},
+      "L1_c7":{"linear":True,"t":"intro","badge":"Дедукция","title":"Ботинки проклятия",
+        "text":"Сдвиг даже не поднял глаза вверх. Он присел над лужей у входа и тронул её пальцем в перчатке.",
+        "dialogue":"Сдвиг: «Проклятие, которое носит одиннадцатый размер и оставляет следы машинного масла. Чудесно».","next":"L1_c8"},
+      "L1_c8":{"linear":True,"t":"intro","badge":"Куантико","title":"Надевай перчатки",
+        "text":"Он поднял на меня взгляд — холоднее ноябрьского ливня. Первое настоящее дело начиналось здесь и сейчас.",
+        "dialogue":"Сдвиг: «Время показать, чему тебя учили. Надевай перчатки, рекрут».","next":"e0"}
+    }
+    # вставляем в начало, стартуем со вступления
+    d["events"] = {**intro, **d["events"]}
+    d["start"] = "L1_c1"
+    d["total"] = d.get("total",16) + 8
+    with open(fp, "w", encoding="utf-8") as f:
+        json.dump(d, f, ensure_ascii=False, indent=2)
+    print("  + 8 карт вступления добавлены, start=L1_c1")
 PYEOF
 
 
-echo ""; echo "══ card-design.css — стили диалога/энергии ═════════"
+echo ""; echo "══ 2/4  app.js — linear-режим + разные исходы ══════"
+python3 - << 'PYEOF'
+path = "src/main/resources/static/app.js"
+with open(path, encoding="utf-8") as f: txt = f.read()
+n = 0
+
+# ── 2a. cardHTML: ветка для linear-карт (тап «Далее», без выбора) ──
+old_fn_start = "function cardHTML(ev){\n  const scene="
+new_fn_start = ("function cardHTML(ev){\n"
+  "  const scene_=")
+# вставим linear-ветку сразу после объявления scene
+old_scene = "  const scene='<div class=\"scene\"><div class=\"grad\"></div><div class=\"art\" style=\"background-image:'+artBg(ev.t)+'\"></div></div>';\n  if(ev.shift){"
+new_scene = ("  const scene='<div class=\"scene\"><div class=\"grad\"></div><div class=\"art\" style=\"background-image:'+artBg(ev.t)+'\"></div></div>';\n"
+  "  if(ev.linear){\n"
+  "    return gframeHTML()+scene+'<div class=\"pad\">'\n"
+  "      +'<span class=\"badge\">'+ev.badge+'</span>'\n"
+  "      +'<div class=\"title\">'+ev.title+'</div>'\n"
+  "      +'<div class=\"text scrollable\">'+fill(ev.text,CState.flags)+'</div>'\n"
+  "      +(ev.dialogue?'<div class=\"dlg\">'+ev.dialogue.replace(/\\n/g,'<br>')+'</div>':'')\n"
+  "      +'<div class=\"spacer\"></div>'\n"
+  "      +'<button class=\"linear-next\">Далее \\u2192</button>'\n"
+  "      +'</div>';\n"
+  "  }\n"
+  "  if(ev.shift){")
+if old_scene in txt:
+    txt = txt.replace(old_scene, new_scene, 1); n+=1; print("  + linear-ветка в cardHTML")
+
+# ── 2b. текст карт делаем скроллируемым (.scrollable) ──
+old_text2 = "    +'<div class=\"text\">'+fill(ev.text,CState.flags)+'</div>'\n    +(ev.dialogue?"
+new_text2 = "    +'<div class=\"text scrollable\">'+fill(ev.text,CState.flags)+'</div>'\n    +(ev.dialogue?"
+if old_text2 in txt:
+    txt = txt.replace(old_text2, new_text2, 1); n+=1; print("  + текст карт скроллируемый")
+
+# ── 2c. setActive: для linear — кнопка «Далее», без замка/match-3 ──
+old_setactive = ("function setActive(el,ev){\n"
+  "  el.classList.add(\"active\"); el.classList.toggle(\"shift\",!!ev.shift);\n"
+  "  el.innerHTML='<div class=\"cfinner\">'+cardHTML(ev)+'</div>'; el._ev=ev; cActive=el;\n"
+  "  App.currentCard=ev; App.swipeUnlocked=false;\n"
+  "  addLockOverlay(el);\n"
+  "}")
+new_setactive = ("function setActive(el,ev){\n"
+  "  el.classList.add(\"active\"); el.classList.toggle(\"shift\",!!ev.shift);\n"
+  "  el.classList.toggle(\"linear\",!!ev.linear);\n"
+  "  el.innerHTML='<div class=\"cfinner\">'+cardHTML(ev)+'</div>'; el._ev=ev; cActive=el;\n"
+  "  App.currentCard=ev; App.swipeUnlocked=false;\n"
+  "  if(ev.linear){\n"
+  "    var btn=el.querySelector('.linear-next');\n"
+  "    if(btn) btn.addEventListener('click',function(){ try{Sound.tap();}catch(_){} linearAdvance(ev); });\n"
+  "    App.swipeUnlocked=false;\n"
+  "  } else {\n"
+  "    addLockOverlay(el);\n"
+  "  }\n"
+  "}")
+if old_setactive in txt:
+    txt = txt.replace(old_setactive, new_setactive, 1); n+=1; print("  + setActive: linear без match-3")
+
+# ── 2d. linearAdvance: переход по next без свайпа/энергии/огня ──
+if "function linearAdvance" not in txt:
+    anchor = "function cAdvance(dir,ev,opt){"
+    la = ("function linearAdvance(ev){\n"
+      "  if(cBusy) return; cBusy=true;\n"
+      "  var nextId=ev.next;\n"
+      "  var c0=cfCards[centerIndex];\n"
+      "  CState.step++; cSetProgress();\n"
+      "  // лёгкий поворот кольца вперёд, без огня\n"
+      "  centerIndex=(centerIndex+1+CN)%CN;\n"
+      "  var resolve=(nextId==='__resolve__'||!nextId);\n"
+      "  if(!resolve) setActive(cfCards[centerIndex],CASE.events[nextId]);\n"
+      "  cLayout(true);\n"
+      "  setTimeout(function(){\n"
+      "    if(resolve) showEnding(computeEnding(CState.flags));\n"
+      "    else if(c0!==cfCards[centerIndex]) setBack(c0);\n"
+      "    cBusy=false;\n"
+      "  }, Math.max(560,SPIN_DUR+40));\n"
+      "}\n")
+    txt = txt.replace(anchor, la+anchor, 1); n+=1; print("  + linearAdvance")
+
+with open(path, "w", encoding="utf-8") as f: f.write(txt)
+print("✓ app.js (часть 1): применено %d" % n)
+PYEOF
+
+
+echo ""; echo "══ 3/4  app.js — рубашка без «С» (только декор) ════"
+python3 - << 'PYEOF'
+path = "src/main/resources/static/app.js"
+with open(path, encoding="utf-8") as f: txt = f.read()
+
+# Убираем огромную «С» в центре рубашки — оставляем только рамку с филигранью
+old_back = 'function backHTML(){return gframeHTML()+\'<div class="cmono">С</div>\';}'
+new_back = 'function backHTML(){return gframeHTML()+\'<div class="cback-emblem"></div>\';}'
+if old_back in txt:
+    txt = txt.replace(old_back, new_back, 1)
+    print("  + «С» на рубашке заменена на тонкий эмблемный декор")
+else:
+    print("  · backHTML уже без «С»")
+
+with open(path, "w", encoding="utf-8") as f: f.write(txt)
+print("✓ app.js (часть 2)")
+PYEOF
+
+
+echo ""; echo "══ 4/4  card-design.css — лейаут, скролл, рубашка ══"
 python3 - << 'PYEOF'
 path = "src/main/resources/static/card-design.css"
-with open(path, encoding="utf-8") as f:
-    txt = f.read()
-if "/* R13 */" in txt:
+with open(path, encoding="utf-8") as f: txt = f.read()
+
+if "/* R14 */" in txt:
     print("  · уже применено")
 else:
     css = """
-/* ════ R13 — диалоги Сдвига, нехватка кофе ════ */
+/* ════════ R14 — финальный лейаут карт ════════ */
 
-/* реплика-диалог на карточке */
-.dlg{
-  margin-top:8px; padding:8px 11px; border-radius:10px;
-  font-size:12px; line-height:1.42; color:#e7c98a;
-  background:linear-gradient(120deg,rgba(200,134,10,.12),rgba(200,134,10,.03));
-  border-left:2.5px solid var(--acc,#c8860a);
-  font-style:italic;
+/* 1. КАРТЫ НЕ ВЫЛЕЗАЮТ ЗА ВЕРХ: уменьшаем высоту + центр кольца ниже */
+:root{
+  --card-h: min(46vh, 366px) !important;
+  --card-w: min(58%, 206px) !important;
 }
-.cfcard.active .text{ -webkit-line-clamp:3; }
+.ring-scene{ perspective-origin:50% 42% !important; }
+/* верхние боковые карты притушить, чтобы не лезли под HUD */
+.stage{ overflow:hidden !important; }
 
-/* вспышка «нет кофе» */
-.noenergy-flash{
-  position:absolute; inset:0; z-index:60; pointer-events:none;
-  background:radial-gradient(circle at 50% 50%,rgba(255,60,40,.16),transparent 60%);
-  animation:noenergyPulse .9s ease-out forwards;
+/* 2. РУБАШКА БЕЗ «С» — тонкий ромб-эмблема по центру */
+.cmono{ display:none !important; }
+.cback-emblem{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(45deg);
+  width:54px; height:54px; border:1.5px solid rgba(240,205,130,.22);
+  border-radius:8px; z-index:2;
 }
-@keyframes noenergyPulse{ 0%{opacity:0}20%{opacity:1}100%{opacity:0} }
+.cback-emblem::after{
+  content:''; position:absolute; inset:9px; border:1px solid rgba(240,205,130,.14); border-radius:5px;
+}
+
+/* 3. ТЕКСТ: правильное расположение + СКРОЛЛ если не влезает */
+.cfcard.active .cfinner .pad{
+  padding-top:46px !important;
+  padding-bottom:12px !important;
+  display:flex; flex-direction:column;
+}
+.cfcard.active .title{
+  font-size:17px !important; line-height:1.16 !important; margin:6px 0 8px !important;
+}
+.text.scrollable{
+  -webkit-line-clamp:unset !important; display:block !important;
+  overflow-y:auto !important; -webkit-overflow-scrolling:touch;
+  max-height:34vh; padding-right:4px;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 88%,transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 88%,transparent 100%);
+}
+.text.scrollable::-webkit-scrollbar{ width:3px; }
+.text.scrollable::-webkit-scrollbar-thumb{ background:rgba(200,134,10,.4); border-radius:3px; }
+/* во время свайпа активной карты — скролл не мешает жесту */
+.cfcard.active.grab .text.scrollable{ overflow:hidden !important; }
+
+/* 4. ДИАЛОГ компактнее, чтобы не выталкивал кнопку */
+.dlg{ margin-top:6px !important; font-size:11.5px !important; max-height:none; }
+
+/* 5. КНОПКА «ДАЛЕЕ» для линейных карт вступления */
+.linear-next{
+  width:100%; margin-top:8px; padding:13px 16px; border:none; border-radius:12px; cursor:pointer;
+  background:linear-gradient(180deg,#ffdf95,var(--acc,#c8860a)); color:#241701;
+  font-family:'Unbounded',sans-serif; font-weight:800; font-size:13px; letter-spacing:.04em;
+  box-shadow:0 8px 22px rgba(200,134,10,.32);
+}
+.linear-next:active{ filter:brightness(.92); }
+/* у линейных карт нет замка/выбора — pad выстроен под текст+кнопку */
+.cfcard.linear .pad{ justify-content:flex-start; }
+.cfcard.linear .scene .grad{
+  background:radial-gradient(95% 55% at 50% 0%,rgba(200,134,10,.1),transparent 62%),
+    linear-gradient(180deg,rgba(14,20,30,.2),rgba(5,8,13,.92)) !important;
+}
+
+/* 6. choices: исходы свайпа чуть крупнее и читаемее */
+.choice{ padding:9px 7px !important; }
+.choice .dir{ opacity:.85; }
 """
-    txt += "\n/* R13 */\n" + css
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(txt)
-    print("  + CSS диалога и вспышки добавлен")
-PYEOF
-
-
-echo ""; echo "══ index.html — подзаголовок дела в topbar ═════════"
-python3 - << 'PYEOF'
-path = "src/main/resources/static/index.html"
-with open(path, encoding="utf-8") as f:
-    txt = f.read()
-if 'id="case-sub"' in txt:
-    print("  · case-sub уже есть")
-else:
-    # добавляем подпись под case-name, если есть такой элемент
-    import re
-    if 'id="case-name"' in txt:
-        txt = re.sub(r'(<div class="case-name"[^>]*id="case-name"[^>]*>.*?</div>)',
-                     r'\1<div class="case-sub" id="case-sub"></div>', txt, count=1, flags=re.S)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(txt)
-        print("  + case-sub добавлен")
-    else:
-        print("  · case-name не найден (подзаголовок не критичен)")
+    txt += "\n/* R14 */\n" + css
+    with open(path, "w", encoding="utf-8") as f: f.write(txt)
+    print("  + R14 CSS добавлен")
 PYEOF
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R13 готов — механики ТЗ п.3"
-echo "   • энергия тратится на свайп (1 кофе) + реген 1/30мин"
-echo "   • match-3 гейт на каждом уровне (поражение штрафует)"
-echo "   • диалоги Сдвига на карточках"
-echo "   • система отношений (Новичок→Напарник)"
-echo "   git add -A && git commit -m 'R13: energy/match3-gate/dialogue/rapport' && git push"
+echo "✅  R14 готов"
+echo "   git add -A && git commit -m 'R14: intro chapter + card layout + scroll + clean back' && git push"
 echo "═══════════════════════════════════════════════════════"
 
-
-echo ""; echo "══ scenarios — реплики Сдвига в поле dialogue ═════"
+echo ""; echo "══ 5/5  scenarios — различаем «карты-связки» ════════"
 python3 - << 'PYEOF'
 import json, os
 SDIR = "src/main/resources/static/scenarios"
 
-# Явные реплики для ключевых карт (id → dialogue). Текст карты НЕ трогаем.
-DLG = {
+# Для переходных карт (left==right) даём осмысленно-разные ярлыки.
+# Текст исхода (evidence) остаётся, т.к. оба пути ведут к одной сюжетной точке —
+# но игрок видит РАЗНЫЕ формулировки выбора (стиль действия), а не дубль.
+RELABEL = {
   "case001.json": {
-    "e0": "Сдвиг: «Проклятие, которое носит одиннадцатый размер и оставляет следы масла. Чудесно».",
-    "eL2c4": "Сдвиг: «Физика, сержант. Пластина в пиджаке, магнит под куполом. Никаких горгулий».",
-    "eL3c4": "Миллер: «Голос — как из машины. Я должен был вырубить рубильник на пятнадцать минут. И всё!»",
-    "eL4c2": "Куратор: «Приветствую, Сдвиг. Нравится инсталляция? Я назвал её — Вознесение Скупца».",
-    "eAccuse": "Сдвиг: «Куратор не убивает. Он открывает выставку. Едем»."
+    "e0":     ("Войти молча", "Войти за Сдвигом"),
+    "eL2c3":  ("Резать аккуратно", "Резать решительно"),
+    "eL2c4":  ("Осмотреть тело", "Звать патрульного"),
+    "eL3c3":  ("Дожать молчанием", "Дожать вопросом"),
+    "eL3c4":  ("Записать показания", "Поверить старику"),
+    "eL4c3":  ("Слушать наушником", "Вывести на динамик"),
+    "eAccuse":("Назвать имя вслух", "Записать в протокол")
   },
   "case002.json": {
-    "e0": "Сдвиг: «ЖАДНОСТЬ выдавлена заранее. Это не убийство в гневе. Это подпись».",
-    "eL3c1": "Сдвиг: «Дорогое пальто для человека с долгами на двести тысяч. Любопытно».",
-    "eL4c2": "Куратор: «Сдвиг, ты слышишь мой ритм? Следующая выставка откроется у воды».",
-    "eAccuse": "Сдвиг: «Вторая глава дописана. Доки ждут третью»."
+    "e0":     ("Войти в цех", "Осмотреть с порога"),
+    "eL2c4":  ("Подойти к Хейсу", "Наблюдать за Хейсом"),
+    "eL3c4":  ("Изъять факс", "Сфотографировать факс"),
+    "eAccuse":("Брать Хейса", "Оформить протокол")
   },
   "case003.json": {
-    "e0": "Сдвиг: «Утопленник без воды в лёгких. В этой воде нет воды, рекрут».",
-    "eL2c2": "Сдвиг: «Горький миндаль. Цианид. Кто-то угостил капитана кофе с сюрпризом».",
-    "eL4c1": "Куратор: «Третья выставка. Доки. Тщеславие красивее смотрится в тумане».",
-    "eAccuse": "Сдвиг: «Сеть сменит порт, но не исчезнет. А Куратор зовёт меня в лес»."
+    "e0":     ("К телу через причал", "К телу по воде"),
+    "eL2c4":  ("Подойти к Конрою", "Наблюдать за Конроем"),
+    "eL3c4":  ("Вскрыть ящик", "Проверить замок"),
+    "eAccuse":("В лес немедленно", "Доложить и в лес")
   },
   "case004.json": {
-    "e0": "Сдвиг: «Он знает, что я приду. Этот лес — не поиск мальчика. Это приглашение».",
-    "eL3c2": "Сдвиг: «Уходи. Он хочет меня, не тебя». — и идёт вперёд один.",
-    "eL4c1": "Дэнни: «Человек в плаще дал конфету и сказал передать записки тому, кто придёт первым».",
-    "eAccuse": "Сдвиг: «Перстень с буквой А. Теперь у меня есть его инициал»."
+    "e0":     ("Идти по следам", "Идти за Сдвигом"),
+    "eL2c3":  ("Войти первым", "Прикрыть Сдвига"),
+    "eL3c3":  ("Спуститься тихо", "Спуститься быстро"),
+    "eAccuse":("К особняку сразу", "К особняку с уликой")
   },
   "case005.json": {
-    "e0": "Голос: «Добро пожаловать на финальную выставку. Экспонаты — вы».",
-    "eL2c4": "Сдвиг: «Его отца мы закрыли в 83-м. Дело сфабриковано. Я знал — и молчал».",
-    "eL3c4": "Куратор: «Я не убивал невиновных. Только тех, кто уничтожал их. Счёт закрыт. Пока».",
-    "eL4c2": "Сдвиг: «Ты выбрал людей. Значит, ты не я». — и протягивает значок.",
-    "eAccuse": "Сдвиг: «Куратор никогда не было имя. Это идея. А идеи не арестуют»."
+    "eL2c4":  ("Слушать Сдвига", "Изучать досье"),
+    "eL3c4":  ("Идти в тоннель", "Осмотреть подвал"),
+    "eAccuse":("Закрыть дело", "Оставить открытым")
   }
 }
 
 total = 0
-for fn, mapping in DLG.items():
+for fn, mapping in RELABEL.items():
     fp = os.path.join(SDIR, fn)
-    if not os.path.exists(fp): 
-        print(f"  · {fn} нет"); continue
+    if not os.path.exists(fp): continue
     with open(fp, encoding="utf-8") as f: d = json.load(f)
     c = 0
-    for eid, line in mapping.items():
+    for eid, (ll, rl) in mapping.items():
         ev = d.get("events",{}).get(eid)
-        if ev and not ev.get("dialogue"):
-            ev["dialogue"] = line; c += 1
+        if not ev: continue
+        if ev.get("left") and ev.get("right"):
+            # меняем ярлык только если они совпадали
+            if ev["left"].get("label")==ev["right"].get("label"):
+                ev["left"]["label"]=ll; ev["right"]["label"]=rl; c+=1
     if c:
         with open(fp, "w", encoding="utf-8") as f:
             json.dump(d, f, ensure_ascii=False, indent=2)
-    print(f"  + {fn}: реплик добавлено — {c}")
+    print(f"  + {fn}: различено связок — {c}")
     total += c
-print(f"✓ диалогов проставлено: {total}")
+print(f"✓ переходных карт различено: {total}")
 PYEOF
