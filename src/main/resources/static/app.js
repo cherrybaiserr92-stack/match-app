@@ -739,7 +739,7 @@ function showEnding(r){
   const txt=document.getElementById("e-text");if(txt)txt.textContent=r.text;
   const meta=document.getElementById("e-meta");if(meta)meta.innerHTML="Сходимость: <b>"+r.align+" / 3</b> · улик: <b>"+CState.evidence.length+"</b> · Сдвиг: <b>"+rapportTitle()+"</b>";
   if(_progEl)_progEl.style.width="100%";
-  haptic(r.kind==="fail"?"shift":"burn"); endEl.classList.add("show"); try{hideChar();}catch(_){}
+  haptic(r.kind==="fail"?"shift":"burn"); endEl.classList.add("show"); try{hideChar();}catch(_){} try{hideChar();}catch(_){}
   const _rb=document.getElementById("e-restart");
   if(_rb){
     const _hn=CAMPAIGN&&(_caseIdx+1)<CAMPAIGN.cases.length;
@@ -925,7 +925,7 @@ function initCarousel(){
   if(_evCountEl)_evCountEl.textContent="0";
   var _cn=document.getElementById("case-name");if(_cn)_cn.textContent=CASE.name||"";
   var _cs=document.getElementById("case-sub");if(_cs)_cs.textContent=(CAMPAIGN&&CAMPAIGN.cases[_caseIdx])?CAMPAIGN.cases[_caseIdx].title:"";
-  cSetProgress(); buildBacks(); initEvPanel(); try{updateCaseBg();hideChar();}catch(_){}
+  cSetProgress(); buildBacks(); initEvPanel(); try{updateCaseBg();hideChar();}catch(_){} try{updateCaseBg();hideChar();}catch(_){}
 }
 
 /* ═══════════════════════════════════════════════
