@@ -545,8 +545,22 @@ function addLockOverlay(cardEl){
   if(pad.querySelector('.card-lock')) return;
   const _ch=pad.querySelector('.choices'); if(_ch) _ch.style.display='none';
   const lock=document.createElement('div'); lock.className='card-lock';
+  const _rp=(window.App&&App.profile&&App.profile.rapport)||0;
+  const _rt=(window.App&&App.profile)?rapportTitle():'Новичок';
+  const _ev=App.currentCard||{};
+  const _hints={
+    crime:"Ищи то, чего быть не должно.",
+    evidence:"Одна улика всегда важнее остальных.",
+    witness:"Люди врут, но тело не умеет.",
+    suspect:"Виновный всегда спокойнее, чем должен быть.",
+    shift:"Обе версии верны — выбери ту, где меньше случайностей.",
+    final:"Ты уже знаешь. Просто доверься себе.",
+    revelation:"Детали складываются в одно."
+  };
+  const _hint=_rp>=6?(_hints[_ev.t]||""):""; 
   lock.innerHTML='<button class="card-lock-btn" id="play-gems-ring">'
     +'<span class="clb-ico">🔍</span><span>Найти улики</span></button>'
+    +(_hint?'<div class="card-rapport-hint"><span class="crh-name">Сдвиг</span> '+_hint+'</div>':'')
     +'<div class="card-lock-hint">⟵ свайп заблокирован ⟶</div>';
   pad.appendChild(lock);
   lock.querySelector('#play-gems-ring').addEventListener('click',function(){
@@ -731,7 +745,14 @@ function showEnding(r){
     const _hn=CAMPAIGN&&(_caseIdx+1)<CAMPAIGN.cases.length;
     _rb.textContent=_hn?"Следующее дело →":"Играть заново";
   }
-  if(r.kind==="win"){try{addXP(150);addCredits(100);vibrate([20,40,80]);}catch(_){}}
+  if(r.kind==="win"){
+    try{addXP(150);addCredits(100);vibrate([20,40,80]);}catch(_){}
+    try{ advanceMap(); App.profile.casesSolved=(App.profile.casesSolved||0)+1;
+      const st=r.align>=3?3:r.align>=2?2:1;
+      if(!App.profile.mapStars)App.profile.mapStars={};
+      App.profile.mapStars[_caseIdx]=Math.max(st,App.profile.mapStars[_caseIdx]||0);
+    }catch(_){}
+  }
   else if(r.kind==="partial"){try{addXP(60);addCredits(40);}catch(_){}}
   else{try{addXP(20);addCredits(10);}catch(_){}}
   try{saveProfile();clearCaseState();}catch(_){}

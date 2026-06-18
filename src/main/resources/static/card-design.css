@@ -746,3 +746,49 @@
 /* футер компактнее, чтобы поле было больше */
 .hint-modal .hm-footer{ padding:8px 18px calc(8px + var(--safeb)) !important; }
 .hint-modal .hm-header{ padding:12px 18px !important; }
+
+/* R23 */
+
+/* ════ R23 — дырокол-табель + rapport-подсказки ════ */
+
+/* ── дырокол-табель ── */
+.daily-punch-label{
+  font-family:'Unbounded',sans-serif; font-size:10px; letter-spacing:.22em; text-transform:uppercase;
+  color:var(--acc,#c8860a); margin-bottom:6px;
+}
+.dpl-orn{ opacity:.6; }
+.daily-card .daily-h{ font-family:'Unbounded',sans-serif; font-weight:900; font-size:22px; margin:4px 0 2px; }
+.daily-card .daily-streak{ font-size:12px; color:var(--ink3); margin-bottom:14px; }
+.daily-week{ display:flex; gap:6px; justify-content:center; flex-wrap:nowrap; }
+.dday{
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:7px 4px; border-radius:10px; min-width:36px;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
+  transition:transform .2s;
+}
+.dday.done{ background:rgba(200,134,10,.14); border-color:rgba(200,134,10,.4); }
+.dday.cur{
+  background:rgba(200,134,10,.26); border-color:var(--acc,#c8860a);
+  transform:scale(1.1); box-shadow:0 0 14px rgba(200,134,10,.35);
+  animation:dayPulse 1.6s ease-in-out infinite;
+}
+@keyframes dayPulse{ 0%,100%{box-shadow:0 0 14px rgba(200,134,10,.3)} 50%{box-shadow:0 0 22px rgba(200,134,10,.6)} }
+.dd-ico{ font-size:14px; line-height:1; color:var(--acc-2,#ffcf6b); }
+.dday:not(.done) .dd-ico{ color:rgba(255,255,255,.22); }
+.dd-n{ font-size:9px; color:var(--ink3); font-weight:700; }
+.dd-reward{ font-size:8px; color:var(--acc,#c8860a); line-height:1.3; text-align:center; }
+.dday:not(.done) .dd-reward{ opacity:.4; }
+.daily-chips{ margin:14px 0 10px; display:flex; gap:8px; justify-content:center; align-items:center; }
+.dc-chip{ padding:6px 14px; border-radius:10px; font-weight:800; font-size:14px;
+  background:rgba(200,134,10,.18); border:1px solid rgba(200,134,10,.4); color:var(--acc-2,#ffcf6b); }
+.bucks-chip{ background:rgba(92,208,255,.14); border-color:rgba(92,208,255,.35); color:#9fe0ff; }
+
+/* ── rapport-подсказка Сдвига на замке карты ── */
+.card-rapport-hint{
+  padding:9px 12px; border-radius:10px; font-size:11.5px; line-height:1.42;
+  color:#c8c0b0; background:rgba(255,255,255,.03); border:1px solid rgba(200,134,10,.25);
+  border-left:3px solid rgba(200,134,10,.7); margin-bottom:6px; text-align:left;
+  font-style:italic;
+}
+.crh-name{ font-family:'Unbounded',sans-serif; font-size:9.5px; font-weight:700; font-style:normal;
+  color:var(--acc,#c8860a); letter-spacing:.06em; display:block; margin-bottom:3px; }
