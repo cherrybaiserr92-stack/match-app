@@ -509,9 +509,9 @@
 /* Все дочерние кнопки кликабельны */
 #tab-cases > .tools-bar > *{ pointer-events:auto; }
 
-/* 3. Отступ под нижнее меню (tab-cases учитывает nav) */
+/* 3. R10.2: padding-bottom убран — tab-area.margin-bottom уже даёт отступ под nav */
 #tab-cases{
-  padding-bottom:calc(var(--navh) + var(--safeb)) !important;
+  padding-bottom:max(2px,env(safe-area-inset-bottom)) !important;
 }
 
 /* 4. Карточка: badge отступает от filigree */
