@@ -458,7 +458,7 @@ function cPosFor(phi){
 }
 function cPhiOf(e){return cNorm((e-centerIndex)*CSTEPD);}
 function gframeHTML(){return '<div class="gframe"><i class="fil tl"></i><i class="fil tr"></i><i class="fil bl"></i><i class="fil br"></i></div>';}
-function backHTML(){return gframeHTML()+'<span class="crank t">С</span><span class="crank b">С</span><div class="cmono">С</div>';}
+function backHTML(){return gframeHTML()+'<div class="cmono">С</div>';}
 function cardHTML(ev){
   const scene='<div class="scene"><div class="grad"></div><div class="art" style="background-image:'+artBg(ev.t)+'"></div></div>';
   if(ev.shift){
@@ -512,6 +512,7 @@ function buildBacks(){
 function addLockOverlay(cardEl){
   const pad=cardEl.querySelector('.pad'); if(!pad) return;
   if(pad.querySelector('.card-lock')) return;
+  const _ch=pad.querySelector('.choices'); if(_ch) _ch.style.display='none';
   const lock=document.createElement('div'); lock.className='card-lock';
   lock.innerHTML='<button class="card-lock-btn" id="play-gems-ring">'
     +'<span class="clb-ico">🔍</span><span>Найти улики</span></button>'
@@ -521,9 +522,16 @@ function addLockOverlay(cardEl){
     try{Sound.tap();}catch(_){} openHintGame(App.currentCard||{});
   });
 }
+function unlockSwipe(){
+  App.swipeUnlocked=true;
+  vibrate(20); try{Sound.booster();}catch(_){}
+  try{removeLockOverlay();}catch(_){}
+}
 function removeLockOverlay(){
   const lock=document.querySelector('.cfcard.active .card-lock');
-  if(lock) lock.remove();
+  if(!lock) return;
+  const _p=lock.closest('.pad'); lock.remove();
+  if(_p){const _c=_p.querySelector('.choices');if(_c) _c.style.display='';}
 }
 
 /* ── огонь (общий движок) ── */

@@ -479,3 +479,83 @@
 /* ── логотип на сплэше и логине ── */
 .sdvig-logo{ width:min(78%,340px); filter:drop-shadow(0 18px 40px rgba(0,0,0,.65)) drop-shadow(0 0 30px rgba(204,140,30,.26)); }
 .login-logo{ width:min(68%,240px); margin-bottom:8px; filter:drop-shadow(0 12px 30px rgba(0,0,0,.6)) drop-shadow(0 0 20px rgba(204,140,30,.22)); }
+
+/* ════ R10.1 FIX ════════════════════════════════════════ */
+
+/* 1. Карточки полупрозрачнее */
+.cfinner{
+  background:
+    radial-gradient(130% 75% at 50% -6%, rgba(74,56,30,.18), transparent 58%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,.01) 0 2px, transparent 2px 5px),
+    linear-gradient(158deg,rgba(34,29,22,.70) 0%,rgba(11,9,7,.78) 72%) !important;
+  box-shadow:
+    0 0 0 2.5px rgba(169,121,15,.65),
+    0 0 0 3.5px rgba(0,0,0,.4),
+    0 16px 40px rgba(0,0,0,.52),
+    0 0 20px rgba(180,120,20,.1),
+    inset 0 0 60px rgba(0,0,0,.48) !important;
+}
+
+/* 2. tools-bar в flex-потоке (не перекрывает карточки) */
+#tab-cases > .tools-bar{
+  position:relative !important;
+  bottom:auto !important; left:auto !important; right:auto !important;
+  flex:0 0 auto;
+  padding:6px 14px max(8px,env(safe-area-inset-bottom));
+  background:linear-gradient(0deg,rgba(6,8,12,.88) 0%,rgba(6,8,12,.0) 100%);
+  margin-bottom:0;
+  pointer-events:auto;
+}
+/* Все дочерние кнопки кликабельны */
+#tab-cases > .tools-bar > *{ pointer-events:auto; }
+
+/* 3. Отступ под нижнее меню (tab-cases учитывает nav) */
+#tab-cases{
+  padding-bottom:calc(var(--navh) + var(--safeb)) !important;
+}
+
+/* 4. Карточка: badge отступает от filigree */
+.cfcard.active .cfinner .pad{
+  padding-top:50px;
+  padding-bottom:10px;
+}
+.cfcard.active .pad > .badge{
+  margin-top:0;
+}
+
+/* 5. Текст: не более 4 строк, иначе выходит за край */
+.cfcard.active .text{
+  -webkit-line-clamp:4;
+  font-size:13px;
+  line-height:1.45;
+}
+
+/* 6. card-lock: поверх всего, не перекрывает badge */
+.card-lock{
+  position:absolute !important;
+  bottom:0 !important; left:0 !important; right:0 !important;
+  top:auto !important;
+  z-index:20 !important;
+  background:linear-gradient(
+    0deg,
+    rgba(5,8,13,.98) 0%,
+    rgba(5,8,13,.92) 52%,
+    rgba(5,8,13,.0) 100%
+  ) !important;
+  padding:36px 15px 16px !important;
+  border-radius:0 0 13px 13px !important;
+}
+
+/* 7. Shift-карты: vstack компактнее */
+.vstack{ gap:5px; margin-top:4px; }
+.vpanel .vlabel{ font-size:14px; margin-bottom:3px; }
+.vpanel .vtext{ font-size:11.5px; }
+.shift-intro{ font-size:12px; margin:2px 0 4px; }
+
+/* 8. choices компактнее */
+.choices{ margin-top:8px; gap:6px; }
+.choice{ padding:9px 7px; font-size:11.5px; }
+.choice .dir{ font-size:9px; margin-bottom:2px; }
+
+/* 9. title чуть меньше на маленьких картах */
+.cfcard.active .title{ font-size:18px; margin:8px 0 7px; }
