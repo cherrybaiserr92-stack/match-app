@@ -1,214 +1,241 @@
 #!/usr/bin/env bash
-# СДВИГ R23 — дырокол-табель + карта↔дела + rapport-подсказки
+# СДВИГ R24 — выезжающие персонажи + смена фонов
+# ════════════════════════════════════════════════
+# ПЕРЕД ЗАПУСКОМ: скопируй папку img/ в репозиторий:
+#   cp -r /sdcard/Download/img src/main/resources/static/
+# ════════════════════════════════════════════════
 set -e
-echo ""; echo "══ app.js — три улучшения ═══════════════════════════"
+
+echo ""; echo "══ 1/4  Создаём папки для арта ══════════════════════"
+mkdir -p src/main/resources/static/img/chars
+mkdir -p src/main/resources/static/img/bg
+echo "  ✓ img/chars/ img/bg/ готовы"
+echo "  ! Убедись что скопировал файлы из /sdcard/Download/img/ сюда"
+ls src/main/resources/static/img/chars/*.png 2>/dev/null | wc -l | xargs -I{} echo "  Персонажей найдено: {}"
+ls src/main/resources/static/img/bg/*.png 2>/dev/null | wc -l | xargs -I{} echo "  Фонов найдено: {}"
+
+
+echo ""; echo "══ 2/4  app.js — система персонажей + фонов ══════════"
 python3 - << 'PYEOF'
 path = "src/main/resources/static/app.js"
 with open(path, encoding="utf-8") as f: txt = f.read()
 n = 0
 
-# ══════════════════════════════════════════════════════
-# 1. ДЫРОКОЛ-ТАБЕЛЬ: перерисовка showDaily
-# ══════════════════════════════════════════════════════
-DAILY_REWARDS = [
-    {"credits": 30,  "bucks": 0},
-    {"credits": 40,  "bucks": 0},
-    {"credits": 50,  "bucks": 50},
-    {"credits": 60,  "bucks": 0},
-    {"credits": 70,  "bucks": 0},
-    {"credits": 80,  "bucks": 100},
-    {"credits": 120, "bucks": 200},
-]
-
-old_daily = r"""function showDaily(streak,reward){
-  const bg=$('#daily-modal'); if(!bg) return;
-  const today=new Date().toDateString();
-  const days=Array.from({length:7},(_,i)=>{
-    const done=i<streak; const cur=i===streak-1;
-    return `<div class="dday ${done?'done':''} ${cur?'cur':''}">`+
-      `<div class="dd-num">${i+1}</div>`+
-      `<div class="dd-ico">${done?(cur?'★':'✓'):'○'}</div>`+
-      `</div>`;
-  }).join('');
-  bg.innerHTML=`<div class="daily-card">
-    <div class="daily-icon">🎁</div>
-    <div class="daily-h">Ежедневный бонус</div>
-    <div class="daily-streak">Серия входов: ${streak} ${streak>=7?'🔥':''}</div>
-    <div class="daily-week">${days}</div>
-    <div class="daily-chips"><span class="dc-chip">+${reward} ◈</span></div>
-    <button class="btn btn-bronze" id="daily-ok" style="max-width:220px">Забрать</button>
-  </div>`;
-  bg.classList.remove('hidden'); Sound.daily();
-  bg.querySelector('#daily-ok').onclick=()=>{ Sound.coin(); vibrate(10); bg.classList.add('hidden'); };
-}"""
-
-new_daily = r"""function showDaily(streak,reward){
-  const bg=$('#daily-modal'); if(!bg) return;
-  const DAYS=[
-    {credits:30, bucks:0},{credits:40,bucks:0},{credits:50,bucks:50},
-    {credits:60,bucks:0},{credits:70,bucks:0},{credits:80,bucks:100},
-    {credits:120,bucks:200}
-  ];
-  const s=Math.max(1,Math.min(streak,7));
-  const today=DAYS[s-1];
-  function dayHtml(i){
-    const done=i<s, cur=i===s-1;
-    const d=DAYS[i];
-    return '<div class="dday'+(done?' done':'')+(cur?' cur':'')+'">'
-      +'<div class="dd-ico">'+(done?(cur?'★':'✓'):'○')+'</div>'
-      +'<div class="dd-n">'+(i+1)+'</div>'
-      +'<div class="dd-reward">+'+d.credits+'◈'+(d.bucks?'<br><span style="color:#9fe0ff">+'+d.bucks+'💵</span>':'')+'</div>'
-      +'</div>';
+# ── CHARS map + showChar/hideChar/updateCaseBg ──────
+if "const CHARS=" not in txt:
+    anchor = "function initCarousel(){"
+    code = r"""
+/* ═══ ПЕРСОНАЖИ-СПРАЙТЫ (R24) ═══ */
+const CHARS={
+  shift:  {src:'/img/chars/char-shift.png',   side:'left'},
+  recruit:{src:'/img/chars/char-recruit.png', side:'left'},
+  kurator:{src:'/img/chars/char-kurator.png', side:'right'},
+  arundel:{src:'/img/chars/char-arundel.png', side:'right'},
+  miller: {src:'/img/chars/char-miller.png',  side:'right'},
+  hayes:  {src:'/img/chars/char-hayes.png',   side:'right'},
+  romero: {src:'/img/chars/char-romero.png',  side:'right'},
+  conroy: {src:'/img/chars/char-conroy.png',  side:'right'},
+  jiang:  {src:'/img/chars/char-jiang.png',   side:'right'},
+  purcell:{src:'/img/chars/char-purcell.png', side:'right'},
+  danny:  {src:'/img/chars/char-danny.png',   side:'right'},
+  guests: {src:'/img/chars/char-guests.png',  side:'right'}
+};
+const CASE_BGS={
+  'case001':'/img/bg/bg-ch1-hall.png'
+  /* остальные фоны добавить, когда арт будет готов */
+};
+let _charEl=null,_charId=null;
+function showChar(id){
+  if(!id||!CHARS[id]){hideChar();return;}
+  const def=CHARS[id];
+  if(!_charEl){
+    _charEl=document.createElement('img');
+    _charEl.className='char-sprite';
+    (document.getElementById('main-screen')||document.body).appendChild(_charEl);
   }
-  const daysHtml=Array.from({length:7},(_,i)=>dayHtml(i)).join('');
-  const bigReward='<span class="dc-chip">+'+today.credits+' ◈</span>'
-    +(today.bucks?'&nbsp;<span class="dc-chip bucks-chip">+'+today.bucks+' 💵</span>':'');
-  bg.innerHTML='<div class="daily-card">'
-    +'<div class="daily-punch-label"><span class="dpl-orn">✦</span> ТАБЕЛЬ ДЕЖУРСТВ <span class="dpl-orn">✦</span></div>'
-    +'<div class="daily-h">'+( s>=7?'НЕДЕЛЯ ПРОЙДЕНА 🔥':'ДЕНЬ '+ s+'</div>'
-    +'<div class="daily-streak">Серия входов: <b>'+ s+'</b> из 7</div>'
-    +'<div class="daily-week">'+ daysHtml+'</div>'
-    +'<div class="daily-chips">Сегодня: '+ bigReward+'</div>'
-    +'<button class="btn btn-bronze" id="daily-ok">Получить</button>'
-    +'</div>';
-  bg.classList.remove('hidden'); Sound.daily();
-  bg.querySelector('#daily-ok').onclick=()=>{
-    Sound.coin(); vibrate(10);
-    addCredits(today.credits);
-    if(today.bucks) addBucks(today.bucks);
-    bg.classList.add('hidden');
-  };
-}"""
-
-if old_daily in txt:
-    txt = txt.replace(old_daily, new_daily, 1); n+=1; print("  + дырокол-табель переписан")
-else:
-    print("  · showDaily не найден или уже обновлён")
-
-# ══════════════════════════════════════════════════════
-# 2. КАРТА ↔ ДЕЛА: при победе двигаем mapNode + stars
-# ══════════════════════════════════════════════════════
-old_win_end = ('  if(r.kind===\"win\"){try{addXP(150);addCredits(100);vibrate([20,40,80]);}catch(_){}}\n'
-               '  else if(r.kind===\"partial\"){try{addXP(60);addCredits(40);}catch(_){}}\n'
-               '  else{try{addXP(20);addCredits(10);}catch(_){}}')
-new_win_end = ('  if(r.kind===\"win\"){\n'
-               '    try{addXP(150);addCredits(100);vibrate([20,40,80]);}catch(_){}\n'
-               '    try{ advanceMap(); App.profile.casesSolved=(App.profile.casesSolved||0)+1;\n'
-               '      const st=r.align>=3?3:r.align>=2?2:1;\n'
-               '      if(!App.profile.mapStars)App.profile.mapStars={};\n'
-               '      App.profile.mapStars[_caseIdx]=Math.max(st,App.profile.mapStars[_caseIdx]||0);\n'
-               '    }catch(_){}\n'
-               '  }\n'
-               '  else if(r.kind===\"partial\"){try{addXP(60);addCredits(40);}catch(_){}}\n'
-               '  else{try{addXP(20);addCredits(10);}catch(_){}}')
-if old_win_end in txt:
-    txt = txt.replace(old_win_end, new_win_end, 1); n+=1; print("  + карта: победа двигает mapNode + записывает звёзды")
-
-# ══════════════════════════════════════════════════════
-# 3. RAPPORT → ПОДСКАЗКИ СДВИГА на замке карты
-# ══════════════════════════════════════════════════════
-RAPPORT_HINTS = {
-    'crime':    'Ищи то, чего быть не должно.',
-    'evidence': 'Одна улика всегда важнее остальных.',
-    'witness':  'Люди врут, но тело не умеет.',
-    'suspect':  'Виновный всегда спокойнее, чем должен быть.',
-    'shift':    'Обе версии верны — выбери ту, где меньше случайностей.',
-    'final':    'Ты уже знаешь. Просто доверься себе.',
-    'revelation':'Детали складываются в одно.',
+  if(_charId!==id){
+    _charEl.style.transition='none';
+    _charEl.classList.remove('show');
+    _charEl.className='char-sprite '+def.side;
+    _charEl.src=def.src; _charId=id;
+    /* double rAF гарантирует что CSS transition подхватит */
+    requestAnimationFrame(function(){requestAnimationFrame(function(){
+      _charEl.style.transition='';_charEl.classList.add('show');
+    });});
+  } else { _charEl.classList.add('show'); }
 }
+function hideChar(){
+  if(!_charEl)return; _charEl.classList.remove('show'); _charId=null;
+}
+function updateCaseBg(){
+  try{
+    const cid=CAMPAIGN&&CAMPAIGN.cases[_caseIdx]?CAMPAIGN.cases[_caseIdx].id:'';
+    const bg=CASE_BGS[cid]||null;
+    const st=document.getElementById('stage'); if(!st)return;
+    if(bg){ st.style.backgroundImage="url('"+bg+"')"; st.style.backgroundSize='cover'; st.style.backgroundPosition='center top'; }
+    else { st.style.backgroundImage=''; }
+  }catch(_){}
+}
+"""
+    txt = txt.replace(anchor, code+anchor, 1); n+=1; print("  + CHARS + showChar/hideChar/updateCaseBg")
 
-old_lock_overlay = (
-    '  lock.innerHTML=\'<button class="card-lock-btn" id="play-gems-ring">\'\n'
-    '    +\'<span class="clb-ico">🔍</span><span>Найти улики</span></button>\'\n'
-    '    +\'<div class="card-lock-hint">⟵ свайп заблокирован ⟶</div>\';'
-)
-new_lock_overlay = (
-    '  const _rp=(window.App&&App.profile&&App.profile.rapport)||0;\n'
-    '  const _rt=(window.App&&App.profile)?rapportTitle():\'Новичок\';\n'
-    '  const _ev=App.currentCard||{};\n'
-    '  const _hints={\n'
-    '    crime:"Ищи то, чего быть не должно.",\n'
-    '    evidence:"Одна улика всегда важнее остальных.",\n'
-    '    witness:"Люди врут, но тело не умеет.",\n'
-    '    suspect:"Виновный всегда спокойнее, чем должен быть.",\n'
-    '    shift:"Обе версии верны — выбери ту, где меньше случайностей.",\n'
-    '    final:"Ты уже знаешь. Просто доверься себе.",\n'
-    '    revelation:"Детали складываются в одно."\n'
-    '  };\n'
-    '  const _hint=_rp>=6?(_hints[_ev.t]||""):""; \n'
-    '  lock.innerHTML=\'<button class="card-lock-btn" id="play-gems-ring">\'\n'
-    '    +\'<span class="clb-ico">🔍</span><span>Найти улики</span></button>\'\n'
-    '    +(_hint?\'<div class="card-rapport-hint"><span class="crh-name">Сдвиг</span> \'+_hint+\'</div>\':\'\')\n'
-    '    +\'<div class="card-lock-hint">⟵ свайп заблокирован ⟶</div>\';'
-)
-if old_lock_overlay in txt:
-    txt = txt.replace(old_lock_overlay, new_lock_overlay, 1); n+=1; print("  + rapport-подсказки Сдвига на замке карты")
+# ── setActive: вызываем showChar при каждой новой карте ──
+old_setactive_end = ("  App.currentCard=ev; App.swipeUnlocked=false;\n"
+                     "  if(ev.linear){\n"
+                     "    var btn=el.querySelector('.linear-next');\n"
+                     "    if(btn) btn.addEventListener('click',function(){ try{Sound.tap();}catch(_){} linearAdvance(ev); });\n"
+                     "    App.swipeUnlocked=false;\n"
+                     "  } else {\n"
+                     "    addLockOverlay(el);\n"
+                     "  }\n"
+                     "}")
+new_setactive_end = ("  App.currentCard=ev; App.swipeUnlocked=false;\n"
+                     "  try{ showChar(ev.speaker||null); }catch(_){}\n"
+                     "  if(ev.linear){\n"
+                     "    var btn=el.querySelector('.linear-next');\n"
+                     "    if(btn) btn.addEventListener('click',function(){ try{Sound.tap();}catch(_){} linearAdvance(ev); });\n"
+                     "    App.swipeUnlocked=false;\n"
+                     "  } else {\n"
+                     "    addLockOverlay(el);\n"
+                     "  }\n"
+                     "}")
+if old_setactive_end in txt:
+    txt = txt.replace(old_setactive_end, new_setactive_end, 1); n+=1; print("  + setActive вызывает showChar")
+
+# ── initCarousel: updateCaseBg + hideChar при старте ──
+old_init_end = "  cSetProgress(); buildBacks(); initEvPanel();"
+new_init_end = "  cSetProgress(); buildBacks(); initEvPanel(); try{updateCaseBg();hideChar();}catch(_){}"
+if old_init_end in txt:
+    txt = txt.replace(old_init_end, new_init_end, 1); n+=1; print("  + initCarousel вызывает updateCaseBg + hideChar")
+
+# ── при смене дела — обновляем фон ──
+old_loadcase_end = '    localStorage.setItem("sdvig_case",cid);}catch(e){}'
+new_loadcase_end = '    localStorage.setItem("sdvig_case",cid); try{updateCaseBg();hideChar();}catch(_){};}catch(e){}'
+if old_loadcase_end in txt:
+    txt = txt.replace(old_loadcase_end, new_loadcase_end, 1); n+=1; print("  + смена дела обновляет фон")
+
+# ── при showEnding — скрываем персонажа ──
+old_ending = "  haptic(r.kind===\"fail\"?\"shift\":\"burn\"); endEl.classList.add(\"show\");"
+new_ending = "  haptic(r.kind===\"fail\"?\"shift\":\"burn\"); endEl.classList.add(\"show\"); try{hideChar();}catch(_){}"
+if old_ending in txt:
+    txt = txt.replace(old_ending, new_ending, 1); n+=1; print("  + showEnding скрывает персонажа")
 
 with open(path, "w", encoding="utf-8") as f: f.write(txt)
 print("✓ app.js: применено %d" % n)
 PYEOF
 
 
-echo ""; echo "══ card-design.css — дырокол + rapport-hint ════════"
+echo ""; echo "══ 3/4  сценарии — добавляем speaker в ключевые карты"
+python3 - << 'PYEOF'
+import json, os
+SDIR = "src/main/resources/static/scenarios"
+
+SPEAKERS = {
+  "case001.json": {
+    "L1_c2":"shift","L1_c4":"shift","L1_c5":"shift","L1_c7":"shift","L1_c8":"shift",
+    "eL2c4":"shift",
+    "eL3c1":"miller","eL3c2":"miller","eL3c3":"shift","eL3c4":"miller",
+    "eL4c2":"kurator","eL4c3":"shift","eAccuse":"shift"
+  },
+  "case002.json": {
+    "e0":"shift","eL3c1":"hayes","eL3c2":"hayes","eL3c3":"romero",
+    "eL4c2":"kurator","eAccuse":"shift"
+  },
+  "case003.json": {
+    "e0":"shift","eL2c3":"jiang",
+    "eL3c1":"conroy","eL3c2":"conroy",
+    "eL4c1":"kurator","eAccuse":"shift"
+  },
+  "case004.json": {
+    "e0":"shift","eL2c2":"purcell",
+    "eL3c2":"shift","eL4c1":"danny","eAccuse":"shift"
+  },
+  "case005.json": {
+    "e0":"shift","eL2c4":"shift",
+    "eL3c4":"kurator","eL4c2":"shift",
+    "eShift3":"shift","eAccuse":"arundel"
+  }
+}
+
+total = 0
+for fn, mapping in SPEAKERS.items():
+    fp = os.path.join(SDIR, fn)
+    if not os.path.exists(fp): print(f"  · {fn} нет"); continue
+    with open(fp, encoding="utf-8") as f: d = json.load(f)
+    c = 0
+    for eid, spk in mapping.items():
+        ev = d.get("events",{}).get(eid)
+        if ev and ev.get("speaker") != spk:
+            ev["speaker"] = spk; c += 1
+    if c:
+        with open(fp, "w", encoding="utf-8") as f:
+            json.dump(d, f, ensure_ascii=False, indent=2)
+    print(f"  + {fn}: speaker проставлен в {c} событиях")
+    total += c
+print(f"✓ всего speaker-меток: {total}")
+PYEOF
+
+
+echo ""; echo "══ 4/4  card-design.css — спрайты + фон сцены ══════"
 python3 - << 'PYEOF'
 path = "src/main/resources/static/card-design.css"
 with open(path, encoding="utf-8") as f: txt = f.read()
-if "/* R23 */" in txt:
-    print("  · уже применено"); exit()
+if "/* R24 */" in txt:
+    print("  · уже применено")
+else:
+    css = r"""
+/* ════ R24 — выезжающие персонажи + фон ════ */
 
-css = """
-/* ════ R23 — дырокол-табель + rapport-подсказки ════ */
+/* фон сцены (меняется по делам) */
+#stage{
+  background-size:cover !important;
+  background-position:center top !important;
+  transition:background-image .6s ease;
+}
+/* затемнение центра под карточку */
+#stage::after{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(70% 55% at 50% 55%,rgba(8,10,16,.45) 0%,rgba(8,10,16,.0) 100%);
+}
 
-/* ── дырокол-табель ── */
-.daily-punch-label{
-  font-family:'Unbounded',sans-serif; font-size:10px; letter-spacing:.22em; text-transform:uppercase;
-  color:var(--acc,#c8860a); margin-bottom:6px;
+/* спрайт персонажа */
+.char-sprite{
+  position:fixed;
+  bottom:calc(var(--navh,60px) + var(--safeb,0px));
+  z-index:24;
+  height:min(50vh,320px); width:auto; max-width:48vw;
+  pointer-events:none;
+  object-fit:contain; object-position:bottom;
+  opacity:0;
+  filter:drop-shadow(0 8px 28px rgba(0,0,0,.75));
+  transition:transform .38s cubic-bezier(.25,1.2,.4,1), opacity .28s ease;
 }
-.dpl-orn{ opacity:.6; }
-.daily-card .daily-h{ font-family:'Unbounded',sans-serif; font-weight:900; font-size:22px; margin:4px 0 2px; }
-.daily-card .daily-streak{ font-size:12px; color:var(--ink3); margin-bottom:14px; }
-.daily-week{ display:flex; gap:6px; justify-content:center; flex-wrap:nowrap; }
-.dday{
-  display:flex; flex-direction:column; align-items:center; gap:2px;
-  padding:7px 4px; border-radius:10px; min-width:36px;
-  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
-  transition:transform .2s;
+.char-sprite.left{
+  left:0; transform:translate3d(-108%,0,0);
+  transform-origin:bottom left;
 }
-.dday.done{ background:rgba(200,134,10,.14); border-color:rgba(200,134,10,.4); }
-.dday.cur{
-  background:rgba(200,134,10,.26); border-color:var(--acc,#c8860a);
-  transform:scale(1.1); box-shadow:0 0 14px rgba(200,134,10,.35);
-  animation:dayPulse 1.6s ease-in-out infinite;
+.char-sprite.right{
+  right:0; transform:translate3d(108%,0,0);
+  transform-origin:bottom right;
 }
-@keyframes dayPulse{ 0%,100%{box-shadow:0 0 14px rgba(200,134,10,.3)} 50%{box-shadow:0 0 22px rgba(200,134,10,.6)} }
-.dd-ico{ font-size:14px; line-height:1; color:var(--acc-2,#ffcf6b); }
-.dday:not(.done) .dd-ico{ color:rgba(255,255,255,.22); }
-.dd-n{ font-size:9px; color:var(--ink3); font-weight:700; }
-.dd-reward{ font-size:8px; color:var(--acc,#c8860a); line-height:1.3; text-align:center; }
-.dday:not(.done) .dd-reward{ opacity:.4; }
-.daily-chips{ margin:14px 0 10px; display:flex; gap:8px; justify-content:center; align-items:center; }
-.dc-chip{ padding:6px 14px; border-radius:10px; font-weight:800; font-size:14px;
-  background:rgba(200,134,10,.18); border:1px solid rgba(200,134,10,.4); color:var(--acc-2,#ffcf6b); }
-.bucks-chip{ background:rgba(92,208,255,.14); border-color:rgba(92,208,255,.35); color:#9fe0ff; }
-
-/* ── rapport-подсказка Сдвига на замке карты ── */
-.card-rapport-hint{
-  padding:9px 12px; border-radius:10px; font-size:11.5px; line-height:1.42;
-  color:#c8c0b0; background:rgba(255,255,255,.03); border:1px solid rgba(200,134,10,.25);
-  border-left:3px solid rgba(200,134,10,.7); margin-bottom:6px; text-align:left;
-  font-style:italic;
+.char-sprite.show{
+  opacity:1; transform:translate3d(0,0,0);
 }
-.crh-name{ font-family:'Unbounded',sans-serif; font-size:9.5px; font-weight:700; font-style:normal;
-  color:var(--acc,#c8860a); letter-spacing:.06em; display:block; margin-bottom:3px; }
+/* на СДВИГ-картах персонаж чуть прозрачнее (не мешает выбору) */
+.cfcard.active.shift ~ .char-sprite{ opacity:.55; }
 """
-txt += "\n/* R23 */\n" + css
-with open(path, "w", encoding="utf-8") as f: f.write(txt)
-print("  + дырокол-табель + rapport-hint CSS")
+    txt += "\n/* R24 */\n" + css
+    with open(path, "w", encoding="utf-8") as f: f.write(txt)
+    print("  + CSS спрайтов и фона сцены добавлен")
 PYEOF
 
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R23 готов"
-echo "   git add -A && git commit -m 'R23: daily punch card + map progression + rapport hints' && git push"
+echo "✅  R24 готов — персонажи выезжают, фон Музея включён"
+echo ""
+echo "  Не забудь скопировать арты ПЕРЕД деплоем:"
+echo "  cp -r /sdcard/Download/img src/main/resources/static/"
+echo ""
+echo "  git add -A && git commit -m 'R24: character sprites + scene backgrounds' && git push"
 echo "═══════════════════════════════════════════════════════"

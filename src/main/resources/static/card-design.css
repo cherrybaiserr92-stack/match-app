@@ -792,3 +792,45 @@
 }
 .crh-name{ font-family:'Unbounded',sans-serif; font-size:9.5px; font-weight:700; font-style:normal;
   color:var(--acc,#c8860a); letter-spacing:.06em; display:block; margin-bottom:3px; }
+
+/* R24 */
+
+/* ════ R24 — выезжающие персонажи + фон ════ */
+
+/* фон сцены (меняется по делам) */
+#stage{
+  background-size:cover !important;
+  background-position:center top !important;
+  transition:background-image .6s ease;
+}
+/* затемнение центра под карточку */
+#stage::after{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(70% 55% at 50% 55%,rgba(8,10,16,.45) 0%,rgba(8,10,16,.0) 100%);
+}
+
+/* спрайт персонажа */
+.char-sprite{
+  position:fixed;
+  bottom:calc(var(--navh,60px) + var(--safeb,0px));
+  z-index:24;
+  height:min(50vh,320px); width:auto; max-width:48vw;
+  pointer-events:none;
+  object-fit:contain; object-position:bottom;
+  opacity:0;
+  filter:drop-shadow(0 8px 28px rgba(0,0,0,.75));
+  transition:transform .38s cubic-bezier(.25,1.2,.4,1), opacity .28s ease;
+}
+.char-sprite.left{
+  left:0; transform:translate3d(-108%,0,0);
+  transform-origin:bottom left;
+}
+.char-sprite.right{
+  right:0; transform:translate3d(108%,0,0);
+  transform-origin:bottom right;
+}
+.char-sprite.show{
+  opacity:1; transform:translate3d(0,0,0);
+}
+/* на СДВИГ-картах персонаж чуть прозрачнее (не мешает выбору) */
+.cfcard.active.shift ~ .char-sprite{ opacity:.55; }

@@ -409,7 +409,7 @@ function loadCaseByIndex(i){
   try{var x=new XMLHttpRequest();x.open("GET","/scenarios/"+cid+".json",false);
     x.send();if(x.status===200){CASE=JSON.parse(x.responseText);
       try{Object.keys(CASE.events).forEach(function(k){CASE.events[k]._id=k;});}catch(_){}}
-    localStorage.setItem("sdvig_case",cid);}catch(e){}
+    localStorage.setItem("sdvig_case",cid); try{updateCaseBg();hideChar();}catch(_){};}catch(e){}
   if(!CASE){CASE={name:"...",truth:{},start:"e0",total:1,events:{e0:{t:"crime",badge:"...",title:"...",text:"Ошибка загрузки.",left:{label:"...",to:"__resolve__"},right:{label:"...",to:"__resolve__"}}}};}
 }
 
@@ -739,7 +739,7 @@ function showEnding(r){
   const txt=document.getElementById("e-text");if(txt)txt.textContent=r.text;
   const meta=document.getElementById("e-meta");if(meta)meta.innerHTML="Сходимость: <b>"+r.align+" / 3</b> · улик: <b>"+CState.evidence.length+"</b> · Сдвиг: <b>"+rapportTitle()+"</b>";
   if(_progEl)_progEl.style.width="100%";
-  haptic(r.kind==="fail"?"shift":"burn"); endEl.classList.add("show");
+  haptic(r.kind==="fail"?"shift":"burn"); endEl.classList.add("show"); try{hideChar();}catch(_){}
   const _rb=document.getElementById("e-restart");
   if(_rb){
     const _hn=CAMPAIGN&&(_caseIdx+1)<CAMPAIGN.cases.length;
@@ -863,6 +863,58 @@ function onbMaybeStart(){
   setTimeout(function(){ if(!onbSeen()) onbShow(0); }, 400);
 }
 
+
+/* ═══ ПЕРСОНАЖИ-СПРАЙТЫ (R24) ═══ */
+const CHARS={
+  shift:  {src:'/img/chars/char-shift.png',   side:'left'},
+  recruit:{src:'/img/chars/char-recruit.png', side:'left'},
+  kurator:{src:'/img/chars/char-kurator.png', side:'right'},
+  arundel:{src:'/img/chars/char-arundel.png', side:'right'},
+  miller: {src:'/img/chars/char-miller.png',  side:'right'},
+  hayes:  {src:'/img/chars/char-hayes.png',   side:'right'},
+  romero: {src:'/img/chars/char-romero.png',  side:'right'},
+  conroy: {src:'/img/chars/char-conroy.png',  side:'right'},
+  jiang:  {src:'/img/chars/char-jiang.png',   side:'right'},
+  purcell:{src:'/img/chars/char-purcell.png', side:'right'},
+  danny:  {src:'/img/chars/char-danny.png',   side:'right'},
+  guests: {src:'/img/chars/char-guests.png',  side:'right'}
+};
+const CASE_BGS={
+  'case001':'/img/bg/bg-ch1-hall.png'
+  /* остальные фоны добавить, когда арт будет готов */
+};
+let _charEl=null,_charId=null;
+function showChar(id){
+  if(!id||!CHARS[id]){hideChar();return;}
+  const def=CHARS[id];
+  if(!_charEl){
+    _charEl=document.createElement('img');
+    _charEl.className='char-sprite';
+    (document.getElementById('main-screen')||document.body).appendChild(_charEl);
+  }
+  if(_charId!==id){
+    _charEl.style.transition='none';
+    _charEl.classList.remove('show');
+    _charEl.className='char-sprite '+def.side;
+    _charEl.src=def.src; _charId=id;
+    /* double rAF гарантирует что CSS transition подхватит */
+    requestAnimationFrame(function(){requestAnimationFrame(function(){
+      _charEl.style.transition='';_charEl.classList.add('show');
+    });});
+  } else { _charEl.classList.add('show'); }
+}
+function hideChar(){
+  if(!_charEl)return; _charEl.classList.remove('show'); _charId=null;
+}
+function updateCaseBg(){
+  try{
+    const cid=CAMPAIGN&&CAMPAIGN.cases[_caseIdx]?CAMPAIGN.cases[_caseIdx].id:'';
+    const bg=CASE_BGS[cid]||null;
+    const st=document.getElementById('stage'); if(!st)return;
+    if(bg){ st.style.backgroundImage="url('"+bg+"')"; st.style.backgroundSize='cover'; st.style.backgroundPosition='center top'; }
+    else { st.style.backgroundImage=''; }
+  }catch(_){}
+}
 function initCarousel(){
   _ring=document.getElementById("ring");
   _evCountEl=document.getElementById("ev-count");
@@ -873,7 +925,7 @@ function initCarousel(){
   if(_evCountEl)_evCountEl.textContent="0";
   var _cn=document.getElementById("case-name");if(_cn)_cn.textContent=CASE.name||"";
   var _cs=document.getElementById("case-sub");if(_cs)_cs.textContent=(CAMPAIGN&&CAMPAIGN.cases[_caseIdx])?CAMPAIGN.cases[_caseIdx].title:"";
-  cSetProgress(); buildBacks(); initEvPanel();
+  cSetProgress(); buildBacks(); initEvPanel(); try{updateCaseBg();hideChar();}catch(_){}
 }
 
 /* ═══════════════════════════════════════════════
