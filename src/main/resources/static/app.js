@@ -24,7 +24,7 @@ const DEFAULT_PROFILE = {
   casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
   achievements:[], dailyStreak:0, lastDaily:null, sound:true,
-  lastEnergyTs:0, rapport:0
+  lastEnergyTs:0, rapport:0, onboarded:false
 };
 
 /* ── DOM helpers ───────────────────────────────── */
@@ -540,6 +540,7 @@ function addLockOverlay(cardEl){
   lock.querySelector('#play-gems-ring').addEventListener('click',function(){
     try{Sound.tap();}catch(_){} openHintGame(App.currentCard||{});
   });
+  try{ onbMaybeStart(); }catch(_){}
 }
 function showNoEnergy(){
   try{haptic('shift');}catch(_){}
@@ -775,6 +776,59 @@ function loadCaseState(){
     return p;
   }catch(e){ return null; }
 }
+
+/* ═══ ОНБОРДИНГ (R16) ═══ */
+var ONB_ICONS={
+  swipe:'<svg viewBox="0 0 64 64" fill="none" stroke="#f3d27a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'
+    +'<rect x="22" y="10" width="20" height="34" rx="5" fill="rgba(200,134,10,.1)"/>'
+    +'<circle cx="32" cy="27" r="4.5" fill="#f3d27a" stroke="none"/>'
+    +'<g class="sway-l"><path d="M16 27l-7 0M12 23l-4 4 4 4"/></g>'
+    +'<g class="sway-r"><path d="M48 27l7 0M52 23l4 4-4 4"/></g></svg>',
+  gems:'<svg viewBox="0 0 64 64" fill="none" stroke="#f3d27a" stroke-width="2.2" stroke-linejoin="round">'
+    +'<g class="pulse"><path d="M32 8l9 9-9 9-9-9z" fill="rgba(92,208,255,.25)"/>'
+    +'<path d="M16 30l7 7-7 7-7-7z" fill="rgba(255,111,134,.22)"/>'
+    +'<path d="M48 30l7 7-7 7-7-7z" fill="rgba(200,134,10,.28)"/>'
+    +'<path d="M32 40l9 9-9 9-9-9z" fill="rgba(120,220,150,.22)"/></g></svg>',
+  shift:'<svg viewBox="0 0 64 64" fill="none" stroke="#f3d27a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'
+    +'<line x1="32" y1="8" x2="32" y2="56" stroke="rgba(243,210,122,.5)" stroke-dasharray="3 4"/>'
+    +'<g class="sway-l" stroke="#5cd0ff"><path d="M24 20l-9 9 9 9"/></g>'
+    +'<g class="sway-r" stroke="#ff6f86"><path d="M40 20l9 9-9 9"/></g></svg>',
+  energy:'<svg viewBox="0 0 64 64" fill="none" stroke="#f3d27a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+    +'<path d="M20 24h20v10a10 10 0 0 1-20 0z" fill="rgba(200,134,10,.15)"/>'
+    +'<path d="M40 26h4a4 4 0 0 1 0 8h-4"/>'
+    +'<g class="pulse" stroke="#f3d27a"><path d="M24 14c-1 2 1 3 0 5M30 13c-1 2 1 3 0 5M36 14c-1 2 1 3 0 5"/></g></svg>'
+};
+
+
+var ONB_STEPS=[
+  {key:'gems',  icon:'gems',  title:'Сначала — улики',
+    text:'Каждая карта дела заперта. Нажми «Найти улики» и пройди мини-игру «Самоцветы», чтобы разблокировать выбор.'},
+  {key:'swipe', icon:'swipe', title:'Свайп решает',
+    text:'После мини-игры тяни карту влево или вправо — это твой выбор в расследовании. Каждый свайп тратит ☕ кофе (энергию).'},
+  {key:'shift', icon:'shift', title:'Момент СДВИГА',
+    text:'Иногда реальность раскалывается надвое. Выбранная версия станет правдой дела — и определит финал. Думай как детектив.'}
+];
+function onbDone(){ try{ if(App.profile){ App.profile.onboarded=true; saveProfile(); } }catch(_){} }
+function onbSeen(){ try{ return !!(App.profile&&App.profile.onboarded); }catch(_){ return false; } }
+function onbShow(i){
+  var el=document.getElementById('onb'); if(!el) return;
+  var s=ONB_STEPS[i]; if(!s){ el.setAttribute('hidden',''); onbDone(); return; }
+  el.removeAttribute('hidden');
+  document.getElementById('onb-ico').innerHTML=ONB_ICONS[s.icon]||'';
+  document.getElementById('onb-title').textContent=s.title;
+  document.getElementById('onb-text').textContent=s.text;
+  var dots=document.getElementById('onb-dots');
+  if(dots){ dots.innerHTML=ONB_STEPS.map(function(_,j){return '<i class="'+(j===i?'on':'')+'"></i>';}).join(''); }
+  var btn=document.getElementById('onb-btn');
+  btn.textContent=(i>=ONB_STEPS.length-1)?'Начать дело':'Дальше';
+  btn.onclick=function(){ try{Sound.tap();}catch(_){} onbShow(i+1); };
+}
+function onbMaybeStart(){
+  if(onbSeen()) return;
+  /* показываем на первой НЕ-линейной карте (когда реально нужен match-3+свайп) */
+  setTimeout(function(){ if(!onbSeen()) onbShow(0); }, 400);
+}
+
 function initCarousel(){
   _ring=document.getElementById("ring");
   _evCountEl=document.getElementById("ev-count");

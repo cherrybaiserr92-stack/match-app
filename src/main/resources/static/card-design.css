@@ -648,3 +648,43 @@
 /* 6. choices: исходы свайпа чуть крупнее и читаемее */
 .choice{ padding:9px 7px !important; }
 .choice .dir{ opacity:.85; }
+
+/* R16 */
+
+/* ════════ R16 — ОНБОРДИНГ ════════ */
+.onb{ position:fixed; inset:0; z-index:300; display:flex; align-items:flex-end; justify-content:center;
+  background:rgba(4,7,12,.74); backdrop-filter:blur(2px); padding:0 18px calc(96px + env(safe-area-inset-bottom)); }
+.onb[hidden]{ display:none; }
+.onb-card{ position:relative; width:100%; max-width:340px; border-radius:18px; padding:20px 18px 16px;
+  background:linear-gradient(160deg,rgba(26,21,15,.98),rgba(11,9,7,.98));
+  border:1px solid rgba(200,134,10,.42); box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 30px rgba(200,134,10,.12);
+  animation:onbPop .32s cubic-bezier(.2,1.4,.4,1) both; text-align:center; }
+@keyframes onbPop{ from{opacity:0;transform:translateY(20px) scale(.94)} to{opacity:1;transform:none} }
+.onb-ico{ width:64px; height:64px; margin:0 auto 12px; }
+.onb-ico svg{ width:100%; height:100%; display:block; }
+.onb-title{ font-family:'Unbounded',sans-serif; font-weight:800; font-size:16px; color:#f3d27a; margin-bottom:7px; }
+.onb-text{ font-size:13.5px; line-height:1.5; color:#ded6c4; margin-bottom:16px; }
+.onb-btn{ width:100%; padding:13px; border:none; border-radius:12px; cursor:pointer;
+  background:linear-gradient(180deg,#ffdf95,var(--acc,#c8860a)); color:#241701;
+  font-family:'Unbounded',sans-serif; font-weight:800; font-size:13px; letter-spacing:.04em;
+  box-shadow:0 8px 22px rgba(200,134,10,.3); }
+.onb-btn:active{ filter:brightness(.92); }
+.onb-dots{ display:flex; gap:6px; justify-content:center; margin-top:12px; }
+.onb-dots i{ width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.2); transition:background .2s,width .2s; }
+.onb-dots i.on{ width:18px; border-radius:3px; background:var(--acc,#c8860a); }
+
+/* подсветка-«дырка» вокруг элемента (по желанию через onb-spot) */
+.onb-spot{ position:absolute; border-radius:16px; pointer-events:none; display:none;
+  box-shadow:0 0 0 9999px rgba(4,7,12,.74), 0 0 0 2px rgba(200,134,10,.6), 0 0 26px rgba(200,134,10,.4);
+  animation:onbGlow 1.6s ease-in-out infinite; }
+.onb-spot.show{ display:block; }
+@keyframes onbGlow{ 0%,100%{box-shadow:0 0 0 9999px rgba(4,7,12,.74),0 0 0 2px rgba(200,134,10,.5),0 0 18px rgba(200,134,10,.3)}
+  50%{box-shadow:0 0 0 9999px rgba(4,7,12,.74),0 0 0 2px rgba(200,134,10,.85),0 0 30px rgba(200,134,10,.55)} }
+
+/* анимация качающейся стрелки в иконке свайпа */
+@keyframes onbSwayL{ 0%,100%{transform:translateX(0)} 50%{transform:translateX(-7px)} }
+@keyframes onbSwayR{ 0%,100%{transform:translateX(0)} 50%{transform:translateX(7px)} }
+.onb-ico .sway-l{ animation:onbSwayL 1.3s ease-in-out infinite; }
+.onb-ico .sway-r{ animation:onbSwayR 1.3s ease-in-out infinite; }
+.onb-ico .pulse{ animation:onbGlowPulse 1.4s ease-in-out infinite; transform-origin:center; }
+@keyframes onbGlowPulse{ 0%,100%{opacity:.55} 50%{opacity:1} }
