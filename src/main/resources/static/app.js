@@ -365,59 +365,17 @@ const ART={
 function artBg(t){ return "url(\"data:image/svg+xml;utf8,"+(ART[t]||ART.evidence)+"\")"; }
 
 /* ═══ ДЕЛО №001 · ЗВЕЗДА СЕВЕРА ═══ */
-const CASE={
-  name:"Дело №001 · Звезда Севера",
-  truth:{time:"day",liar:"restorer",guard:"clean"},
-  start:"e0", total:9,
-  events:{
-    e0:{t:"crime",badge:"Преступление",title:"Кража в музее",
-      text:"Утро. Из главного зала исчезла «Звезда Севера» — сапфир в платине. Витрина заперта, сигнализация молчала. У пустого постамента ты впервые ловишь сдвиг: воздух дрожит.",
-      left:{label:"Осмотреть зал",to:"eHall"},right:{label:"Опросить охрану",to:"eGuard"}},
-    eHall:{t:"evidence",badge:"Осмотр",title:"Главный зал",
-      text:"Мрамор, пыль, холодный свет. Витрина и постамент просят внимания.",
-      left:{label:"Витрина",evidence:"Витрина: замок заводской, стекло без царапин — не вскрывали.",to:"eClue1"},
-      right:{label:"Постамент",evidence:"Постамент: микрослед монтажного клея — след от копии.",to:"eClue1"}},
-    eClue1:{t:"evidence",badge:"Улика",title:"Тихий взлом",
-      text:"Ни взлома, ни борьбы. Экспонат вынес тот, у кого был ключ — или подменили заранее.",
-      left:{label:"Журнал доступа",evidence:"Ключ-карта реставратора: вход в часы профилактики зала.",to:"eGuard"},
-      right:{label:"Книга смен",evidence:"Ночная смена — один Седов. Днём бригада без сопровождения.",to:"eGuard"}},
-    eGuard:{t:"witness",badge:"Свидетель",title:"Охранник Седов",
-      text:"Седов мнёт фуражку. Ночью никто не входил. Камеры «барахлили с обеда». Чем дольше говорит, тем больше спотыкается.",
-      left:{label:"Надавить",evidence:"Седов: реставраторов пускали без сопровождения.",to:"eCams"},
-      right:{label:"Поднять записи",evidence:"Записи обрываются в 15:40 — средь бела дня.",to:"eCams"}},
-    eCams:{t:"evidence",badge:"Архив камер",title:"Обрыв в 15:40",
-      text:"Картинка с зала глохнет днём. Кто-то знал график камер. Сдвиг нарастает.",
-      left:{label:"К версиям",to:"eShift1"},right:{label:"К версиям",to:"eShift1"}},
-    eShift1:{shift:true,t:"shift",badge:"СДВИГ · 1",title:"Две ночи",
-      intro:"Зал раскалывается надвое. Тяни карту — одна реальность твердеет, ей и сбыться.",
-      a:{label:"◄ НОЧЬ",vtext:"Ночная кража: вошли через служебный ход, пока сигнализация спала.",set:{time:"night"},bad:true,to:"eAfter1"},
-      b:{label:"ДЕНЬ ►",vtext:"Подмена днём: экспонат заменили копией на профилактике.",set:{time:"day"},to:"eAfter1"}},
-    eAfter1:{t:"suspect",badge:"Озарение",title:"Двое у постамента",
-      text:"@T@ Двое могли провернуть подмену: куратор Лацис и реставратор Корн.",
-      left:{label:"Куратор Лацис",evidence:"Лацис: алиби — «весь день в архиве», но журнал архива пуст.",to:"eRestorer"},
-      right:{label:"Реставратор Корн",evidence:"Корн: «копия для выставки», которой нет ни в одной описи.",to:"eRestorer"}},
-    eRestorer:{t:"suspect",badge:"Допрос",title:"Кто ближе к делу",
-      text:"Оба нервничают, оба недоговаривают. Ложь — только у одного из них.",
-      left:{label:"Слушать Лациса",evidence:"Лацис: «он один трогал крепления».",to:"eShift2"},
-      right:{label:"Слушать Корна",evidence:"Корн: «у него ключи от всего».",to:"eShift2"}},
-    eShift2:{shift:true,t:"shift",badge:"СДВИГ · 2",title:"Чья ложь",
-      intro:"Снова раскол. Один лжёт прямо сейчас. Выбери, чью ложь видишь.",
-      a:{label:"◄ ЛЖЁТ ЛАЦИС",vtext:"Куратор: доступ ко всему, мотив, пустое алиби.",set:{liar:"curator"},bad:true,to:"eGuardFate"},
-      b:{label:"ЛЖЁТ КОРН ►",vtext:"Реставратор: только он касался экспоната и знал крепления.",set:{liar:"restorer"},to:"eGuardFate"}},
-    eGuardFate:{t:"witness",badge:"Свидетель",title:"Удобный виноватый",
-      text:"Следствие давит — всё на Седова. Но что-то не сходится.",
-      left:{label:"Счета Седова",evidence:"Счета чисты: ни лишней копейки. Его подставили.",to:"eShift3"},
-      right:{label:"Он не в доле",evidence:"Седов лишь проспал смену. Подстава.",to:"eShift3"}},
-    eShift3:{shift:true,t:"shift",badge:"СДВИГ · 3",title:"Судьба Седова",
-      intro:"Последний раскол. Охранник — звено схемы или козёл отпущения?",
-      a:{label:"◄ СОУЧАСТНИК",vtext:"Седов в деле: отключил камеры за долю. Быстрое закрытие.",set:{guard:"paid"},bad:true,to:"eAccuse"},
-      b:{label:"ПОДСТАВА ►",vtext:"Настоящий вор увёл след на охранника.",set:{guard:"clean"},to:"eAccuse"}},
-    eAccuse:{t:"final",badge:"Финал",title:"Имя на постановлении",
-      text:"Сдвиги улеглись. Пора назвать имя — обратной дороги нет.",
-      left:{label:"Куратор Лацис",set:{accused:"curator"},bad:true,to:"__resolve__"},
-      right:{label:"Реставратор Корн",set:{accused:"restorer"},to:"__resolve__"}}
-  }
-};
+let CASE=null;
+(function(){
+  const x=new XMLHttpRequest();
+  x.open("GET","/scenarios/case001.json",false);
+  try{x.send();if(x.status===200)CASE=JSON.parse(x.responseText);}catch(e){}
+  if(!CASE){/* fallback — пустышка, чтобы не крашнуться */
+    CASE={name:"Загрузка...",truth:{method:"",watchman:"",signal:""},start:"e0",total:1,
+      events:{e0:{t:"crime",badge:"...",title:"Загрузка...",
+        text:"Обновите страницу.",
+        left:{label:"...",to:"__resolve__"},right:{label:"...",to:"__resolve__"}}}};}
+})();
 
 function fill(text,f){
   if(text.indexOf("@T@")<0) return text;
@@ -426,15 +384,15 @@ function fill(text,f){
 }
 function computeEnding(f){
   const t=CASE.truth;
-  const align=(f.time===t.time?1:0)+(f.liar===t.liar?1:0)+(f.guard===t.guard?1:0);
-  if(f.accused==="restorer"&&align===3)
-    return{kind:"win",mark:"✓",verdict:"ДЕЛО РАСКРЫТО",
-      text:"Корн сломался. Копию прятал в реставрационной, оригинал — к перепродаже. Каждый сдвиг лёг точно в линию правды.",align};
-  if(f.accused==="restorer")
-    return{kind:"partial",mark:"≈",verdict:"РАСКРЫТО НА ВОЛОСКЕ",
-      text:"Верный виновный, но часть сдвигов вела в сторону. Победа, которой повезло.",align};
-  return{kind:"fail",mark:"✗",verdict:"ЛОЖНЫЙ СЛЕД",
-    text:"Лациса увели в наручниках. Через неделю «Звезду» нашли у перекупщика — с подписью Корна.",align};
+  const align=(f.method===t.method?1:0)+(f.watchman===t.watchman?1:0)+(f.signal===t.signal?1:0);
+  if(f.signal==="curator"&&align===3)
+    return{kind:"win",mark:"\u2713",verdict:"\u0412\u042b\u0421\u0422\u0410\u0412\u041a\u0410 \u0417\u0410\u041a\u0420\u042b\u0422\u0410",
+      text:"\u041c\u0430\u0433\u043d\u0438\u0442, \u043a\u0443\u043f\u043b\u0435\u043d\u043d\u0430\u044f \u0441\u043b\u0435\u043f\u043e\u0442\u0430, \u043a\u0430\u0441\u0441\u0435\u0442\u0430. \u0422\u044b \u043f\u0440\u043e\u0447\u0451\u043b \u0441\u0446\u0435\u043d\u0443 \u0442\u0430\u043a, \u043a\u0430\u043a \u0435\u0451 \u0441\u043e\u0431\u0440\u0430\u043b\u0438. \u0421\u0434\u0432\u0438\u0433 \u0432\u043f\u0435\u0440\u0432\u044b\u0435 \u043f\u043e\u0441\u043c\u043e\u0442\u0440\u0435\u043b \u043d\u0430 \u0442\u0435\u0431\u044f \u043a\u0430\u043a \u043d\u0430 \u0440\u0430\u0432\u043d\u043e\u0433\u043e.",align};
+  if(f.signal==="curator")
+    return{kind:"partial",mark:"\u2248",verdict:"\u0421\u0426\u0415\u041d\u0410 \u041f\u0420\u041e\u0427\u0418\u0422\u0410\u041d\u0410 \u0427\u0410\u0421\u0422\u0418\u0427\u041d\u041e",
+      text:"\u041a\u0443\u0440\u0430\u0442\u043e\u0440\u0430 \u043d\u0430\u0437\u0432\u0430\u043b \u0432\u0435\u0440\u043d\u043e, \u043d\u043e \u043a\u043e\u0435-\u0433\u0434\u0435 \u043f\u043e\u0448\u0451\u043b \u0437\u0430 \u044d\u0444\u0444\u0435\u043a\u0442\u043e\u043c, \u0430 \u043d\u0435 \u0437\u0430 \u0443\u043b\u0438\u043a\u043e\u0439. \u0414\u0435\u043b\u0430 \u0432 \u0421\u0442\u0430\u0440\u043e\u043c \u0433\u043e\u0440\u043e\u0434\u0435 \u0436\u0434\u0443\u0442.",align};
+  return{kind:"fail",mark:"\u2717",verdict:"\u041a\u0423\u0420\u0410\u0422\u041e\u0420 \u0410\u041f\u041b\u041e\u0414\u0418\u0420\u0423\u0415\u0422",
+    text:"\u0422\u044b \u043a\u0443\u043f\u0438\u043b\u0441\u044f \u043d\u0430 \u043c\u0438\u0441\u0442\u0438\u043a\u0443 \u0440\u043e\u0432\u043d\u043e \u0442\u0430\u043a, \u043a\u0430\u043a \u043e\u043d \u0440\u0430\u0441\u0441\u0447\u0438\u0442\u044b\u0432\u0430\u043b. \u0413\u0434\u0435-\u0442\u043e \u043d\u0430 \u043a\u0430\u0441\u0441\u0435\u0442\u0435 \u0441\u043b\u044b\u0448\u0435\u043d \u0441\u0443\u0445\u043e\u0439 \u0441\u043c\u0435\u0448\u043e\u043a.",align};
 }
 function haptic(kind){
   try{if(window.Telegram&&Telegram.WebApp&&Telegram.WebApp.HapticFeedback){
