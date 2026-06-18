@@ -1,340 +1,307 @@
 #!/usr/bin/env bash
-# СДВИГ R17 — кинематографичный звук v6 (процедурный) + нуар-эмбиент
+# СДВИГ R18 — монетизация: Баксы + двухвалютная Лавка + дырокол + анимированные SVG
 set -e
 
-echo ""; echo "══ 1/2  sound.js → v6 ═══════════════════════════════"
-SND="src/main/resources/static/sound.js"
-# бэкап старого
-cp "$SND" "${SND}.v5.bak" 2>/dev/null || true
-cat > "$SND" << 'SND_EOF'
-/* СДВИГ · sound.js v6 — кинематографичный процедурный звук (Web Audio)
-   Принцип: никаких «голых» осцилляторов. Каждый звук — слои шума,
-   расстроенных голосов, фильтр-свипов и конволюционного реверба.
-   + нуар-эмбиент (дождь, гул города, далёкий тон) на фоне. 0 КБ ассетов. */
-(function(){
-  let ctx=null, master=null, busDry=null, busWet=null, reverbIR=null, enabled=true;
-  try{ enabled = localStorage.getItem('sdvig_sound')!=='0'; }catch(e){}
+echo ""; echo "══ 1/4  index.html — Баксы в HUD + SVG-defs ════════"
+python3 - << 'PYEOF'
+path = "src/main/resources/static/index.html"
+with open(path, encoding="utf-8") as f: txt = f.read()
+n=0
 
-  /* ── граф: master → compressor → limiter → out
-        реверб-шина (busWet) подмешивается параллельно ── */
-  function ac(){
-    if(ctx) return ctx;
-    const AC = window.AudioContext||window.webkitAudioContext;
-    if(!AC) return null;
-    ctx = new AC();
+# Баксы рядом с кредитами
+old_money = ('    <div class="th-money">\n'
+             '      <span class="th-coin" data-tico="coin"></span>\n'
+             '      <span id="hud-credits">0</span>\n'
+             '    </div>')
+new_money = ('    <div class="th-money">\n'
+             '      <span class="th-coin" data-tico="coin"></span>\n'
+             '      <span id="hud-credits">0</span>\n'
+             '    </div>\n'
+             '    <div class="th-money th-bucks" id="th-bucks">\n'
+             '      <span class="gem-ico" data-gem="bucks"></span>\n'
+             '      <span id="hud-bucks">0</span>\n'
+             '    </div>')
+if old_money in txt and 'hud-bucks' not in txt:
+    txt = txt.replace(old_money, new_money, 1); n+=1; print("  + Баксы в HUD")
 
-    master = ctx.createGain(); master.gain.value=0.62;
+# глобальные SVG-defs с анимированным градиентом-переливом (вставляем сразу после <body>)
+if 'id="gem-defs"' not in txt:
+    defs = '''
+<!-- ══ АНИМИРОВАННЫЕ SVG-ГРАДИЕНТЫ (перелив самоцвета) ══ -->
+<svg id="gem-defs" width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="gemShine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff3c0"/>
+      <stop offset="35%" stop-color="#f3d27a"/>
+      <stop offset="55%" stop-color="#caa033"/>
+      <stop offset="78%" stop-color="#f8e9b8"/>
+      <stop offset="100%" stop-color="#8a6410"/>
+      <animateTransform attributeName="gradientTransform" type="translate"
+        values="-1 0; 1 0; -1 0" dur="3.4s" repeatCount="indefinite"/>
+    </linearGradient>
+    <linearGradient id="gemCyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d6f4ff"/>
+      <stop offset="50%" stop-color="#5cd0ff"/>
+      <stop offset="100%" stop-color="#1b6fa8"/>
+      <animateTransform attributeName="gradientTransform" type="translate"
+        values="-1 0; 1 0; -1 0" dur="2.8s" repeatCount="indefinite"/>
+    </linearGradient>
+    <linearGradient id="gemRose" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffe0e6"/>
+      <stop offset="50%" stop-color="#ff6f86"/>
+      <stop offset="100%" stop-color="#a8324a"/>
+      <animateTransform attributeName="gradientTransform" type="translate"
+        values="-1 0; 1 0; -1 0" dur="3.1s" repeatCount="indefinite"/>
+    </linearGradient>
+    <radialGradient id="gemSpark" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="40%" stop-color="#fff3c0" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="gemGlow"><feGaussianBlur stdDeviation="0.6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+</svg>
 
-    // мягкий клей-компрессор
-    const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value=-20; comp.knee.value=26; comp.ratio.value=8;
-    comp.attack.value=.004; comp.release.value=.22;
+'''
+    txt = txt.replace('<body>', '<body>\n'+defs, 1) if '<body>' in txt else defs+txt
+    n+=1; print("  + SVG-defs с анимированными градиентами")
 
-    // финальный лимитер (жёсткий, чтобы не было клиппинга)
-    const lim = ctx.createDynamicsCompressor();
-    lim.threshold.value=-2; lim.knee.value=0; lim.ratio.value=20;
-    lim.attack.value=.001; lim.release.value=.05;
-
-    master.connect(comp); comp.connect(lim); lim.connect(ctx.destination);
-
-    // шины dry/wet
-    busDry = ctx.createGain(); busDry.gain.value=1; busDry.connect(master);
-    busWet = ctx.createGain(); busWet.gain.value=0.0; // включается через reverb send
-    const conv = ctx.createConvolver(); conv.buffer = makeIR(2.0, 2.6);
-    busWet.connect(conv); conv.connect(master);
-
-    return ctx;
-  }
-  function resume(){ const c=ac(); if(c&&c.state==='suspended') c.resume(); }
-
-  /* ── процедурный импульсный отклик для реверба (зал/комната) ── */
-  function makeIR(dur, decay){
-    const c=ac(); if(!c) return null;
-    const rate=c.sampleRate, len=Math.floor(rate*dur);
-    const buf=c.createBuffer(2,len,rate);
-    for(let ch=0; ch<2; ch++){
-      const d=buf.getChannelData(ch);
-      for(let i=0;i<len;i++){
-        // экспоненциальный хвост + лёгкая ранняя «комната»
-        const t=i/len;
-        d[i]=(Math.random()*2-1)*Math.pow(1-t, decay);
-      }
-    }
-    return buf;
-  }
-
-  /* ── расстроенный «голос» с ADSR, фильтром и send в реверб ── */
-  function voice(opt){
-    if(!enabled) return; const c=ac(); if(!c) return;
-    const t=c.currentTime;
-    const {type='sine',freq=440,to=null,dur=.18,gain=.3,
-           a=.005,d=.05,s=.6,r=.1,filter=null,detune=0,pan=0,
-           reverb=0.12, voices=1, spread=7}=opt;
-
-    const out=c.createGain(); // суммирующий узел этого звука
-    const env=c.createGain();
-    env.gain.setValueAtTime(.0001,t);
-    env.gain.exponentialRampToValueAtTime(gain,t+a);
-    env.gain.exponentialRampToValueAtTime(Math.max(.0001,gain*s),t+a+d);
-    env.gain.setValueAtTime(Math.max(.0001,gain*s),t+dur);
-    env.gain.exponentialRampToValueAtTime(.0001,t+dur+r);
-
-    // несколько расстроенных осцилляторов = «жирный» тон вместо писка
-    for(let v=0; v<voices; v++){
-      const osc=c.createOscillator(); osc.type=type;
-      osc.frequency.setValueAtTime(freq,t);
-      if(to) osc.frequency.exponentialRampToValueAtTime(Math.max(40,to),t+dur);
-      osc.detune.value = detune + (v - (voices-1)/2)*spread;
-      osc.connect(out); osc.start(t); osc.stop(t+dur+r+.03);
-    }
-
-    let node=out;
-    if(filter){
-      const f=c.createBiquadFilter(); f.type=filter.type||'lowpass';
-      f.frequency.setValueAtTime(filter.freq||1400,t);
-      if(filter.to) f.frequency.exponentialRampToValueAtTime(filter.to,t+dur);
-      f.Q.value=filter.q||1; node.connect(f); node=f;
-    }
-    node.connect(env);
-
-    const p=c.createStereoPanner?c.createStereoPanner():null;
-    if(p){ p.pan.value=pan; env.connect(p);
-      p.connect(busDry);
-      if(reverb>0){ const sg=c.createGain(); sg.gain.value=reverb; p.connect(sg); sg.connect(busWet); }
-    } else {
-      env.connect(busDry);
-      if(reverb>0){ const sg=c.createGain(); sg.gain.value=reverb; env.connect(sg); sg.connect(busWet); }
-    }
-  }
-
-  /* ── фильтрованный шум (удары, щелчки, дождь, шорох) ── */
-  function noise(opt){
-    if(!enabled) return; const c=ac(); if(!c) return;
-    const {dur=.12,gain=.18,freq=2200,to=null,q=.8,type='bandpass',
-           a=.002,r=.06,reverb=0.08,pan=0}=opt;
-    const t=c.currentTime; const n=Math.floor(c.sampleRate*dur);
-    const buf=c.createBuffer(1,n,c.sampleRate); const ch=buf.getChannelData(0);
-    for(let i=0;i<n;i++) ch[i]=(Math.random()*2-1);
-    const src=c.createBufferSource(); src.buffer=buf;
-    const f=c.createBiquadFilter(); f.type=type;
-    f.frequency.setValueAtTime(freq,t);
-    if(to) f.frequency.exponentialRampToValueAtTime(to,t+dur);
-    f.Q.value=q;
-    const g=c.createGain();
-    g.gain.setValueAtTime(.0001,t);
-    g.gain.exponentialRampToValueAtTime(gain,t+a);
-    g.gain.exponentialRampToValueAtTime(.0001,t+dur+r);
-    src.connect(f); f.connect(g);
-    const p=c.createStereoPanner?c.createStereoPanner():null;
-    if(p){ p.pan.value=pan; g.connect(p); p.connect(busDry);
-      if(reverb>0){ const sg=c.createGain(); sg.gain.value=reverb; p.connect(sg); sg.connect(busWet); } }
-    else { g.connect(busDry); if(reverb>0){ const sg=c.createGain(); sg.gain.value=reverb; g.connect(sg); sg.connect(busWet); } }
-    src.start(t); src.stop(t+dur+r+.02);
-  }
-
-  /* ════════════════════════════════════════════════════
-     НУАР-ЭМБИЕНТ: дождь + низкий гул + редкие капли
-  ════════════════════════════════════════════════════ */
-  let ambient=null;
-  function startAmbient(){
-    if(!enabled) return; const c=ac(); if(!c) return;
-    if(ambient) return;
-    const t=c.currentTime;
-
-    // 1. дождь — розовый шум через полосовой фильтр
-    const rl=Math.floor(c.sampleRate*4);
-    const rb=c.createBuffer(1,rl,c.sampleRate); const rd=rb.getChannelData(0);
-    let last=0;
-    for(let i=0;i<rl;i++){ const w=Math.random()*2-1; last=(last+0.02*w)/1.02; rd[i]=last*3.2; }
-    const rain=c.createBufferSource(); rain.buffer=rb; rain.loop=true;
-    const rf=c.createBiquadFilter(); rf.type='bandpass'; rf.frequency.value=1600; rf.Q.value=.5;
-    const rg=c.createGain(); rg.gain.value=0; rain.connect(rf); rf.connect(rg); rg.connect(master);
-    rain.start(t); rg.gain.linearRampToValueAtTime(0.05, t+3);
-
-    // 2. низкий городской гул — две расстроенные пилы под фильтром
-    const hum=c.createGain(); hum.gain.value=0;
-    [55, 55.4].forEach(f=>{
-      const o=c.createOscillator(); o.type='sawtooth'; o.frequency.value=f;
-      const lp=c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=180; lp.Q.value=.6;
-      o.connect(lp); lp.connect(hum); o.start(t);
-    });
-    hum.connect(master); hum.gain.linearRampToValueAtTime(0.035, t+4);
-
-    // 3. медленное «дыхание» громкости дождя
-    const lfo=c.createOscillator(); lfo.frequency.value=0.07;
-    const lfg=c.createGain(); lfg.gain.value=0.018;
-    lfo.connect(lfg); lfg.connect(rg.gain); lfo.start(t);
-
-    ambient={rain,rg,hum,lfo,nodes:[rain,lfo]};
-  }
-  function stopAmbient(){
-    if(!ambient) return; const c=ac(); const t=c.currentTime;
-    try{
-      ambient.rg.gain.linearRampToValueAtTime(0, t+1.2);
-      ambient.hum.gain.linearRampToValueAtTime(0, t+1.2);
-      setTimeout(()=>{ try{ambient.nodes.forEach(n=>n.stop());}catch(e){} ambient=null; }, 1400);
-    }catch(e){ ambient=null; }
-  }
-
-  /* ════════════════════════════════════════════════════
-     БИБЛИОТЕКА SFX (всё многослойное, с ревербом)
-  ════════════════════════════════════════════════════ */
-  const S = {
-    /* интерфейс */
-    tap(){ noise({dur:.035,gain:.10,freq:3200,type:'bandpass',q:1.4,reverb:.04});
-           voice({type:'triangle',freq:480,to:430,dur:.04,gain:.07,a:.001,d:.02,s:.2,r:.03,reverb:.05,filter:{type:'lowpass',freq:2600}}); },
-    nav(){ noise({dur:.05,gain:.07,freq:2400,type:'bandpass',q:1,reverb:.06});
-           voice({type:'sine',freq:520,to:680,dur:.07,gain:.08,a:.002,d:.03,s:.3,r:.05,reverb:.1}); },
-
-    /* свайп — «шорох карты» + тональный свип, панорамирован по направлению */
-    swipe(dir){
-      const pan = dir==='left'?-.5:dir==='right'?.5:0;
-      noise({dur:.16,gain:.13,freq:dir==='left'?900:1500,to:dir==='left'?300:4000,
-             type:'bandpass',q:.7,reverb:.1,pan,a:.004,r:.1});
-      voice({type:'sine',freq:dir==='left'?340:520,to:dir==='left'?180:760,dur:.16,gain:.1,
-             a:.003,d:.04,s:.4,r:.08,pan,reverb:.14,filter:{type:'lowpass',freq:3000}});
-    },
-
-    /* выбор-«улика подтверждена» — тёплый мажорный аккорд с ревером */
-    approve(){ [392,494,587].forEach((f,i)=>setTimeout(()=>voice(
-      {type:'triangle',freq:f,dur:.3,gain:.1,a:.005,d:.08,s:.5,r:.2,voices:2,spread:6,
-       reverb:.22,filter:{type:'lowpass',freq:3600}}),i*60)); },
-    deny(){ voice({type:'sawtooth',freq:180,to:90,dur:.36,gain:.13,a:.004,d:.1,s:.4,r:.18,voices:2,spread:10,
-                   reverb:.18,filter:{type:'lowpass',freq:900,to:400}});
-            noise({dur:.18,gain:.05,freq:500,type:'lowpass',reverb:.1}); },
-
-    /* СДВИГ — «раскол реальности»: расстроенный свип + металлический шум-реверс */
-    special(){
-      const c=ac(); if(!c)return;
-      voice({type:'sawtooth',freq:120,to:520,dur:.7,gain:.12,a:.02,d:.1,s:.6,r:.3,voices:3,spread:14,
-             reverb:.3,filter:{type:'bandpass',freq:300,to:2400,q:2}});
-      noise({dur:.6,gain:.07,freq:600,to:6000,type:'bandpass',q:.6,reverb:.28,a:.2,r:.3});
-      [0,.12,.24].forEach((dl,i)=>setTimeout(()=>voice(
-        {type:'sine',freq:880+i*220,dur:.3,gain:.06,a:.003,d:.06,s:.4,r:.2,pan:(i-1)*.5,reverb:.3}),dl*1000));
-    },
-
-    /* сжигание карты (огонь) */
-    burn(){ noise({dur:.5,gain:.12,freq:800,to:200,type:'lowpass',q:.5,reverb:.16,a:.01,r:.3});
-            noise({dur:.35,gain:.06,freq:5000,type:'highpass',reverb:.1,a:.005,r:.2});
-            voice({type:'sawtooth',freq:90,to:50,dur:.5,gain:.08,a:.02,d:.1,s:.5,r:.3,reverb:.2,filter:{type:'lowpass',freq:400}}); },
-
-    /* match-3 */
-    gemSelect(){ voice({type:'sine',freq:760,dur:.05,gain:.08,a:.002,d:.02,s:.3,r:.04,reverb:.08}); },
-    gemSwap(){ noise({dur:.05,gain:.07,freq:2600,type:'bandpass',q:1.5,reverb:.05});
-               voice({type:'triangle',freq:560,to:720,dur:.08,gain:.08,a:.002,d:.03,s:.4,r:.05,reverb:.1}); },
-    gemMatch(n){ const base=440+Math.min(n||3,6)*55;
-      voice({type:'sine',freq:base,to:base*1.5,dur:.2,gain:.12,a:.003,d:.04,s:.5,r:.12,voices:2,spread:5,reverb:.18});
-      noise({dur:.12,gain:.05,freq:4800,type:'highpass',reverb:.12}); },
-    gemCascade(step){ voice({type:'sine',freq:520+(step||0)*80,dur:.12,gain:.09,a:.002,d:.03,s:.4,r:.08,reverb:.14}); },
-    gemFall(){ voice({type:'sine',freq:280,to:180,dur:.08,gain:.05,a:.002,d:.02,s:.4,r:.05,reverb:.06}); },
-    booster(){ [523,698,880,1047].forEach((f,i)=>setTimeout(()=>voice(
-      {type:'triangle',freq:f,dur:.2,gain:.1,a:.002,d:.05,s:.5,r:.14,voices:2,spread:5,reverb:.2}),i*55)); },
-
-    /* экономика / прогресс */
-    coin(){ noise({dur:.04,gain:.06,freq:5200,type:'bandpass',q:2,reverb:.05});
-            voice({type:'triangle',freq:1180,to:1560,dur:.1,gain:.08,a:.002,d:.03,s:.3,r:.06,reverb:.12,filter:{type:'lowpass',freq:5000}}); },
-    levelUp(){ [392,523,659,784].forEach((f,i)=>setTimeout(()=>voice(
-      {type:'sine',freq:f,dur:.3,gain:.11,a:.004,d:.07,s:.5,r:.2,voices:2,spread:6,reverb:.26}),i*95)); },
-    win(){ [392,523,659,784,1047].forEach((f,i)=>setTimeout(()=>voice(
-      {type:'triangle',freq:f,dur:.34,gain:.1,a:.005,d:.08,s:.5,r:.24,voices:2,spread:7,reverb:.3,
-       filter:{type:'lowpass',freq:5000}}),i*85));
-      noise({dur:.4,gain:.04,freq:6000,type:'highpass',reverb:.2,a:.1,r:.3}); },
-    error(){ voice({type:'sawtooth',freq:150,to:100,dur:.26,gain:.1,a:.003,d:.07,s:.4,r:.12,voices:2,spread:8,
-                    reverb:.12,filter:{type:'lowpass',freq:800}}); },
-    daily(){ [523,659,880].forEach((f,i)=>setTimeout(()=>voice(
-      {type:'sine',freq:f,dur:.28,gain:.1,a:.004,d:.07,s:.5,r:.18,voices:2,spread:6,reverb:.24}),i*100)); },
-
-    /* кинематографичные акценты */
-    splashImpact(){
-      // глубокий «бум» с под-басом и хвостом-ревером
-      voice({type:'sine',freq:160,to:55,dur:.9,gain:.2,a:.005,d:.15,s:.4,r:.5,reverb:.35,filter:{type:'lowpass',freq:500,to:120}});
-      noise({dur:.5,gain:.08,freq:200,type:'lowpass',reverb:.3,a:.005,r:.4});
-      noise({dur:.15,gain:.05,freq:4000,type:'highpass',reverb:.2}); // лёгкий «воздух»
-    },
-    transition(){
-      noise({dur:.7,gain:.06,freq:400,to:6000,type:'bandpass',q:.5,reverb:.26,a:.3,r:.4});
-      voice({type:'sine',freq:220,to:880,dur:.7,gain:.1,a:.02,d:.1,s:.6,r:.3,voices:2,spread:8,reverb:.3,filter:{type:'lowpass',freq:5000}});
-    },
-    /* щелчок кассетного диктофона — для старта дела/кат-сцен */
-    tape(){
-      noise({dur:.02,gain:.16,freq:1800,type:'bandpass',q:3,reverb:.04}); // клик
-      setTimeout(()=>noise({dur:.02,gain:.10,freq:1400,type:'bandpass',q:3,reverb:.04}),90); // второй клик
-    },
-
-    /* управление эмбиентом — вызывать при входе/выходе из дела */
-    ambientOn(){ try{startAmbient();}catch(e){} },
-    ambientOff(){ try{stopAmbient();}catch(e){} }
-  };
-
-  window.Sound = new Proxy(S,{
-    get(target,prop){
-      if(prop==='resume') return resume;
-      if(prop==='toggle') return ()=>{ enabled=!enabled;
-        try{localStorage.setItem('sdvig_sound',enabled?'1':'0');}catch(e){}
-        if(!enabled) stopAmbient(); return enabled; };
-      if(prop==='isOn') return ()=>enabled;
-      const fn=target[prop];
-      if(typeof fn==='function') return (...a)=>{ try{ resume(); return fn(...a);}catch(e){} };
-      return fn;
-    }
-  });
-
-  ['touchstart','pointerdown','click'].forEach(ev=>
-    document.addEventListener(ev,resume,{once:true,passive:true}));
-})();
-
-SND_EOF
-echo "✓ sound.js заменён на v6 (старый → sound.js.v5.bak)"
+with open(path, "w", encoding="utf-8") as f: f.write(txt)
+print("✓ index.html: %d" % n)
+PYEOF
 
 
-echo ""; echo "══ 2/2  app.js — эмбиент дела + щелчок диктофона ════"
+echo ""; echo "══ 2/4  app.js — Баксы + двухвалютная Лавка + дырокол"
 python3 - << 'PYEOF'
 path = "src/main/resources/static/app.js"
 with open(path, encoding="utf-8") as f: txt = f.read()
-n = 0
+n=0
 
-# эмбиент включается при входе в игру (enterMain), гаснет на сплэше — необязательно
-old_enter = "  try{ initCarousel(); }catch(e){ console.error('initCarousel',e); }"
-new_enter = ("  try{ initCarousel(); }catch(e){ console.error('initCarousel',e); }\n"
-             "  try{ Sound.ambientOn(); }catch(_){}")
-if old_enter in txt and "ambientOn" not in txt:
-    txt = txt.replace(old_enter, new_enter, 1); n+=1; print("  + нуар-эмбиент включается в игре")
+# профиль: bucks + поля инструментов
+old_prof = "  level:1, xp:0, energy:5, maxEnergy:5, credits:0,"
+new_prof = "  level:1, xp:0, energy:5, maxEnergy:5, credits:0, bucks:0,"
+if old_prof in txt and "bucks:0" not in txt:
+    txt = txt.replace(old_prof, new_prof, 1); n+=1; print("  + профиль: bucks")
 
-# щелчок диктофона при старте дела + при показе СДВИГ-карты — спецзвук
-# 1) tape при первой карте дела (buildBacks, после восстановления)
-old_bb = "  cfCards.forEach(function(c,e){\n    if(e===centerIndex) setActive(c,CASE.events[_startEv]); else setBack(c);\n  });\n  cLayout(false);"
-new_bb = ("  cfCards.forEach(function(c,e){\n    if(e===centerIndex) setActive(c,CASE.events[_startEv]); else setBack(c);\n  });\n  cLayout(false);\n  try{ Sound.tape(); }catch(_){}"
-)
-if old_bb in txt and "Sound.tape" not in txt:
-    txt = txt.replace(old_bb, new_bb, 1); n+=1; print("  + щелчок диктофона при старте дела")
+# renderHUD: показывать баксы
+old_hud = "  const cr=$('#hud-credits'); if(cr) cr.textContent=p.credits;"
+new_hud = ("  const cr=$('#hud-credits'); if(cr) cr.textContent=p.credits;\n"
+           "  const bk=$('#hud-bucks'); if(bk) bk.textContent=p.bucks||0;")
+if old_hud in txt and "hud-bucks" not in txt:
+    txt = txt.replace(old_hud, new_hud, 1); n+=1; print("  + renderHUD показывает баксы")
 
-# 2) спецзвук СДВИГа при показе shift-карты (setActive)
-old_sa = '  el.classList.add("active"); el.classList.toggle("shift",!!ev.shift);'
-new_sa = ('  el.classList.add("active"); el.classList.toggle("shift",!!ev.shift);\n'
-          '  if(ev&&ev.shift){ try{Sound.special();}catch(_){} }')
-if old_sa in txt and "Sound.special" not in txt.split("function setActive")[1][:400]:
-    txt = txt.replace(old_sa, new_sa, 1); n+=1; print("  + звук СДВИГа при расколе")
+# addBucks
+if "function addBucks" not in txt:
+    anchor = "function addEnergy(n){"
+    txt = txt.replace(anchor, "function addBucks(n){ const p=App.profile; p.bucks=Math.max(0,(p.bucks||0)+n); renderHUD(); saveProfile(); }\n"+anchor, 1)
+    n+=1; print("  + addBucks")
 
-# 3) звук горения привязать к свайпам (cAdvance: burn влево, blue вправо)
-old_burnL = '  if(dir==="left"){ burnCard(c0,"left",function(){setBack(c0);turn();}); }\n  else { burnCardBlue(c0,"right",function(){setBack(c0);turn();}); }'
-new_burnL = ('  try{Sound.burn(); Sound.swipe(dir);}catch(_){}\n'
-             '  if(dir==="left"){ burnCard(c0,"left",function(){setBack(c0);turn();}); }\n'
-             '  else { burnCardBlue(c0,"right",function(){setBack(c0);turn();}); }')
-if old_burnL in txt and "Sound.burn()" not in txt:
-    txt = txt.replace(old_burnL, new_burnL, 1); n+=1; print("  + звук огня+свайпа на ходах")
+# ── SVG-иконки товаров (анимированные, перелив) ──
+if "var GEM_SVG" not in txt:
+    icons = r'''
+/* ═══ Анимированные SVG-иконки товаров (R18) ═══ */
+var GEM_SVG={
+  bucks:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><path d="M20 3l9 6v14l-9 6-9-6V9z" fill="url(#gemShine)" stroke="#6a4810" stroke-width="1"/><path d="M20 3v34M11 9l9 5 9-5M11 23l9-5 9 5" fill="none" stroke="#8a6410" stroke-width=".7" opacity=".55"/><ellipse cx="16" cy="12" rx="3" ry="5" fill="url(#gemSpark)"/></svg>',
+  energy:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><path d="M12 14h16v8a8 8 0 0 1-16 0z" fill="url(#gemShine)" stroke="#6a4810" stroke-width="1"/><path d="M28 16h3a4 4 0 0 1 0 8h-3" fill="none" stroke="#8a6410" stroke-width="1.4"/><path d="M16 6c-1 2 1 3 0 5M20 5c-1 2 1 3 0 5M24 6c-1 2 1 3 0 5" fill="none" stroke="url(#gemShine)" stroke-width="1.6" stroke-linecap="round"><animate attributeName="opacity" values=".4;1;.4" dur="1.5s" repeatCount="indefinite"/></path><ellipse cx="17" cy="17" rx="2.5" ry="4" fill="url(#gemSpark)"/></svg>',
+  magnify:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><circle cx="17" cy="17" r="10" fill="url(#gemCyan)" stroke="#1b6fa8" stroke-width="1.2" opacity=".92"/><circle cx="17" cy="17" r="6" fill="none" stroke="#d6f4ff" stroke-width="1" opacity=".6"/><path d="M25 25l9 9" stroke="url(#gemShine)" stroke-width="2.6" stroke-linecap="round"/><ellipse cx="14" cy="13" rx="2.5" ry="4" fill="url(#gemSpark)"/></svg>',
+  file:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><path d="M11 6h12l6 6v22H11z" fill="url(#gemShine)" stroke="#6a4810" stroke-width="1"/><path d="M23 6v6h6" fill="none" stroke="#6a4810" stroke-width="1"/><path d="M15 19h11M15 24h11M15 29h7" stroke="#6a4810" stroke-width="1.2" opacity=".5"/><ellipse cx="16" cy="11" rx="2" ry="3.5" fill="url(#gemSpark)"/></svg>',
+  hourglass:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><path d="M12 6h16M12 34h16M14 6c0 7 12 9 12 14s-12 7-12 14M26 6c0 7-12 9-12 14s12 7 12 14" fill="none" stroke="url(#gemShine)" stroke-width="2" stroke-linecap="round"/><path d="M20 18l-4 4h8z" fill="url(#gemShine)"><animateTransform attributeName="transform" type="translate" values="0 0;0 6;0 0" dur="2s" repeatCount="indefinite"/></path><ellipse cx="17" cy="10" rx="2" ry="3" fill="url(#gemSpark)"/></svg>',
+  ashtray:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><ellipse cx="20" cy="26" rx="13" ry="6" fill="url(#gemShine)" stroke="#6a4810" stroke-width="1"/><ellipse cx="20" cy="24" rx="9" ry="4" fill="#1a1206" opacity=".6"/><path d="M22 20l8-8" stroke="#caa033" stroke-width="2" stroke-linecap="round"/><path d="M29 13c1-2 3-1 2-3" stroke="#aaa" stroke-width="1" fill="none" opacity=".5"><animate attributeName="opacity" values=".2;.6;.2" dur="2s" repeatCount="indefinite"/></path></svg>',
+  siren:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><rect x="12" y="18" width="16" height="10" rx="3" fill="url(#gemRose)" stroke="#a8324a" stroke-width="1"/><path d="M16 18a4 4 0 0 1 8 0" fill="url(#gemCyan)" stroke="#1b6fa8" stroke-width="1"/><circle cx="20" cy="11" r="2" fill="url(#gemShine)"><animate attributeName="opacity" values="1;.3;1" dur=".7s" repeatCount="indefinite"/></circle><path d="M8 22h3M29 22h3" stroke="url(#gemShine)" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  tape:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><rect x="6" y="12" width="28" height="16" rx="2" fill="url(#gemShine)" stroke="#6a4810" stroke-width="1"/><circle cx="15" cy="20" r="3.5" fill="#1a1206"/><circle cx="25" cy="20" r="3.5" fill="#1a1206"/><circle cx="15" cy="20" r="1.4" fill="url(#gemShine)"><animateTransform attributeName="transform" type="rotate" from="0 15 20" to="360 15 20" dur="2s" repeatCount="indefinite"/></circle><circle cx="25" cy="20" r="1.4" fill="url(#gemShine)"><animateTransform attributeName="transform" type="rotate" from="0 25 20" to="360 25 20" dur="2s" repeatCount="indefinite"/></circle></svg>',
+  phone:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><path d="M10 8c0 2 1 4 3 4l3-1 2 4-3 2c2 5 6 9 11 11l2-3 4 2-1 3c0 2 2 3 4 3" fill="none" stroke="url(#gemShine)" stroke-width="2.4" stroke-linecap="round"/><circle cx="30" cy="11" r="2.5" fill="url(#gemRose)"><animate attributeName="r" values="2.5;3.2;2.5" dur="1s" repeatCount="indefinite"/></circle></svg>'
+};
+function gemIcon(k){ return GEM_SVG[k]||GEM_SVG.bucks; }
+'''
+    anchor = "const SHOP=["
+    txt = txt.replace(anchor, icons+"\n"+anchor, 1); n+=1; print("  + анимированные SVG-иконки товаров")
 
-# 4) approve при добавлении улики (cAddEvidence)
-old_ev = "function cAddEvidence(t){\n  if(t&&CState.evidence.indexOf(t)<0) CState.evidence.push(t);"
-new_ev = "function cAddEvidence(t){\n  if(t&&CState.evidence.indexOf(t)<0){ CState.evidence.push(t); try{Sound.approve();}catch(_){} }"
-if old_ev in txt:
-    txt = txt.replace(old_ev, new_ev, 1); n+=1; print("  + звук улики (approve)")
+# ── новый двухвалютный SHOP ──
+old_shop_start = "const SHOP=["
+shop_end_marker = "function renderShop(){"
+si = txt.index(old_shop_start)
+ei = txt.index(shop_end_marker)
+new_shop = '''const SHOP=[
+  /* ── За 📁 Зацепки (credits) — бесплатный контур ── */
+  {k:'energy',   svg:'energy',   name:'Чёрный кофе', desc:'+3 энергии', cur:'credits', price:30,
+    buy(){ addEnergy(3); }},
+  {k:'magnify',  svg:'magnify',  name:'Лупа',        desc:'Подсветит улику', cur:'credits', price:40,
+    buy(){ App.profile.tMagnify=(App.profile.tMagnify||0)+1; saveProfile(); }},
+  {k:'file',     svg:'file',     name:'Досье',       desc:'Пропустить мини-игру', cur:'credits', price:60,
+    buy(){ App.profile.tFile=(App.profile.tFile||0)+1; saveProfile(); }},
+  {k:'hourglass',svg:'hourglass',name:'Песочные часы',desc:'+20 энергии', cur:'credits', price:30,
+    buy(){ addEnergy(20); }},
+  /* ── За 💵 Баксы (премиум-валюта) — бустеры match-3 ── */
+  {k:'ashtray',  svg:'ashtray',  name:'Тяжёлая пепельница', desc:'Разбить 1 камень', cur:'bucks', price:100,
+    buy(){ App.profile.boosters=(App.profile.boosters||0)+1; saveProfile(); }},
+  {k:'siren',    svg:'siren',    name:'Полицейская мигалка', desc:'Очистить ряд+столбец', cur:'bucks', price:150,
+    buy(){ App.profile.bSiren=(App.profile.bSiren||0)+1; saveProfile(); }},
+  {k:'tape',     svg:'tape',     name:'Плёнка диктофона', desc:'Перемешать поле', cur:'bucks', price:150,
+    buy(){ App.profile.bShuffle=(App.profile.bShuffle||0)+1; saveProfile(); }},
+  {k:'phone',    svg:'phone',    name:'Звонок информатору', desc:'Подсветит безопасный выбор', cur:'bucks', price:50,
+    buy(){ App.profile.tHint=(App.profile.tHint||0)+1; saveProfile(); }}
+];
+
+/* пакеты Баксов за реальные деньги (заглушка под платёж Telegram Stars / Wallet) */
+const BUCK_PACKS=[
+  {amount:500,  price:'$1.99'},
+  {amount:1400, price:'$4.99'},
+  {amount:6500, price:'$19.99'},
+  {amount:50000,price:'$99.99', label:'Чемодан с наличностью'}
+];
+
+'''
+txt = txt[:si] + new_shop + txt[ei:]
+n+=1; print("  + двухвалютный SHOP (зацепки + баксы)")
+
+# ── renderShop под новый формат + SVG + валюта ──
+old_render = txt[txt.index("function renderShop(){"):txt.index("/* ═══════════════════════════════════════════════\n   ЕЖЕДНЕВНЫЙ")]
+new_render = '''function renderShop(){
+  const g=$('#shop-grid'); if(!g) return; g.innerHTML='';
+  SHOP.forEach(it=>{
+    const isBucks=it.cur==='bucks';
+    const curIco=isBucks?'<span class="gem-ico mini" data-gem="bucks"></span>':'◈';
+    const item=el('div','shop-item'+(isBucks?' premium':''),`
+      <div class="si-gem">${gemIcon(it.svg)}</div>
+      <div class="si-name">${it.name}</div>
+      <div class="si-desc">${it.desc}</div>
+      <div class="si-price ${isBucks?'pr-bucks':'pr-credits'}">${it.price} ${curIco}</div>`);
+    item.onclick=()=>{
+      const bal=isBucks?(App.profile.bucks||0):App.profile.credits;
+      if(bal<it.price){
+        Sound.error();
+        if(isBucks){ openBuckShop(); }
+        else toast('Мало зацепок','Нужно '+it.price+' ◈','✗');
+        return;
+      }
+      if(isBucks){ App.profile.bucks-=it.price; } else { addCredits(-it.price); }
+      it.buy(); Sound.coin(); vibrate(10);
+      toast('Куплено',it.name,'🛍'); renderHUD(); renderShop();
+    };
+    g.appendChild(item);
+  });
+}
+
+/* окно покупки Баксов (заглушка платежа) */
+function openBuckShop(){
+  let html='<div class="buckshop-back" id="buckshop"><div class="buckshop-card">'
+    +'<div class="bs-title"><span class="gem-ico" data-gem="bucks"></span> Служебный бюджет</div>'
+    +'<div class="bs-sub">Баксы ускоряют расследование. Игра проходится и без них.</div>'
+    +'<div class="bs-list">';
+  BUCK_PACKS.forEach((p,i)=>{
+    html+='<button class="bs-pack" data-i="'+i+'"><span class="bs-amt"><span class="gem-ico mini" data-gem="bucks"></span> '+p.amount.toLocaleString('ru')+'</span>'
+      +(p.label?'<span class="bs-label">'+p.label+'</span>':'')
+      +'<span class="bs-price">'+p.price+'</span></button>';
+  });
+  html+='</div><button class="bs-close" id="bs-close">Закрыть</button></div></div>';
+  const wrap=document.createElement('div'); wrap.innerHTML=html; document.body.appendChild(wrap.firstChild);
+  const back=document.getElementById('buckshop');
+  back.querySelectorAll('.bs-pack').forEach(b=>b.onclick=()=>{
+    const p=BUCK_PACKS[+b.dataset.i];
+    /* TODO: реальный платёж (Telegram Stars / Wallet). Пока — выдаём для теста. */
+    addBucks(p.amount); Sound.coin(); vibrate([10,30,10]);
+    toast('Бюджет пополнен','+'+p.amount.toLocaleString('ru')+' баксов','💵');
+    back.remove(); renderShop();
+  });
+  back.querySelector('#bs-close').onclick=()=>{ Sound.tap(); back.remove(); };
+  back.onclick=(e)=>{ if(e.target===back){ back.remove(); } };
+}
+
+'''
+txt = txt.replace(old_render, new_render, 1); n+=1; print("  + renderShop + окно покупки Баксов")
 
 with open(path, "w", encoding="utf-8") as f: f.write(txt)
-print("✓ app.js: применено %d" % n)
+print("✓ app.js: %d" % n)
+PYEOF
+
+
+echo ""; echo "══ 3/4  app.js — раскраска data-gem иконок ══════════"
+python3 - << 'PYEOF'
+path = "src/main/resources/static/app.js"
+with open(path, encoding="utf-8") as f: txt = f.read()
+
+# при renderHUD проставляем SVG в data-gem элементы (баксы в HUD и пр.)
+if "function paintGems" not in txt:
+    fn = ('function paintGems(){\n'
+          '  try{ document.querySelectorAll("[data-gem]").forEach(function(elx){\n'
+          '    if(elx._painted) return; var k=elx.getAttribute("data-gem");\n'
+          '    if(window.GEM_SVG&&GEM_SVG[k]){ elx.innerHTML=GEM_SVG[k]; elx._painted=true; }\n'
+          '  }); }catch(e){}\n'
+          '}\n')
+    anchor = "function renderHUD(){"
+    txt = txt.replace(anchor, fn+anchor, 1)
+    # вызвать в конце renderHUD
+    txt = txt.replace("function renderHUD(){", "function renderHUD(){\n  setTimeout(paintGems,0);", 1)
+    print("  + paintGems (раскраска data-gem)")
+
+with open(path, "w", encoding="utf-8") as f: f.write(txt)
+print("✓ app.js")
+PYEOF
+
+
+echo ""; echo "══ 4/4  CSS — Лавка, баксы, окно покупки ═══════════"
+python3 - << 'PYEOF'
+path = "src/main/resources/static/card-design.css"
+with open(path, encoding="utf-8") as f: txt = f.read()
+if "/* R18 */" in txt:
+    print("  · уже применено")
+else:
+    css = r'''
+/* ════════ R18 — Монетизация / Лавка / Баксы ════════ */
+
+/* HUD: баксы */
+.th-bucks{ margin-left:6px; }
+.gem-ico{ display:inline-flex; width:22px; height:22px; vertical-align:middle; }
+.gem-ico.mini{ width:15px; height:15px; }
+.gem-ico svg{ width:100%; height:100%; }
+
+/* карточка товара */
+.shop-item .si-gem{ width:54px; height:54px; margin:0 auto 6px; }
+.shop-item .si-gem svg{ width:100%; height:100%; display:block; }
+.si-name{ font-weight:800; font-size:13.5px; margin-top:2px; }
+.si-desc{ font-size:11px; color:var(--ink3); margin-top:3px; min-height:28px; line-height:1.35; }
+.si-price{ margin-top:9px; padding:7px; border-radius:10px; font-weight:800; font-size:13px;
+  display:flex; align-items:center; justify-content:center; gap:5px; }
+.pr-credits{ background:var(--acc-dim,rgba(200,134,10,.14)); color:var(--acc-2,#ffcf6b);
+  border:1px solid rgba(240,169,58,.3); }
+.pr-bucks{ background:linear-gradient(135deg,rgba(92,208,255,.14),rgba(92,208,255,.05));
+  color:#9fe0ff; border:1px solid rgba(92,208,255,.32); }
+.shop-item.premium{ border-color:rgba(92,208,255,.25); }
+.shop-item.premium::before{ content:'PREMIUM'; position:absolute; top:8px; right:8px;
+  font-size:7px; letter-spacing:.12em; color:#9fe0ff; opacity:.7; font-weight:700; }
+.shop-item{ position:relative; }
+
+/* окно покупки баксов */
+.buckshop-back{ position:fixed; inset:0; z-index:320; display:flex; align-items:center; justify-content:center;
+  padding:22px; background:rgba(4,7,12,.82); backdrop-filter:blur(4px); animation:bsFade .25s ease; }
+@keyframes bsFade{ from{opacity:0} to{opacity:1} }
+.buckshop-card{ width:100%; max-width:360px; border-radius:20px; padding:22px 18px 16px;
+  background:linear-gradient(160deg,rgba(20,28,40,.99),rgba(8,12,19,.99));
+  border:1px solid rgba(92,208,255,.3); box-shadow:0 20px 60px rgba(0,0,0,.6); }
+.bs-title{ font-family:'Unbounded',sans-serif; font-weight:800; font-size:16px; color:#9fe0ff;
+  display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.bs-sub{ font-size:12px; color:var(--ink3); line-height:1.45; margin-bottom:16px; }
+.bs-list{ display:flex; flex-direction:column; gap:9px; }
+.bs-pack{ display:flex; align-items:center; gap:10px; padding:13px 15px; border-radius:13px; cursor:pointer;
+  background:rgba(255,255,255,.04); border:1px solid var(--glass-line); color:#e7eef6;
+  font-size:14px; font-weight:700; transition:border-color .15s,background .15s; }
+.bs-pack:active{ background:rgba(92,208,255,.12); border-color:rgba(92,208,255,.5); }
+.bs-amt{ display:flex; align-items:center; gap:6px; }
+.bs-label{ font-size:9px; color:#f3d27a; letter-spacing:.06em; margin-left:auto; margin-right:8px; }
+.bs-price{ margin-left:auto; padding:5px 11px; border-radius:8px;
+  background:linear-gradient(180deg,#ffdf95,var(--acc,#c8860a)); color:#241701; font-weight:800; font-size:13px; }
+.bs-pack .bs-label + .bs-price{ margin-left:0; }
+.bs-close{ width:100%; margin-top:14px; padding:12px; border:none; border-radius:11px;
+  background:rgba(255,255,255,.06); color:var(--ink); font-weight:600; font-size:14px; cursor:pointer; }
+'''
+    txt += "\n/* R18 */\n" + css
+    with open(path, "w", encoding="utf-8") as f: f.write(txt)
+    print("  + R18 CSS")
 PYEOF
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R17 готов — звук v6 + эмбиент"
-echo "   git add -A && git commit -m 'R17: cinematic procedural sound v6 + noir ambient' && git push"
+echo "✅  R18 готов — монетизация + анимированные SVG"
+echo "   git add -A && git commit -m 'R18: monetization shop + bucks + animated SVG icons' && git push"
 echo "═══════════════════════════════════════════════════════"

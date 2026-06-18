@@ -13,6 +13,44 @@
 </head>
 <body>
 
+<!-- ══ АНИМИРОВАННЫЕ SVG-ГРАДИЕНТЫ (перелив самоцвета) ══ -->
+<svg id="gem-defs" width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="gemShine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff3c0"/>
+      <stop offset="35%" stop-color="#f3d27a"/>
+      <stop offset="55%" stop-color="#caa033"/>
+      <stop offset="78%" stop-color="#f8e9b8"/>
+      <stop offset="100%" stop-color="#8a6410"/>
+      <animateTransform attributeName="gradientTransform" type="translate"
+        values="-1 0; 1 0; -1 0" dur="3.4s" repeatCount="indefinite"/>
+    </linearGradient>
+    <linearGradient id="gemCyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d6f4ff"/>
+      <stop offset="50%" stop-color="#5cd0ff"/>
+      <stop offset="100%" stop-color="#1b6fa8"/>
+      <animateTransform attributeName="gradientTransform" type="translate"
+        values="-1 0; 1 0; -1 0" dur="2.8s" repeatCount="indefinite"/>
+    </linearGradient>
+    <linearGradient id="gemRose" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffe0e6"/>
+      <stop offset="50%" stop-color="#ff6f86"/>
+      <stop offset="100%" stop-color="#a8324a"/>
+      <animateTransform attributeName="gradientTransform" type="translate"
+        values="-1 0; 1 0; -1 0" dur="3.1s" repeatCount="indefinite"/>
+    </linearGradient>
+    <radialGradient id="gemSpark" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="40%" stop-color="#fff3c0" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="gemGlow"><feGaussianBlur stdDeviation="0.6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+</svg>
+
+
+
 <!-- фон Phaser (никогда не ловит клики) -->
 <div id="bg-fx"></div>
 
@@ -73,6 +111,10 @@
     <div class="th-money">
       <span class="th-coin" data-tico="coin"></span>
       <span id="hud-credits">0</span>
+    </div>
+    <div class="th-money th-bucks" id="th-bucks">
+      <span class="gem-ico" data-gem="bucks"></span>
+      <span id="hud-bucks">0</span>
     </div>
     <button class="snd-btn" id="sound-btn" type="button">🔊</button>
   </div>
