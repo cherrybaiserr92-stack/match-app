@@ -397,7 +397,8 @@ function loadCaseByIndex(i){
   if(!CAMPAIGN||i>=CAMPAIGN.cases.length)return;
   _caseIdx=i; var cid=CAMPAIGN.cases[i].id;
   try{var x=new XMLHttpRequest();x.open("GET","/scenarios/"+cid+".json",false);
-    x.send();if(x.status===200)CASE=JSON.parse(x.responseText);
+    x.send();if(x.status===200){CASE=JSON.parse(x.responseText);
+      try{Object.keys(CASE.events).forEach(function(k){CASE.events[k]._id=k;});}catch(_){}}
     localStorage.setItem("sdvig_case",cid);}catch(e){}
   if(!CASE){CASE={name:"...",truth:{},start:"e0",total:1,events:{e0:{t:"crime",badge:"...",title:"...",text:"Ошибка загрузки.",left:{label:"...",to:"__resolve__"},right:{label:"...",to:"__resolve__"}}}};}
 }
@@ -479,6 +480,7 @@ function setActive(el,ev){
   el.classList.toggle("linear",!!ev.linear);
   el.innerHTML='<div class="cfinner">'+cardHTML(ev)+'</div>'; el._ev=ev; cActive=el;
   App.currentCard=ev; App.swipeUnlocked=false;
+  if(ev&&ev._id){ CState.ev=ev._id; }
   if(ev.linear){
     var btn=el.querySelector('.linear-next');
     if(btn) btn.addEventListener('click',function(){ try{Sound.tap();}catch(_){} linearAdvance(ev); });
@@ -500,8 +502,13 @@ function buildBacks(){
     const c=document.createElement("div"); c.className="cfcard"; c._phi=undefined;
     _ring.appendChild(c); cfCards.push(c); bindDrag(c);
   }
+  var _saved=loadCaseState();
+  var _startEv=(_saved&&_saved.ev)?_saved.ev:CASE.start;
+  if(_saved){ CState.ev=_saved.ev; CState.flags=_saved.flags||{}; CState.evidence=_saved.evidence||[]; CState.step=_saved.step||0;
+    if(_evCountEl)_evCountEl.textContent=CState.evidence.length; cSetProgress();
+    if(window.toast) toast('Дело продолжается','Ты вернулся туда, где остановился.','\ud83d\udcc2'); }
   cfCards.forEach(function(c,e){
-    if(e===centerIndex) setActive(c,CASE.events[CASE.start]); else setBack(c);
+    if(e===centerIndex) setActive(c,CASE.events[_startEv]); else setBack(c);
   });
   cLayout(false);
 }
@@ -603,7 +610,7 @@ function linearAdvance(ev){
   // лёгкий поворот кольца вперёд, без огня
   centerIndex=(centerIndex+1+CN)%CN;
   var resolve=(nextId==='__resolve__'||!nextId);
-  if(!resolve) setActive(cfCards[centerIndex],CASE.events[nextId]);
+  if(!resolve){ CState.ev=nextId; setActive(cfCards[centerIndex],CASE.events[nextId]); saveCaseState(); }
   cLayout(true);
   setTimeout(function(){
     if(resolve) showEnding(computeEnding(CState.flags));
@@ -619,7 +626,7 @@ function cAdvance(dir,ev,opt){
     centerIndex=(centerIndex+(dir==="left"?1:-1)+CN)%CN;
     CState.step++; cSetProgress();
     const resolve=(opt.to==="__resolve__");
-    if(!resolve) setActive(cfCards[centerIndex],CASE.events[opt.to]);
+    if(!resolve){ CState.ev=opt.to; setActive(cfCards[centerIndex],CASE.events[opt.to]); saveCaseState(); }
     cLayout(true);
     setTimeout(function(){
       if(resolve) showEnding(computeEnding(CState.flags));
@@ -713,11 +720,12 @@ function showEnding(r){
   if(r.kind==="win"){try{addXP(150);addCredits(100);vibrate([20,40,80]);}catch(_){}}
   else if(r.kind==="partial"){try{addXP(60);addCredits(40);}catch(_){}}
   else{try{addXP(20);addCredits(10);}catch(_){}}
-  try{saveProfile();}catch(_){}
+  try{saveProfile();clearCaseState();}catch(_){}
 }
 
 function nextCard(){ restartCarousel(); }
 function restartCarousel(){
+  clearCaseState();
   CState.ev=CASE.start;CState.flags={};CState.evidence=[];CState.step=0;
   if(_evCountEl)_evCountEl.textContent="0";
   if(_progEl)_progEl.style.width="0%";
@@ -751,6 +759,22 @@ function initEvPanel(){
   });
 }
 
+function saveCaseState(){
+  try{
+    var cid=(CAMPAIGN&&CAMPAIGN.cases[_caseIdx])?CAMPAIGN.cases[_caseIdx].id:'case001';
+    lsSet('sdvig_progress',{cid:cid,ev:CState.ev,flags:CState.flags,evidence:CState.evidence,step:CState.step});
+  }catch(e){}
+}
+function clearCaseState(){ try{localStorage.removeItem('sdvig_progress');}catch(e){} }
+function loadCaseState(){
+  try{
+    var p=lsGet('sdvig_progress',null); if(!p) return null;
+    var cid=(CAMPAIGN&&CAMPAIGN.cases[_caseIdx])?CAMPAIGN.cases[_caseIdx].id:'case001';
+    if(p.cid!==cid) return null;
+    if(!CASE.events[p.ev]) return null; /* карта из старой версии сценария */
+    return p;
+  }catch(e){ return null; }
+}
 function initCarousel(){
   _ring=document.getElementById("ring");
   _evCountEl=document.getElementById("ev-count");
