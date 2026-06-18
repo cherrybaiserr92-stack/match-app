@@ -255,6 +255,7 @@ function enterMain(){
   if(window.BgFx) BgFx.init();
   Icons.paint();
   try{ initCarousel(); }catch(e){ console.error('initCarousel',e); }
+  try{ Sound.ambientOn(); }catch(_){}
   try{ regenEnergy(); if(!App._energyTimer) App._energyTimer=setInterval(regenEnergy,60*1000); }catch(_){}
   try{ renderHUD(); }catch(e){ console.error('renderHUD',e); }
   try{ renderGameList(); }catch(e){ console.error('renderGameList',e); }
@@ -477,6 +478,7 @@ function setBack(el){el.classList.remove("active","shift","grab","burning");el._
   el.innerHTML='<div class="cfinner">'+backHTML()+'</div>';}
 function setActive(el,ev){
   el.classList.add("active"); el.classList.toggle("shift",!!ev.shift);
+  if(ev&&ev.shift){ try{Sound.special();}catch(_){} }
   el.classList.toggle("linear",!!ev.linear);
   el.innerHTML='<div class="cfinner">'+cardHTML(ev)+'</div>'; el._ev=ev; cActive=el;
   App.currentCard=ev; App.swipeUnlocked=false;
@@ -511,6 +513,7 @@ function buildBacks(){
     if(e===centerIndex) setActive(c,CASE.events[_startEv]); else setBack(c);
   });
   cLayout(false);
+  try{ Sound.tape(); }catch(_){}
 }
 
 /* ── мини-игра: блокировка свайпа ── */
@@ -635,12 +638,13 @@ function cAdvance(dir,ev,opt){
       SPIN_DUR=640; cBusy=false;
     },resolve?520:Math.max(580,SPIN_DUR+40));
   }
+  try{Sound.burn(); Sound.swipe(dir);}catch(_){}
   if(dir==="left"){ burnCard(c0,"left",function(){setBack(c0);turn();}); }
   else { burnCardBlue(c0,"right",function(){setBack(c0);turn();}); }
 }
 
 function cAddEvidence(t){
-  if(t&&CState.evidence.indexOf(t)<0) CState.evidence.push(t);
+  if(t&&CState.evidence.indexOf(t)<0){ CState.evidence.push(t); try{Sound.approve();}catch(_){} }
   if(_evCountEl) _evCountEl.textContent=CState.evidence.length;
   addXP(10);
 }
