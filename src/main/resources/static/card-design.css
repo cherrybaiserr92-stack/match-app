@@ -559,3 +559,25 @@
 
 /* 9. title чуть меньше на маленьких картах */
 .cfcard.active .title{ font-size:18px; margin:8px 0 7px; }
+
+/* R13 */
+
+/* ════ R13 — диалоги Сдвига, нехватка кофе ════ */
+
+/* реплика-диалог на карточке */
+.dlg{
+  margin-top:8px; padding:8px 11px; border-radius:10px;
+  font-size:12px; line-height:1.42; color:#e7c98a;
+  background:linear-gradient(120deg,rgba(200,134,10,.12),rgba(200,134,10,.03));
+  border-left:2.5px solid var(--acc,#c8860a);
+  font-style:italic;
+}
+.cfcard.active .text{ -webkit-line-clamp:3; }
+
+/* вспышка «нет кофе» */
+.noenergy-flash{
+  position:absolute; inset:0; z-index:60; pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,rgba(255,60,40,.16),transparent 60%);
+  animation:noenergyPulse .9s ease-out forwards;
+}
+@keyframes noenergyPulse{ 0%{opacity:0}20%{opacity:1}100%{opacity:0} }

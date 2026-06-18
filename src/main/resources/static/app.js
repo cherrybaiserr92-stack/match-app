@@ -23,7 +23,8 @@ const DEFAULT_PROFILE = {
   level:1, xp:0, energy:5, maxEnergy:5, credits:0,
   casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
-  achievements:[], dailyStreak:0, lastDaily:null, sound:true
+  achievements:[], dailyStreak:0, lastDaily:null, sound:true,
+  lastEnergyTs:0, rapport:0
 };
 
 /* ── DOM helpers ───────────────────────────────── */
@@ -254,6 +255,7 @@ function enterMain(){
   if(window.BgFx) BgFx.init();
   Icons.paint();
   try{ initCarousel(); }catch(e){ console.error('initCarousel',e); }
+  try{ regenEnergy(); if(!App._energyTimer) App._energyTimer=setInterval(regenEnergy,60*1000); }catch(_){}
   try{ renderHUD(); }catch(e){ console.error('renderHUD',e); }
   try{ renderGameList(); }catch(e){ console.error('renderGameList',e); }
   try{ renderProfile(); }catch(e){ console.error('renderProfile',e); }
@@ -339,6 +341,24 @@ function addXP(n){
   renderHUD(); saveProfile();
 }
 function addCredits(n){ App.profile.credits=Math.max(0,App.profile.credits+n); if(n>0)Sound.coin(); renderHUD(); saveProfile(); }
+const ENERGY_MS=30*60*1000; /* 30 мин на 1 кофе */
+function regenEnergy(){
+  const p=App.profile; if(!p) return;
+  if(!p.lastEnergyTs){ p.lastEnergyTs=Date.now(); return; }
+  if(p.energy>=p.maxEnergy){ p.lastEnergyTs=Date.now(); return; }
+  const elapsed=Date.now()-p.lastEnergyTs;
+  const gained=Math.floor(elapsed/ENERGY_MS);
+  if(gained>0){
+    p.energy=clamp(p.energy+gained,0,p.maxEnergy);
+    p.lastEnergyTs+=gained*ENERGY_MS;
+    if(p.energy>=p.maxEnergy)p.lastEnergyTs=Date.now();
+    renderHUD(); saveProfile();
+  }
+}
+function energyMsLeft(){
+  const p=App.profile; if(!p||p.energy>=p.maxEnergy) return 0;
+  return ENERGY_MS-((Date.now()-(p.lastEnergyTs||Date.now()))%ENERGY_MS);
+}
 function addEnergy(n){ const p=App.profile; p.energy=clamp(p.energy+n,0,p.maxEnergy); renderHUD(); saveProfile(); }
 
 /* ═══════════════════════════════════════════════
@@ -436,6 +456,7 @@ function cardHTML(ev){
     +'<div class="pad"><span class="badge">'+ev.badge+'</span>'
     +'<div class="title">'+ev.title+'</div>'
     +'<div class="text">'+fill(ev.text,CState.flags)+'</div>'
+    +(ev.dialogue?'<div class="dlg">'+ev.dialogue.replace(/\n/g,'<br>')+'</div>':'')
     +'<div class="spacer"></div><div class="choices">'
     +'<div class="choice l"><span class="dir">СВАЙП ВЛЕВО</span>'+ev.left.label+'</div>'
     +'<div class="choice r"><span class="dir">СВАЙП ВПРАВО</span>'+ev.right.label+'</div>'
@@ -469,6 +490,20 @@ function buildBacks(){
 }
 
 /* ── мини-игра: блокировка свайпа ── */
+function missionFor(ev){
+  if(ev && ev.mission) return ev.mission;
+  /* генерация по типу события, если в сценарии не задано */
+  const t=(ev&&ev.t)||'evidence';
+  const M={
+    crime:    {type:'score', target:700, moves:16, label:'Собери 700 очков — осмотри сцену'},
+    evidence: {type:'clear', target:16, moves:18, label:'Очисти 16 ячеек — найди улику'},
+    witness:  {type:'color', color:0, target:12, moves:16, label:'Собери 12 красных — разговори свидетеля'},
+    suspect:  {type:'combo', target:3, moves:15, label:'Сделай 3 комбо — дожми подозреваемого'},
+    revelation:{type:'score',target:900, moves:18, label:'Собери 900 очков — собери факты'},
+    final:    {type:'score', target:1200,moves:20, label:'Собери 1200 очков — назови имя'}
+  };
+  return M[t]||M.evidence;
+}
 function addLockOverlay(cardEl){
   const pad=cardEl.querySelector('.pad'); if(!pad) return;
   if(pad.querySelector('.card-lock')) return;
@@ -481,6 +516,13 @@ function addLockOverlay(cardEl){
   lock.querySelector('#play-gems-ring').addEventListener('click',function(){
     try{Sound.tap();}catch(_){} openHintGame(App.currentCard||{});
   });
+}
+function showNoEnergy(){
+  try{haptic('shift');}catch(_){}
+  const mins=Math.ceil(energyMsLeft()/60000);
+  if(window.toast) toast('Термос пуст','Сдвиг: «Без кофе ты проспишь улику». +1 \u2615 через '+mins+' мин','\u2615');
+  const tab=document.getElementById('tab-cases');
+  if(tab){ var b=document.createElement('div'); b.className='noenergy-flash'; tab.appendChild(b); setTimeout(function(){b.remove();},900); }
 }
 function unlockSwipe(){
   App.swipeUnlocked=true;
@@ -565,9 +607,22 @@ function cSetProgress(){
   const p=Math.min(100,Math.round(CState.step/CASE.total*100));
   if(_progEl) _progEl.style.width=p+"%";
 }
+function addRapport(n){
+  const p=App.profile; if(!p) return;
+  p.rapport=clamp((p.rapport||0)+n,-10,20); saveProfile();
+}
+function rapportTitle(){
+  const r=(App.profile&&App.profile.rapport)||0;
+  if(r>=12) return 'Напарник';
+  if(r>=6)  return 'Доверие';
+  if(r>=1)  return 'Интерес';
+  if(r<=-3) return 'Раздражение';
+  return 'Новичок';
+}
 function cApplyOption(o){
   if(o.set) Object.assign(CState.flags,o.set);
   if(o.evidence) cAddEvidence(o.evidence);
+  try{ addRapport(o.bad?-1:1); }catch(_){}
 }
 
 function bindDrag(card){
@@ -596,6 +651,10 @@ function bindDrag(card){
     if(Math.abs(dx)>TH)commit(dx>0?"right":"left");else snap();}
   function commit(side){const ev=evc;if(!ev)return;
     const opt=ev.shift?(side==="left"?ev.a:ev.b):(side==="left"?ev.left:ev.right);
+    /* энергия: 1 свайп = 1 кофе */
+    const p=App.profile;
+    if(p && p.energy<=0){ snap(); showNoEnergy(); return; }
+    if(p){ p.energy=clamp(p.energy-1,0,p.maxEnergy); if(!p.lastEnergyTs)p.lastEnergyTs=Date.now(); renderHUD(); saveProfile(); }
     const sp=Math.min(1,Math.abs(vx)/3800); SPIN_DUR=Math.round(660-sp*160);
     cAdvance(side,ev,opt);}
   card.addEventListener("pointerdown",function(e){if(!down(e.clientX,e.clientY,e.pointerId))return;
@@ -610,7 +669,7 @@ function showEnding(r){
   const seal=document.getElementById("e-seal");if(seal){seal.className="seal "+r.kind;seal.textContent=r.mark;}
   const ver=document.getElementById("e-verdict");if(ver){ver.className="e-verdict "+r.kind;ver.textContent=r.verdict;}
   const txt=document.getElementById("e-text");if(txt)txt.textContent=r.text;
-  const meta=document.getElementById("e-meta");if(meta)meta.innerHTML="Сходимость: <b>"+r.align+" / 3</b> · улик: <b>"+CState.evidence.length+"</b>";
+  const meta=document.getElementById("e-meta");if(meta)meta.innerHTML="Сходимость: <b>"+r.align+" / 3</b> · улик: <b>"+CState.evidence.length+"</b> · Сдвиг: <b>"+rapportTitle()+"</b>";
   if(_progEl)_progEl.style.width="100%";
   haptic(r.kind==="fail"?"shift":"burn"); endEl.classList.add("show");
   const _rb=document.getElementById("e-restart");
@@ -890,7 +949,7 @@ function showDaily(streak,reward){
 function openHintGame(card){
   const modal=$('#hint-modal');
   modal.classList.remove('hidden');
-  const mission = card.mission || pickMission();
+  const mission = missionFor(card);
   $('#hint-footer').textContent=mission.label;
   if(window.BgFx) BgFx.pause();
   if(window.Match3){
@@ -898,7 +957,10 @@ function openHintGame(card){
       mission,
       boosters:App.profile.boosters||0,
       onWin:()=>{ modal.classList.add('hidden'); if(window.BgFx)BgFx.resume(); unlockSwipe(); },
-      onLose:()=>{ /* остаётся закрытым */ }
+      onLose:()=>{ /* поражение усложняет путь: -1 кофе, репутация */
+        try{ const p=App.profile; if(p){ p.energy=clamp(p.energy-1,0,p.maxEnergy); addRapport(-1); renderHUD(); saveProfile(); } }catch(_){}
+        if(window.toast) toast('Улика ускользнула','Сдвиг недоволен. Попробуй снова.','\ud83d\udd0d');
+      }
     });
   }
   $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); if(window.BgFx)BgFx.resume(); Match3&&Match3.stop(); };
