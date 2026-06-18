@@ -365,17 +365,22 @@ const ART={
 function artBg(t){ return "url(\"data:image/svg+xml;utf8,"+(ART[t]||ART.evidence)+"\")"; }
 
 /* ═══ ДЕЛО №001 · ЗВЕЗДА СЕВЕРА ═══ */
-let CASE=null;
+let CASE=null,CAMPAIGN=null,_caseIdx=0;
 (function(){
-  const x=new XMLHttpRequest();
-  x.open("GET","/scenarios/case001.json",false);
-  try{x.send();if(x.status===200)CASE=JSON.parse(x.responseText);}catch(e){}
-  if(!CASE){/* fallback — пустышка, чтобы не крашнуться */
-    CASE={name:"Загрузка...",truth:{method:"",watchman:"",signal:""},start:"e0",total:1,
-      events:{e0:{t:"crime",badge:"...",title:"Загрузка...",
-        text:"Обновите страницу.",
-        left:{label:"...",to:"__resolve__"},right:{label:"...",to:"__resolve__"}}}};}
+  function xhrJson(u){try{var x=new XMLHttpRequest();x.open("GET",u,false);x.send();if(x.status===200)return JSON.parse(x.responseText);}catch(e){}return null;}
+  CAMPAIGN=xhrJson("/scenarios/campaign.json");
+  if(!CAMPAIGN)CAMPAIGN={cases:[{id:"case001"}]};
+  try{var s=localStorage.getItem("sdvig_case");if(s&&CAMPAIGN){var i=CAMPAIGN.cases.findIndex(function(c){return c.id===s;});if(i>=0)_caseIdx=i;}}catch(e){}
+  loadCaseByIndex(_caseIdx);
 })();
+function loadCaseByIndex(i){
+  if(!CAMPAIGN||i>=CAMPAIGN.cases.length)return;
+  _caseIdx=i; var cid=CAMPAIGN.cases[i].id;
+  try{var x=new XMLHttpRequest();x.open("GET","/scenarios/"+cid+".json",false);
+    x.send();if(x.status===200)CASE=JSON.parse(x.responseText);
+    localStorage.setItem("sdvig_case",cid);}catch(e){}
+  if(!CASE){CASE={name:"...",truth:{},start:"e0",total:1,events:{e0:{t:"crime",badge:"...",title:"...",text:"Ошибка загрузки.",left:{label:"...",to:"__resolve__"},right:{label:"...",to:"__resolve__"}}}};}
+}
 
 function fill(text,f){
   if(text.indexOf("@T@")<0) return text;
@@ -384,15 +389,12 @@ function fill(text,f){
 }
 function computeEnding(f){
   const t=CASE.truth;
-  const align=(f.method===t.method?1:0)+(f.watchman===t.watchman?1:0)+(f.signal===t.signal?1:0);
-  if(f.signal==="curator"&&align===3)
-    return{kind:"win",mark:"\u2713",verdict:"\u0412\u042b\u0421\u0422\u0410\u0412\u041a\u0410 \u0417\u0410\u041a\u0420\u042b\u0422\u0410",
-      text:"\u041c\u0430\u0433\u043d\u0438\u0442, \u043a\u0443\u043f\u043b\u0435\u043d\u043d\u0430\u044f \u0441\u043b\u0435\u043f\u043e\u0442\u0430, \u043a\u0430\u0441\u0441\u0435\u0442\u0430. \u0422\u044b \u043f\u0440\u043e\u0447\u0451\u043b \u0441\u0446\u0435\u043d\u0443 \u0442\u0430\u043a, \u043a\u0430\u043a \u0435\u0451 \u0441\u043e\u0431\u0440\u0430\u043b\u0438. \u0421\u0434\u0432\u0438\u0433 \u0432\u043f\u0435\u0440\u0432\u044b\u0435 \u043f\u043e\u0441\u043c\u043e\u0442\u0440\u0435\u043b \u043d\u0430 \u0442\u0435\u0431\u044f \u043a\u0430\u043a \u043d\u0430 \u0440\u0430\u0432\u043d\u043e\u0433\u043e.",align};
-  if(f.signal==="curator")
-    return{kind:"partial",mark:"\u2248",verdict:"\u0421\u0426\u0415\u041d\u0410 \u041f\u0420\u041e\u0427\u0418\u0422\u0410\u041d\u0410 \u0427\u0410\u0421\u0422\u0418\u0427\u041d\u041e",
-      text:"\u041a\u0443\u0440\u0430\u0442\u043e\u0440\u0430 \u043d\u0430\u0437\u0432\u0430\u043b \u0432\u0435\u0440\u043d\u043e, \u043d\u043e \u043a\u043e\u0435-\u0433\u0434\u0435 \u043f\u043e\u0448\u0451\u043b \u0437\u0430 \u044d\u0444\u0444\u0435\u043a\u0442\u043e\u043c, \u0430 \u043d\u0435 \u0437\u0430 \u0443\u043b\u0438\u043a\u043e\u0439. \u0414\u0435\u043b\u0430 \u0432 \u0421\u0442\u0430\u0440\u043e\u043c \u0433\u043e\u0440\u043e\u0434\u0435 \u0436\u0434\u0443\u0442.",align};
-  return{kind:"fail",mark:"\u2717",verdict:"\u041a\u0423\u0420\u0410\u0422\u041e\u0420 \u0410\u041f\u041b\u041e\u0414\u0418\u0420\u0423\u0415\u0422",
-    text:"\u0422\u044b \u043a\u0443\u043f\u0438\u043b\u0441\u044f \u043d\u0430 \u043c\u0438\u0441\u0442\u0438\u043a\u0443 \u0440\u043e\u0432\u043d\u043e \u0442\u0430\u043a, \u043a\u0430\u043a \u043e\u043d \u0440\u0430\u0441\u0441\u0447\u0438\u0442\u044b\u0432\u0430\u043b. \u0413\u0434\u0435-\u0442\u043e \u043d\u0430 \u043a\u0430\u0441\u0441\u0435\u0442\u0435 \u0441\u043b\u044b\u0448\u0435\u043d \u0441\u0443\u0445\u043e\u0439 \u0441\u043c\u0435\u0448\u043e\u043a.",align};
+  const keys=Object.keys(t);
+  const align=keys.filter(function(k){return f[k]===t[k];}).length;
+  const e=CASE.endings||{};
+  if(align===keys.length&&e.win)  return Object.assign({},e.win,{align:align});
+  if(align>=Math.ceil(keys.length/2)&&e.partial) return Object.assign({},e.partial,{align:align});
+  return Object.assign({},e.fail||{mark:'✗',verdict:'ПРОВАЛ',text:'Сдвиг промолчал.'},{ align:align,kind:'fail'});
 }
 function haptic(kind){
   try{if(window.Telegram&&Telegram.WebApp&&Telegram.WebApp.HapticFeedback){
@@ -611,6 +613,11 @@ function showEnding(r){
   const meta=document.getElementById("e-meta");if(meta)meta.innerHTML="Сходимость: <b>"+r.align+" / 3</b> · улик: <b>"+CState.evidence.length+"</b>";
   if(_progEl)_progEl.style.width="100%";
   haptic(r.kind==="fail"?"shift":"burn"); endEl.classList.add("show");
+  const _rb=document.getElementById("e-restart");
+  if(_rb){
+    const _hn=CAMPAIGN&&(_caseIdx+1)<CAMPAIGN.cases.length;
+    _rb.textContent=_hn?"Следующее дело →":"Играть заново";
+  }
   if(r.kind==="win"){try{addXP(150);addCredits(100);vibrate([20,40,80]);}catch(_){}}
   else if(r.kind==="partial"){try{addXP(60);addCredits(40);}catch(_){}}
   else{try{addXP(20);addCredits(10);}catch(_){}}
@@ -645,7 +652,11 @@ function initEvPanel(){
     const panel=document.getElementById("ev-panel");if(panel)panel.classList.remove("open");
   });
   const restartBtn=document.getElementById("e-restart");
-  if(restartBtn) restartBtn.addEventListener("click",function(){restartCarousel();});
+  if(restartBtn) restartBtn.addEventListener("click",function(){
+    const _hn=CAMPAIGN&&(_caseIdx+1)<CAMPAIGN.cases.length;
+    if(_hn){ loadCaseByIndex(_caseIdx+1); computeEnding._invalidate=true; }
+    restartCarousel();
+  });
 }
 
 function initCarousel(){
@@ -656,6 +667,8 @@ function initCarousel(){
   cfCards=[];centerIndex=0;cBusy=false;cActive=null;SPIN_DUR=640;
   CState.ev=CASE.start;CState.flags={};CState.evidence=[];CState.step=0;
   if(_evCountEl)_evCountEl.textContent="0";
+  var _cn=document.getElementById("case-name");if(_cn)_cn.textContent=CASE.name||"";
+  var _cs=document.getElementById("case-sub");if(_cs)_cs.textContent=(CAMPAIGN&&CAMPAIGN.cases[_caseIdx])?CAMPAIGN.cases[_caseIdx].title:"";
   cSetProgress(); buildBacks(); initEvPanel();
 }
 
