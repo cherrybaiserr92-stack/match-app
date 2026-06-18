@@ -253,7 +253,7 @@ function enterMain(){
   bindTools();
   if(window.BgFx) BgFx.init();
   Icons.paint();
-  try{ buildDeck(); renderCard(); dealDeck(); }catch(e){ console.error('renderCard',e); }
+  try{ initCarousel(); }catch(e){ console.error('initCarousel',e); }
   try{ renderHUD(); }catch(e){ console.error('renderHUD',e); }
   try{ renderGameList(); }catch(e){ console.error('renderGameList',e); }
   try{ renderProfile(); }catch(e){ console.error('renderProfile',e); }
@@ -314,10 +314,7 @@ function useTool(t){
   if((T[t]||0)<=0){ toast('Инструменты','Нет в наличии — загляни в Лавку','🛠️'); return; }
   if(t==='hourglass'){ T[t]--; addEnergy(20); toast('Песочные часы','+20 энергии','⏳'); }
   else if(t==='magnify'){ T[t]--; App.flags.hintNext=true; toast('Лупа','Подсказка активна','🔍'); }
-  else if(t==='file'){ T[t]--; App.swipeUnlocked=true;
-    const c=App.deck[App.cardIndex]; const card=document.querySelector('.case-card');
-    if(card&&c) renderCardActions(card,c);
-    toast('Досье','Свайп разблокирован','📁'); }
+  else if(t==='file'){ T[t]--; unlockSwipe(); toast('Досье','Свайп разблокирован','📁'); }
   refreshTools(); saveProfile();
 }
 
@@ -353,324 +350,347 @@ window.addEventListener('DOMContentLoaded',()=>{
 });
 
 /* ═══════════════════════════════════════════════
-   СЦЕНАРИЙ + КОЛОДА
+   ДВИЖОК КАРУСЕЛИ (R10)
 ═══════════════════════════════════════════════ */
-async function loadScenario(){
-  if(App.scenario) return App.scenario;
-  const res=await fetch('/scenarios/detective.json');
-  if(!res.ok) throw new Error('scenario '+res.status);
-  App.scenario=await res.json();
-  return App.scenario;
+
+/* арт-мотивы по типу события */
+const ART={
+  crime:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 70' fill='none' stroke='%23ffcf6b' stroke-width='1'><rect x='30' y='20' width='40' height='34' rx='2'/><path d='M30 28h40M38 20v8M62 20v8'/><circle cx='50' cy='40' r='5'/></svg>",
+  evidence:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 70' fill='none' stroke='%23ffcf6b' stroke-width='1'><circle cx='44' cy='32' r='13'/><path d='M54 42l14 14' stroke-width='1.6' stroke-linecap='round'/></svg>",
+  witness:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 70' fill='none' stroke='%23ffcf6b' stroke-width='1'><rect x='34' y='14' width='32' height='44' rx='2'/><path d='M50 14v44M34 36h32'/></svg>",
+  suspect:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 70' fill='none' stroke='%23ffcf6b' stroke-width='1'><circle cx='50' cy='28' r='10'/><path d='M32 58c2-12 34-12 36 0' stroke-linecap='round'/></svg>",
+  shift:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 70' fill='none' stroke='%23ffcf6b' stroke-width='1'><path d='M50 8v54M40 22l-12 13 12 13M60 22l12 13-12 13' stroke-linecap='round'/></svg>",
+  final:"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 70' fill='none' stroke='%23ffcf6b' stroke-width='1'><path d='M40 26l20-8 8 20-20 8z'/><path d='M48 22l16 14M30 56h28' stroke-linecap='round'/></svg>"
+};
+function artBg(t){ return "url(\"data:image/svg+xml;utf8,"+(ART[t]||ART.evidence)+"\")"; }
+
+/* ═══ ДЕЛО №001 · ЗВЕЗДА СЕВЕРА ═══ */
+const CASE={
+  name:"Дело №001 · Звезда Севера",
+  truth:{time:"day",liar:"restorer",guard:"clean"},
+  start:"e0", total:9,
+  events:{
+    e0:{t:"crime",badge:"Преступление",title:"Кража в музее",
+      text:"Утро. Из главного зала исчезла «Звезда Севера» — сапфир в платине. Витрина заперта, сигнализация молчала. У пустого постамента ты впервые ловишь сдвиг: воздух дрожит.",
+      left:{label:"Осмотреть зал",to:"eHall"},right:{label:"Опросить охрану",to:"eGuard"}},
+    eHall:{t:"evidence",badge:"Осмотр",title:"Главный зал",
+      text:"Мрамор, пыль, холодный свет. Витрина и постамент просят внимания.",
+      left:{label:"Витрина",evidence:"Витрина: замок заводской, стекло без царапин — не вскрывали.",to:"eClue1"},
+      right:{label:"Постамент",evidence:"Постамент: микрослед монтажного клея — след от копии.",to:"eClue1"}},
+    eClue1:{t:"evidence",badge:"Улика",title:"Тихий взлом",
+      text:"Ни взлома, ни борьбы. Экспонат вынес тот, у кого был ключ — или подменили заранее.",
+      left:{label:"Журнал доступа",evidence:"Ключ-карта реставратора: вход в часы профилактики зала.",to:"eGuard"},
+      right:{label:"Книга смен",evidence:"Ночная смена — один Седов. Днём бригада без сопровождения.",to:"eGuard"}},
+    eGuard:{t:"witness",badge:"Свидетель",title:"Охранник Седов",
+      text:"Седов мнёт фуражку. Ночью никто не входил. Камеры «барахлили с обеда». Чем дольше говорит, тем больше спотыкается.",
+      left:{label:"Надавить",evidence:"Седов: реставраторов пускали без сопровождения.",to:"eCams"},
+      right:{label:"Поднять записи",evidence:"Записи обрываются в 15:40 — средь бела дня.",to:"eCams"}},
+    eCams:{t:"evidence",badge:"Архив камер",title:"Обрыв в 15:40",
+      text:"Картинка с зала глохнет днём. Кто-то знал график камер. Сдвиг нарастает.",
+      left:{label:"К версиям",to:"eShift1"},right:{label:"К версиям",to:"eShift1"}},
+    eShift1:{shift:true,t:"shift",badge:"СДВИГ · 1",title:"Две ночи",
+      intro:"Зал раскалывается надвое. Тяни карту — одна реальность твердеет, ей и сбыться.",
+      a:{label:"◄ НОЧЬ",vtext:"Ночная кража: вошли через служебный ход, пока сигнализация спала.",set:{time:"night"},bad:true,to:"eAfter1"},
+      b:{label:"ДЕНЬ ►",vtext:"Подмена днём: экспонат заменили копией на профилактике.",set:{time:"day"},to:"eAfter1"}},
+    eAfter1:{t:"suspect",badge:"Озарение",title:"Двое у постамента",
+      text:"@T@ Двое могли провернуть подмену: куратор Лацис и реставратор Корн.",
+      left:{label:"Куратор Лацис",evidence:"Лацис: алиби — «весь день в архиве», но журнал архива пуст.",to:"eRestorer"},
+      right:{label:"Реставратор Корн",evidence:"Корн: «копия для выставки», которой нет ни в одной описи.",to:"eRestorer"}},
+    eRestorer:{t:"suspect",badge:"Допрос",title:"Кто ближе к делу",
+      text:"Оба нервничают, оба недоговаривают. Ложь — только у одного из них.",
+      left:{label:"Слушать Лациса",evidence:"Лацис: «он один трогал крепления».",to:"eShift2"},
+      right:{label:"Слушать Корна",evidence:"Корн: «у него ключи от всего».",to:"eShift2"}},
+    eShift2:{shift:true,t:"shift",badge:"СДВИГ · 2",title:"Чья ложь",
+      intro:"Снова раскол. Один лжёт прямо сейчас. Выбери, чью ложь видишь.",
+      a:{label:"◄ ЛЖЁТ ЛАЦИС",vtext:"Куратор: доступ ко всему, мотив, пустое алиби.",set:{liar:"curator"},bad:true,to:"eGuardFate"},
+      b:{label:"ЛЖЁТ КОРН ►",vtext:"Реставратор: только он касался экспоната и знал крепления.",set:{liar:"restorer"},to:"eGuardFate"}},
+    eGuardFate:{t:"witness",badge:"Свидетель",title:"Удобный виноватый",
+      text:"Следствие давит — всё на Седова. Но что-то не сходится.",
+      left:{label:"Счета Седова",evidence:"Счета чисты: ни лишней копейки. Его подставили.",to:"eShift3"},
+      right:{label:"Он не в доле",evidence:"Седов лишь проспал смену. Подстава.",to:"eShift3"}},
+    eShift3:{shift:true,t:"shift",badge:"СДВИГ · 3",title:"Судьба Седова",
+      intro:"Последний раскол. Охранник — звено схемы или козёл отпущения?",
+      a:{label:"◄ СОУЧАСТНИК",vtext:"Седов в деле: отключил камеры за долю. Быстрое закрытие.",set:{guard:"paid"},bad:true,to:"eAccuse"},
+      b:{label:"ПОДСТАВА ►",vtext:"Настоящий вор увёл след на охранника.",set:{guard:"clean"},to:"eAccuse"}},
+    eAccuse:{t:"final",badge:"Финал",title:"Имя на постановлении",
+      text:"Сдвиги улеглись. Пора назвать имя — обратной дороги нет.",
+      left:{label:"Куратор Лацис",set:{accused:"curator"},bad:true,to:"__resolve__"},
+      right:{label:"Реставратор Корн",set:{accused:"restorer"},to:"__resolve__"}}
+  }
+};
+
+function fill(text,f){
+  if(text.indexOf("@T@")<0) return text;
+  const pre=f.time==="day"?"Версия дня обретает вес. ":"Следов ночного входа всё меньше. ";
+  return pre+text.replace("@T@","").trim();
+}
+function computeEnding(f){
+  const t=CASE.truth;
+  const align=(f.time===t.time?1:0)+(f.liar===t.liar?1:0)+(f.guard===t.guard?1:0);
+  if(f.accused==="restorer"&&align===3)
+    return{kind:"win",mark:"✓",verdict:"ДЕЛО РАСКРЫТО",
+      text:"Корн сломался. Копию прятал в реставрационной, оригинал — к перепродаже. Каждый сдвиг лёг точно в линию правды.",align};
+  if(f.accused==="restorer")
+    return{kind:"partial",mark:"≈",verdict:"РАСКРЫТО НА ВОЛОСКЕ",
+      text:"Верный виновный, но часть сдвигов вела в сторону. Победа, которой повезло.",align};
+  return{kind:"fail",mark:"✗",verdict:"ЛОЖНЫЙ СЛЕД",
+    text:"Лациса увели в наручниках. Через неделю «Звезду» нашли у перекупщика — с подписью Корна.",align};
+}
+function haptic(kind){
+  try{if(window.Telegram&&Telegram.WebApp&&Telegram.WebApp.HapticFeedback){
+    if(kind==="shift")Telegram.WebApp.HapticFeedback.notificationOccurred("warning");
+    else if(kind==="burn")Telegram.WebApp.HapticFeedback.impactOccurred("heavy");
+    else Telegram.WebApp.HapticFeedback.impactOccurred("medium");return;}}catch(e){}
+  try{navigator.vibrate&&navigator.vibrate(kind==="shift"?[14,40,14,40,30]:kind==="burn"?[10,30,60]:14);}catch(e){}
 }
 
-function buildDeck(){
-  const sc=App.scenario;
-  if(!sc||!sc.cards){ App.deck=[]; return; }
-  App.deck=sc.cards.slice();
-  App.cardIndex=App.profile.mapNode % App.deck.length;
-}
+/* ════ КОЛЬЦО ════ */
+const CState={ev:CASE.start,flags:{},evidence:[],step:0};
+let _ring=null,_evCountEl=null,_progEl=null;
+let cfCards=[],centerIndex=0,cBusy=false,cActive=null,SPIN_DUR=640;
+const CN=6,CSTEPD=60,CRX=150,CYL=152,CZL=120,CSD=0.42;
 
-/* ═══════════════════════════════════════════════
-   РЕНДЕР КАРТОЧКИ ДЕЛА
-═══════════════════════════════════════════════ */
-/* анимация набора колоды-подложки при входе */
-function dealDeck(){
-  const cards=document.querySelectorAll('.stack-card');
-  cards.forEach(el=>{ el.classList.remove('deal','dealt'); void el.offsetWidth; });
-  cards.forEach(el=>{
-    el.classList.add('deal');
-    el.addEventListener('animationend',()=>{ el.classList.remove('deal'); el.classList.add('dealt'); },{once:true});
+function cNorm(a){a=a%360;if(a>180)a-=360;if(a<-180)a+=360;return a;}
+function cPosFor(phi){
+  const r=phi*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+  const x=CRX*s,y=CYL*(c-1),z=CZL*(c-1),sc=1-CSD*(1-c)/2;
+  return{t:'translate(-50%,-50%) translate3d('+x.toFixed(1)+'px,'+y.toFixed(1)+'px,'+z.toFixed(1)+'px) scale('+sc.toFixed(3)+')',d:(1-c)/2};
+}
+function cPhiOf(e){return cNorm((e-centerIndex)*CSTEPD);}
+function gframeHTML(){return '<div class="gframe"><i class="fil tl"></i><i class="fil tr"></i><i class="fil bl"></i><i class="fil br"></i></div>';}
+function backHTML(){return gframeHTML()+'<span class="crank t">С</span><span class="crank b">С</span><div class="cmono">С</div>';}
+function cardHTML(ev){
+  const scene='<div class="scene"><div class="grad"></div><div class="art" style="background-image:'+artBg(ev.t)+'"></div></div>';
+  if(ev.shift){
+    return gframeHTML()+scene+'<div class="pad"><span class="badge">'+ev.badge+'</span>'
+      +'<div class="title">'+ev.title+'</div>'
+      +'<div class="shift-intro">'+ev.intro+'</div><div class="vstack">'
+      +'<div class="vpanel a"><div class="vlabel">'+ev.a.label+'</div><div class="vtext">'+ev.a.vtext+'</div></div>'
+      +'<div class="seam"></div>'
+      +'<div class="vpanel b"><div class="vlabel">'+ev.b.label+'</div><div class="vtext">'+ev.b.vtext+'</div></div>'
+      +'</div></div>';
+  }
+  return gframeHTML()+scene
+    +'<span class="stamp l">'+(ev.left.label||'').replace(/^◄\s*/,'')+'</span>'
+    +'<span class="stamp r">'+(ev.right.label||'').replace(/\s*►$/,'')+'</span>'
+    +'<div class="pad"><span class="badge">'+ev.badge+'</span>'
+    +'<div class="title">'+ev.title+'</div>'
+    +'<div class="text">'+fill(ev.text,CState.flags)+'</div>'
+    +'<div class="spacer"></div><div class="choices">'
+    +'<div class="choice l"><span class="dir">СВАЙП ВЛЕВО</span>'+ev.left.label+'</div>'
+    +'<div class="choice r"><span class="dir">СВАЙП ВПРАВО</span>'+ev.right.label+'</div>'
+    +'</div></div>';
+}
+function setBack(el){el.classList.remove("active","shift","grab","burning");el._ev=null;
+  el.innerHTML='<div class="cfinner">'+backHTML()+'</div>';}
+function setActive(el,ev){
+  el.classList.add("active"); el.classList.toggle("shift",!!ev.shift);
+  el.innerHTML='<div class="cfinner">'+cardHTML(ev)+'</div>'; el._ev=ev; cActive=el;
+  App.currentCard=ev; App.swipeUnlocked=false;
+  addLockOverlay(el);
+}
+function cLayout(animate){
+  cfCards.forEach(function(c,e){
+    const phi=cPhiOf(e),P=cPosFor(phi);
+    const prev=c._phi,jump=(prev!==undefined&&Math.abs(cNorm(phi-prev))>CSTEPD+1);
+    c.style.transition=(animate&&!jump)?("transform "+SPIN_DUR+"ms cubic-bezier(.22,.7,.24,1)"):"none";
+    c.style.transform=P.t; c.style.zIndex=String(100-Math.round(P.d*100)); c._phi=phi;
   });
 }
-
-/* премиум SVG-фоны для карточек по типу дела */
-function cardBackground(type){
-  // Глубокие атмосферные фоны (вдохновлено Reigns / Cultist Simulator):
-  // несколько слоёв радиальных градиентов, мягкие пятна света, дымка, виньетка.
-  const P={
-    crime:     {base:'#1a0608',glow:'#ff5d6c',glow2:'#7a1020',spot:'#ff8a95'},
-    evidence:  {base:'#04141a',glow:'#6be0ff',glow2:'#0a4a63',spot:'#9af0ff'},
-    suspect:   {base:'#0e0620',glow:'#a98bff',glow2:'#3d2470',spot:'#c4aaff'},
-    witness:   {base:'#04160f',glow:'#35d49b',glow2:'#0c4a32',spot:'#7af0c0'},
-    revelation:{base:'#1a1404',glow:'#ffcf6b',glow2:'#7a5410',spot:'#ffe6a0'},
-    ending:    {base:'#140f04',glow:'#ffcf6b',glow2:'#6a4a10',spot:'#ffe6a0'}
-  }[type] || {base:'#0a0d14',glow:'#c8860a',glow2:'#5a3d08',spot:'#ffcf6b'};
-
-  return `<svg viewBox="0 0 400 520" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">
-    <defs>
-      <radialGradient id="bg-base-${type}" cx="50%" cy="30%" r="95%">
-        <stop offset="0" stop-color="${P.glow2}" stop-opacity=".55"/>
-        <stop offset="45%" stop-color="${P.base}"/>
-        <stop offset="100%" stop-color="#04060a"/>
-      </radialGradient>
-      <radialGradient id="bg-spot-${type}" cx="50%" cy="22%" r="42%">
-        <stop offset="0" stop-color="${P.spot}" stop-opacity=".5"/>
-        <stop offset="100%" stop-color="${P.spot}" stop-opacity="0"/>
-      </radialGradient>
-      <radialGradient id="bg-glow2-${type}" cx="78%" cy="68%" r="55%">
-        <stop offset="0" stop-color="${P.glow}" stop-opacity=".28"/>
-        <stop offset="100%" stop-color="${P.glow}" stop-opacity="0"/>
-      </radialGradient>
-      <radialGradient id="bg-vig-${type}" cx="50%" cy="50%" r="75%">
-        <stop offset="55%" stop-color="#000" stop-opacity="0"/>
-        <stop offset="100%" stop-color="#000" stop-opacity=".6"/>
-      </radialGradient>
-      <filter id="bg-soft-${type}"><feGaussianBlur stdDeviation="22"/></filter>
-      <filter id="bg-grain-${type}">
-        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" result="n"/>
-        <feColorMatrix in="n" type="saturate" values="0"/>
-        <feComponentTransfer><feFuncA type="linear" slope="0.05"/></feComponentTransfer>
-        <feComposite operator="over" in2="SourceGraphic"/>
-      </filter>
-    </defs>
-    <!-- базовый глубокий градиент -->
-    <rect width="400" height="520" fill="url(#bg-base-${type})"/>
-    <!-- большие мягкие световые пятна (глубина) -->
-    <g filter="url(#bg-soft-${type})">
-      <ellipse cx="120" cy="90" rx="130" ry="110" fill="${P.glow}" opacity=".14"/>
-      <ellipse cx="320" cy="380" rx="150" ry="140" fill="${P.glow2}" opacity=".5"/>
-      <ellipse cx="200" cy="250" rx="180" ry="160" fill="${P.base}" opacity=".4"/>
-    </g>
-    <!-- верхний прожектор -->
-    <rect width="400" height="520" fill="url(#bg-spot-${type})"/>
-    <!-- нижнее цветное свечение -->
-    <rect width="400" height="520" fill="url(#bg-glow2-${type})"/>
-    <!-- тонкая дымка-полосы для атмосферы -->
-    <g opacity=".06" fill="none" stroke="${P.spot}" stroke-width="1">
-      <path d="M-20 150 Q200 100 420 170"/>
-      <path d="M-20 300 Q200 250 420 320"/>
-    </g>
-    <!-- зерно плёнки -->
-    <rect width="400" height="520" filter="url(#bg-grain-${type})" opacity=".6"/>
-    <!-- виньетка для глубины -->
-    <rect width="400" height="520" fill="url(#bg-vig-${type})"/>
-  </svg>`;
+function buildBacks(){
+  for(let i=0;i<CN;i++){
+    const c=document.createElement("div"); c.className="cfcard"; c._phi=undefined;
+    _ring.appendChild(c); cfCards.push(c); bindDrag(c);
+  }
+  cfCards.forEach(function(c,e){
+    if(e===centerIndex) setActive(c,CASE.events[CASE.start]); else setBack(c);
+  });
+  cLayout(false);
 }
 
-function renderCard(){
-  const zone=$('#swipe-zone');
-  zone.querySelector('.case-card')?.remove();
-  // ── Портал в sdvig-shift.html (R9) ──
-  const card=el('div','case-card card-enter ct-crime case-launcher');
-  card.innerHTML=`
-    <div class="card-bg">${cardBackground('crime')}</div>
-    <div class="launch-inner">
-      <div class="launch-eyebrow">АКТИВНОЕ ДЕЛО</div>
-      <div class="launch-num">№ 001</div>
-      <div class="launch-title">Звезда Севера</div>
-      <div class="launch-meta">Кража в музее · 3 ключевых момента</div>
-      <div class="launch-divider"></div>
-      <div class="launch-hint">Нажми, чтобы начать расследование</div>
-    </div>
-  `;
-  card.onclick=()=>{ try{Sound.tap();}catch(_){} window.location.href='/sdvig-shift.html'; };
-  zone.appendChild(card);
-  try{Sound.tap();}catch(_){}
+/* ── мини-игра: блокировка свайпа ── */
+function addLockOverlay(cardEl){
+  const pad=cardEl.querySelector('.pad'); if(!pad) return;
+  if(pad.querySelector('.card-lock')) return;
+  const lock=document.createElement('div'); lock.className='card-lock';
+  lock.innerHTML='<button class="card-lock-btn" id="play-gems-ring">'
+    +'<span class="clb-ico">🔍</span><span>Найти улики</span></button>'
+    +'<div class="card-lock-hint">⟵ свайп заблокирован ⟶</div>';
+  pad.appendChild(lock);
+  lock.querySelector('#play-gems-ring').addEventListener('click',function(){
+    try{Sound.tap();}catch(_){} openHintGame(App.currentCard||{});
+  });
+}
+function removeLockOverlay(){
+  const lock=document.querySelector('.cfcard.active .card-lock');
+  if(lock) lock.remove();
 }
 
-function typeLabel(t){
-  return ({crime:'Преступление',suspect:'Подозреваемый',evidence:'Улика',
-           witness:'Свидетель',revelation:'Озарение',ending:'Финал'})[t]||'Улика';
-}
-
-function renderCardActions(card,c){
-  const a=card.querySelector('#card-actions');
-  if(App.swipeUnlocked){
-    a.innerHTML=`
-      <div class="swipe-indicator swipe-unlocked">
-        <span class="si-deny">◄ ${c.leftLabel||'Отказать'}</span>
-        <span class="si-approve">${c.rightLabel||'Принять'} ►</span>
-      </div>
-      ${c.special?`<span class="si-special">▲ Свайп вверх — спецприём</span>`:''}`;
-  }else{
-    a.innerHTML=`
-      <button class="btn-play-gems" id="play-gems">${Icons.get('gem')}<span>Найти улики</span></button>
-      <div class="swipe-indicator"><span class="si-locked">${Icons.get('lock')} Свайп заблокирован</span></div>`;
-    a.querySelector('#play-gems').onclick=()=>{ Sound.tap(); openHintGame(c); };
+/* ── огонь (общий движок) ── */
+function _spawnSparks(el,fx,cls){
+  for(let i=0;i<3;i++){
+    const s=document.createElement('div'); s.className='spark'+(cls?' '+cls:'');
+    s.style.left=(fx*100+(Math.random()-.5)*14)+'%';
+    s.style.top=(10+Math.random()*78)+'%';
+    s.style.setProperty('--sx',((Math.random()*2-1)*48|0)+'px');
+    s.style.setProperty('--sy',((-35-Math.random()*95)|0)+'px');
+    s.style.setProperty('--sd',((580+Math.random()*720)|0)+'ms');
+    el.appendChild(s); setTimeout(function(){s.remove();},1500);
   }
 }
-
-/* разблокировка свайпа после мини-игры */
-function unlockSwipe(){
-  App.swipeUnlocked=true;
-  vibrate(20); Sound.booster();
-  const card=$('#swipe-zone .case-card');
-  if(card){ renderCardActions(card,App.currentCard);
-    const hint=App.currentCard.hint;
-    if(hint){ const hp=el('div','hint-revealed-panel',
-      `<span class="hrp-icon">🔍</span><span class="hrp-text">${hint}</span>`);
-      card.querySelector('.card-body').appendChild(hp); } }
-}
-
-/* ═══════════════════════════════════════════════
-   СВАЙПЫ (left / right / up = спецприём)
-═══════════════════════════════════════════════ */
-function bindSwipe(card,c){
-  let sx=0,sy=0,dx=0,dy=0,drag=false,pid=null;
-  const TH=90, UPTH=110;
-
-  const start=(x,y)=>{
-    if(!App.swipeUnlocked) return;
-    drag=true; sx=x; sy=y; dx=dy=0;
-    card.style.transition='none';
-  };
-  const move=(x,y)=>{
-    if(!drag) return;
-    dx=x-sx; dy=y-sy;
-    const rot=dx/18;
-    card.style.transform=`translate(-50%,-50%) translate(${dx}px,${dy*0.4}px) rotate(${rot}deg)`;
-    card.classList.toggle('tilt-left',dx<-30);
-    card.classList.toggle('tilt-right',dx>30);
-    card.classList.toggle('tilt-up',c.special&&dy<-40&&Math.abs(dx)<60);
-    setStampOpacity(card,dx,dy,c);
-    if(window.BgFxDrag) BgFxDrag(-dx/180, -dy/180);
-  };
-  const end=()=>{
-    if(!drag) return; drag=false;
-    card.style.transition='transform .35s cubic-bezier(.4,0,.2,1), opacity .35s ease';
-    if(c.special && dy<-UPTH && Math.abs(dx)<70){ flySpecial(card,c); return; }
-    if(dx>TH){ flyOut(card,'right',c); return; }
-    if(dx<-TH){ flyOut(card,'left',c); return; }
-    card.style.transform=`translate(-50%,-50%) rotate(-.4deg)`;
-    card.className='case-card ct-'+(c.type||'evidence');
-    resetStamps(card);
-    if(window.BgFxDrag) BgFxDrag(0,0);
-  };
-
-  // pointerdown на карточке, move/up на window — не зависим от pointer-capture
-  const onDown=e=>{
-    if(e.target.closest('#play-gems')) return;
-    if(!App.swipeUnlocked) return;
-    pid=e.pointerId;
-    start(e.clientX,e.clientY);
-    window.addEventListener('pointermove',onMove);
-    window.addEventListener('pointerup',onUp);
-    window.addEventListener('pointercancel',onUp);
-  };
-  const onMove=e=>{ if(pid!=null&&e.pointerId!==pid) return; move(e.clientX,e.clientY); };
-  const onUp=e=>{
-    if(pid!=null&&e.pointerId!==pid) return;
-    end(); pid=null;
-    window.removeEventListener('pointermove',onMove);
-    window.removeEventListener('pointerup',onUp);
-    window.removeEventListener('pointercancel',onUp);
-  };
-  card.addEventListener('pointerdown',onDown);
-}
-
-function setStampOpacity(card,dx,dy,c){
-  const l=card.querySelector('.stamp-left'), r=card.querySelector('.stamp-right'), u=card.querySelector('.stamp-up');
-  l.style.opacity=clamp(-dx/90,0,1); r.style.opacity=clamp(dx/90,0,1);
-  u.style.opacity=c.special?clamp(-dy/110,0,1):0;
-}
-function resetStamps(card){ card.querySelectorAll('.stamp-wrap').forEach(s=>s.style.opacity=0); }
-
-function flyOut(card,dir,c){
-  const off=dir==='right'?window.innerWidth:-window.innerWidth;
-  card.style.transform=`translate(-50%,-50%) translate(${off}px,40px) rotate(${dir==='right'?22:-22}deg)`;
-  card.style.opacity='0';
-  Sound.swipe(dir); vibrate(12);
-  spawnTrail(dir);
-  setTimeout(()=>resolveChoice(c,dir==='right'?'right':'left'),320);
-}
-function flySpecial(card,c){
-  card.style.transform=`translate(-50%,-50%) translateY(-${window.innerHeight}px) rotate(-3deg)`;
-  card.style.opacity='0';
-  Sound.special(); vibrate([10,30,10]);
-  setTimeout(()=>resolveChoice(c,'special'),320);
-}
-
-/* ═══════════════════════════════════════════════
-   РЕЗУЛЬТАТ ВЫБОРА + каскад улик
-═══════════════════════════════════════════════ */
-function resolveChoice(c,dir){
-  const branch = dir==='special' ? (c.special||c.right) : (dir==='right'?c.right:c.left);
-  if(!branch){ nextCard(); return; }
-
-  // каскад: промежуточная карточка-вопрос
-  if(branch.followup){
-    const fc=branch.followup; fc.type=fc.type||'revelation'; fc._followOf=c;
-    App.deck.splice(App.cardIndex+1,0,fc);
+function _runBurn(el,fromLeft,sparksClass,fireCls,smokeCls,done){
+  haptic("burn"); el.onpointerdown=null; el.classList.add("burning");
+  const inner=el.querySelector('.cfinner');
+  const fire=document.createElement('div'); fire.className='fire'+(fireCls?' '+fireCls:''); el.appendChild(fire);
+  const smk=document.createElement('div'); smk.className='smoke'+(smokeCls?' '+smokeCls:''); el.appendChild(smk);
+  const DUR=1850; let t0=0,last=0;
+  function frame(ts){
+    if(!t0){t0=ts;last=ts;}
+    const p=Math.min(1,(ts-t0)/DUR), ep=p*p*(3-2*p);
+    const fx=fromLeft?(1-ep):ep, soft=0.08;
+    let g;
+    if(fromLeft){const a=Math.max(0,(fx-soft)*100),b=Math.min(100,fx*100);
+      g='linear-gradient(90deg,#000 0,#000 '+a.toFixed(1)+'%,transparent '+b.toFixed(1)+'%,transparent 100%)';}
+    else{const a=Math.max(0,fx*100),b=Math.min(100,(fx+soft)*100);
+      g='linear-gradient(90deg,transparent 0,transparent '+a.toFixed(1)+'%,#000 '+b.toFixed(1)+'%,#000 100%)';}
+    inner.style.webkitMaskImage=g; inner.style.maskImage=g;
+    fire.style.left=(fx*100)+'%';
+    fire.style.opacity=(p<0.06?p/0.06:p>0.88?Math.max(0,(1-p)/.12):1).toFixed(2);
+    const tilt=(fromLeft?-1:1);
+    el.style.transform='translate(-50%,-50%) translateX('+(tilt*ep*54).toFixed(1)+'px) rotate('+(tilt*ep*3.2).toFixed(2)+'deg) scale('+(1-ep*.045).toFixed(3)+')';
+    if(ts-last>38){last=ts; _spawnSparks(el,fx,sparksClass);}
+    if(p<1) requestAnimationFrame(frame); else{done&&done();}
   }
-
-  applyOutcome(branch);
-  showResultOverlay(branch,dir);
+  requestAnimationFrame(frame);
 }
+/* Оранжевый огонь — свайп влево */
+function burnCard(el,dir,done){ _runBurn(el,dir==='left','','','',done); }
+/* Синий огонь — свайп вправо */
+function burnCardBlue(el,dir,done){ _runBurn(el,false,'spark-blue','fire-blue','smoke-blue',done); }
 
-function applyOutcome(b){
-  const o=b.outcome||b; const p=App.profile;
-  if(o.xp) addXP(o.xp);
-  if(o.credits) addCredits(o.credits);
-  if(o.energy) addEnergy(o.energy);
-  if(o.prestige){ p.prestige+=o.prestige; }
-  if(o.skill && p.skills[o.skill]!=null) p.skills[o.skill]+=(o.skillUp||1);
-  if(o.solved){ p.casesSolved++; p.streak++; advanceMap(); }
-  saveProfile();
-}
-
-function showResultOverlay(b,dir){
-  const card=el('div','case-card ct-revelation');
-  const o=b.outcome||b;
-  const ok=dir!=='left';
-  card.innerHTML=`<div class="result-overlay">
-      <div class="ro-stamp-text">${ok?'УЛИКА ПОЛУЧЕНА':'ВЕРСИЯ ОТКЛОНЕНА'}</div>
-      <div class="ro-text">${b.result||b.text||''}</div>
-      <div class="ro-rewards">
-        ${o.xp?`<span class="ro-chip ro-xp">+${o.xp} XP</span>`:''}
-        ${o.credits?`<span class="ro-chip ro-cr">+${o.credits} ◈</span>`:''}
-        ${o.prestige?`<span class="ro-chip ro-xp">+${o.prestige} престиж</span>`:''}
-      </div>
-      <button class="btn btn-bronze" id="ro-next" style="max-width:200px">Дальше</button>
-    </div>`;
-  $('#swipe-zone').appendChild(card);
-  if(ok){ Sound.approve(); if(o.solved) confetti(); } else Sound.deny();
-  card.querySelector('#ro-next').onclick=()=>{ Sound.tap(); card.remove(); nextCard(); };
-}
-
-function nextCard(){
-  // присвоить звёзды за пройденное дело
-  App.profile.mapStars = App.profile.mapStars || {};
-  const doneIdx = App.profile.mapNode||0;
-  if(App.profile.mapStars[doneIdx]==null){
-    // звёзды по энергии: больше осталось энергии — больше звёзд
-    const e=App.profile.energy, m=App.profile.maxEnergy||5;
-    App.profile.mapStars[doneIdx] = e>=m*0.66?3 : e>=m*0.33?2 : 1;
+function cAdvance(dir,ev,opt){
+  if(cBusy) return; cBusy=true;
+  cApplyOption(opt);
+  const c0=cfCards[centerIndex]; c0.onpointerdown=null;
+  function turn(){
+    centerIndex=(centerIndex+(dir==="left"?1:-1)+CN)%CN;
+    CState.step++; cSetProgress();
+    const resolve=(opt.to==="__resolve__");
+    if(!resolve) setActive(cfCards[centerIndex],CASE.events[opt.to]);
+    cLayout(true);
+    setTimeout(function(){
+      if(resolve) showEnding(computeEnding(CState.flags));
+      else if(c0!==cfCards[centerIndex]) setBack(c0);
+      SPIN_DUR=640; cBusy=false;
+    },resolve?520:Math.max(580,SPIN_DUR+40));
   }
-  App.cardIndex=(App.cardIndex+1)%App.deck.length;
-  App.profile.mapNode=Math.min(totalLevels()-1, (App.profile.mapNode||0)+1);
-  saveProfile();
-  renderCard();
+  if(dir==="left"){ burnCard(c0,"left",function(){setBack(c0);turn();}); }
+  else { burnCardBlue(c0,"right",function(){setBack(c0);turn();}); }
 }
 
-/* ═══════════════════════════════════════════════
-   КОНФЕТТИ (золотые улики)
-═══════════════════════════════════════════════ */
-function confetti(){
-  const colors=['#ffcf6b','#f0a93a','#6be0ff','#35d49b'];
-  for(let i=0;i<28;i++){
-    const c=el('div','confetti');
-    c.style.left=(40+Math.random()*20)+'vw';
-    c.style.top='40vh';
-    c.style.background=colors[i%colors.length];
-    document.body.appendChild(c);
-    const ang=Math.random()*Math.PI*2, dist=120+Math.random()*200;
-    const ax=Math.cos(ang)*dist, ay=Math.sin(ang)*dist-200;
-    c.animate([
-      {transform:'translate(0,0) rotate(0)',opacity:1},
-      {transform:`translate(${ax}px,${ay+window.innerHeight*0.5}px) rotate(${720*Math.random()}deg)`,opacity:0}
-    ],{duration:1100+Math.random()*600,easing:'cubic-bezier(.2,.7,.3,1)'}).onfinish=()=>c.remove();
-  }
+function cAddEvidence(t){
+  if(t&&CState.evidence.indexOf(t)<0) CState.evidence.push(t);
+  if(_evCountEl) _evCountEl.textContent=CState.evidence.length;
+  addXP(10);
 }
-function spawnTrail(dir){
-  const zone=$('#swipe-zone'); const r=zone.getBoundingClientRect();
-  for(let i=0;i<8;i++){ const t=el('div','swipe-trail');
-    const sz=4+Math.random()*8; t.style.width=t.style.height=sz+'px';
-    t.style.background='rgba(240,169,58,'+(0.3+Math.random()*0.3)+')';
-    t.style.left=(r.width/2+(dir==='right'?40:-40)+Math.random()*30-15)+'px';
-    t.style.top=(r.height/2+Math.random()*60-30)+'px';
-    zone.appendChild(t);
-    t.animate([{opacity:.8,transform:'scale(1)'},{opacity:0,transform:'scale(0) translateY(20px)'}],
-      {duration:500+Math.random()*300}).onfinish=()=>t.remove(); }
+function cSetProgress(){
+  const p=Math.min(100,Math.round(CState.step/CASE.total*100));
+  if(_progEl) _progEl.style.width=p+"%";
+}
+function cApplyOption(o){
+  if(o.set) Object.assign(CState.flags,o.set);
+  if(o.evidence) cAddEvidence(o.evidence);
+}
+
+function bindDrag(card){
+  let sx=0,sy=0,dx=0,drag=false,pid=null,vx=0,lastX=0,lastT=0,evc=null,pA=null,pB=null,stL=null,stR=null;
+  const TH=86;
+  function setShiftGap(k){if(!pA||!pB)return;
+    pA.classList.toggle("hot",k<-.2); pA.classList.toggle("dim",k>.2);
+    pB.classList.toggle("hot",k>.2);  pB.classList.toggle("dim",k<-.2);}
+  function snap(){card.style.transition="transform .28s cubic-bezier(.3,1.3,.5,1)";card.style.transform="translate(-50%,-50%)";
+    if(evc&&evc.shift)setShiftGap(0);if(stL)stL.style.opacity=0;if(stR)stR.style.opacity=0;
+    setTimeout(function(){card.style.transition="";},280);}
+  function down(x,y,id){
+    if(cBusy||!card.classList.contains("active")||!App.swipeUnlocked) return false;
+    evc=card._ev; pA=card.querySelector(".vpanel.a"); pB=card.querySelector(".vpanel.b");
+    stL=card.querySelector(".stamp.l"); stR=card.querySelector(".stamp.r");
+    drag=true;pid=id;sx=x;sy=y;dx=0;vx=0;lastT=0;lastX=x;
+    card.classList.add("grab");card.style.transition="";return true;}
+  function move(x,y){if(!drag)return;const now=performance.now();
+    if(lastT){const d=now-lastT;if(d>0)vx=vx*.65+.35*((x-lastX)/d*1000);}
+    lastX=x;lastT=now;dx=x-sx;const dy=(y-sy)*.18;
+    card.style.transform="translate(-50%,-50%) translate("+dx+"px,"+dy.toFixed(1)+"px) rotate("+(dx/26)+"deg)";
+    const k=Math.max(-1,Math.min(1,dx/TH));
+    if(evc&&evc.shift)setShiftGap(k);
+    else{if(stL)stL.style.opacity=Math.max(0,-k);if(stR)stR.style.opacity=Math.max(0,k);}}
+  function up(){if(!drag)return;drag=false;card.classList.remove("grab");
+    if(Math.abs(dx)>TH)commit(dx>0?"right":"left");else snap();}
+  function commit(side){const ev=evc;if(!ev)return;
+    const opt=ev.shift?(side==="left"?ev.a:ev.b):(side==="left"?ev.left:ev.right);
+    const sp=Math.min(1,Math.abs(vx)/3800); SPIN_DUR=Math.round(660-sp*160);
+    cAdvance(side,ev,opt);}
+  card.addEventListener("pointerdown",function(e){if(!down(e.clientX,e.clientY,e.pointerId))return;
+    try{card.setPointerCapture(e.pointerId);}catch(_){}});
+  card.addEventListener("pointermove",function(e){if(pid!=null&&e.pointerId!==pid)return;move(e.clientX,e.clientY);});
+  card.addEventListener("pointerup",function(e){if(pid!=null&&e.pointerId!==pid)return;up();try{card.releasePointerCapture(e.pointerId);}catch(_){}});
+  card.addEventListener("pointercancel",function(e){if(drag){drag=false;card.classList.remove("grab");snap();}});
+}
+
+function showEnding(r){
+  const endEl=document.getElementById("ending");if(!endEl)return;
+  const seal=document.getElementById("e-seal");if(seal){seal.className="seal "+r.kind;seal.textContent=r.mark;}
+  const ver=document.getElementById("e-verdict");if(ver){ver.className="e-verdict "+r.kind;ver.textContent=r.verdict;}
+  const txt=document.getElementById("e-text");if(txt)txt.textContent=r.text;
+  const meta=document.getElementById("e-meta");if(meta)meta.innerHTML="Сходимость: <b>"+r.align+" / 3</b> · улик: <b>"+CState.evidence.length+"</b>";
+  if(_progEl)_progEl.style.width="100%";
+  haptic(r.kind==="fail"?"shift":"burn"); endEl.classList.add("show");
+  if(r.kind==="win"){try{addXP(150);addCredits(100);vibrate([20,40,80]);}catch(_){}}
+  else if(r.kind==="partial"){try{addXP(60);addCredits(40);}catch(_){}}
+  else{try{addXP(20);addCredits(10);}catch(_){}}
+  try{saveProfile();}catch(_){}
+}
+
+function nextCard(){ restartCarousel(); }
+function restartCarousel(){
+  CState.ev=CASE.start;CState.flags={};CState.evidence=[];CState.step=0;
+  if(_evCountEl)_evCountEl.textContent="0";
+  if(_progEl)_progEl.style.width="0%";
+  const endEl=document.getElementById("ending");if(endEl)endEl.classList.remove("show");
+  cfCards.forEach(function(c){if(c.parentNode)c.parentNode.removeChild(c);});
+  cfCards=[];centerIndex=0;cBusy=false;cActive=null;SPIN_DUR=640;
+  App.swipeUnlocked=false;
+  buildBacks();
+}
+
+function initEvPanel(){
+  const chip=document.getElementById("ev-chip");
+  if(chip) chip.addEventListener("click",function(){
+    const panel=document.getElementById("ev-panel");
+    const list=document.getElementById("ev-list");
+    if(!panel||!list)return;
+    list.innerHTML=CState.evidence.length
+      ? CState.evidence.map(function(t){return '<div class="ev-item">'+t+'</div>';}).join("")
+      : '<div class="ev-empty">Улики появятся по ходу расследования.</div>';
+    panel.classList.add("open");
+  });
+  const closeBtn=document.getElementById("ev-close");
+  if(closeBtn) closeBtn.addEventListener("click",function(){
+    const panel=document.getElementById("ev-panel");if(panel)panel.classList.remove("open");
+  });
+  const restartBtn=document.getElementById("e-restart");
+  if(restartBtn) restartBtn.addEventListener("click",function(){restartCarousel();});
+}
+
+function initCarousel(){
+  _ring=document.getElementById("ring");
+  _evCountEl=document.getElementById("ev-count");
+  _progEl=document.getElementById("prog");
+  if(!_ring)return;
+  cfCards=[];centerIndex=0;cBusy=false;cActive=null;SPIN_DUR=640;
+  CState.ev=CASE.start;CState.flags={};CState.evidence=[];CState.step=0;
+  if(_evCountEl)_evCountEl.textContent="0";
+  cSetProgress(); buildBacks(); initEvPanel();
 }
 
 /* ═══════════════════════════════════════════════

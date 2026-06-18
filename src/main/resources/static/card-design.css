@@ -253,3 +253,229 @@
 .swipe-trail{ position:absolute; border-radius:50%; pointer-events:none; z-index:7; }
 .confetti{ position:fixed; width:9px; height:14px; z-index:400; pointer-events:none; border-radius:2px; }
 
+
+/* ════════════════════════════════════════════════════
+   СДВИГ · КАРУСЕЛЬ (R10) — интегрирована в index.html
+════════════════════════════════════════════════════ */
+
+/* переменные карусели (алиасы под основную систему) */
+:root{
+  --gold:linear-gradient(135deg,#5a3c0a 0%,#f3d27a 26%,#caa033 50%,#f8e9b8 72%,#6a4810 100%);
+  --amber:var(--acc); --amber-lite:var(--acc-2); --amber-deep:var(--acc-d);
+  --dim:var(--ink3); --line:var(--glass-line);
+  --cyan:var(--gem); --rose:var(--no); --win:var(--ok); --fail:var(--no);
+  --card-w:min(62%,218px); --card-h:min(50vh,400px);
+}
+
+/* ── лейаут #tab-cases ── */
+#tab-cases{ display:flex; flex-direction:column; }
+.case-prog-bar{
+  flex:0 0 auto; height:3px; margin:4px 14px 2px; border-radius:3px;
+  background:rgba(255,255,255,.07); overflow:hidden; z-index:5;
+}
+.case-prog-bar > i{
+  display:block; height:100%; width:0; border-radius:3px;
+  background:linear-gradient(90deg,var(--acc-d),var(--acc-2));
+  box-shadow:0 0 8px var(--acc); transition:width .5s cubic-bezier(.3,1,.4,1);
+}
+.stage{ position:relative; flex:1; touch-action:none; overflow:hidden; }
+.ring-scene{ position:absolute; inset:0; z-index:1; perspective:1300px; perspective-origin:50% 47%; }
+.ring{ position:absolute; inset:0; transform-style:preserve-3d; touch-action:none; }
+
+/* ── карта (cfcard) ── */
+.cfcard{
+  position:absolute; left:50%; top:50%;
+  width:var(--card-w); height:var(--card-h);
+  touch-action:none; will-change:transform,opacity;
+}
+.cfinner{
+  position:absolute; inset:0; border-radius:15px; overflow:hidden;
+  backface-visibility:hidden; touch-action:none;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:
+    radial-gradient(130% 75% at 50% -6%, rgba(74,56,30,.42), transparent 58%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,.014) 0 2px, transparent 2px 5px),
+    linear-gradient(158deg,#221d16 0%,#0b0907 72%);
+  box-shadow:0 0 0 3px #a9790f, 0 0 0 4px rgba(0,0,0,.5),
+    0 22px 46px rgba(0,0,0,.62), 0 0 24px rgba(180,120,20,.16), inset 0 0 70px rgba(0,0,0,.6);
+}
+.gframe{ position:absolute; inset:6px; border:1.5px solid rgba(240,205,130,.45); border-radius:9px; pointer-events:none; z-index:6; }
+.fil{ position:absolute; width:46px; height:46px; background:no-repeat center/contain;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none' stroke='%23eccd86' stroke-width='1.5' stroke-linecap='round'><path d='M5 21 C5 11 10 5 21 5'/><path d='M10 23 C10 15 14 10 23 10'/><path d='M23 10 c10 -1 15 7 13 16 c-3 -6 -8 -8 -14 -6 c2 -3 1 -7 1 -10z'/><circle cx='34' cy='15' r='1.7' fill='%23eccd86' stroke='none'/><path d='M5 21 q-1 7 1 13'/><path d='M21 5 q7 -1 13 1'/></svg>"); }
+.fil.tl{ left:-2px; top:-2px; } .fil.tr{ right:-2px; top:-2px; transform:scaleX(-1); }
+.fil.bl{ left:-2px; bottom:-2px; transform:scaleY(-1); } .fil.br{ right:-2px; bottom:-2px; transform:scale(-1); }
+.cmono{ position:relative; z-index:2; font-family:'Unbounded',sans-serif; font-weight:900; font-size:108px; line-height:1;
+  background:var(--gold); -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 3px 5px rgba(0,0,0,.75)); }
+.crank{ position:absolute; z-index:7; font-family:'Unbounded',sans-serif; font-weight:900; font-size:24px; line-height:1;
+  background:var(--gold); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 1px 2px rgba(0,0,0,.7)); }
+.crank.t{ left:15px; top:13px; } .crank.b{ right:15px; bottom:10px; transform:rotate(180deg); }
+.cfcard.active{ z-index:20; cursor:grab; }
+.cfcard.active .cfinner{ align-items:stretch; justify-content:flex-start; }
+.cfcard.active.grab{ cursor:grabbing; }
+
+/* фон сцены */
+.scene{ position:absolute; inset:0; z-index:0; opacity:.95; }
+.scene .grad{ position:absolute; inset:0;
+  background:radial-gradient(95% 55% at 50% 0%, rgba(200,134,10,.16), transparent 62%),
+    linear-gradient(180deg, rgba(14,20,30,.15), rgba(5,8,13,.9)); }
+.scene .art{ position:absolute; inset:0; opacity:.14; background:no-repeat center 30%/72%; }
+.scene::after{ content:''; position:absolute; inset:0; box-shadow:inset 0 -110px 80px rgba(0,0,0,.55); }
+
+/* pad + типографика */
+.pad{ position:relative; z-index:3; padding:16px 17px 12px; display:flex; flex-direction:column; height:100%; overflow:hidden; }
+.badge{ align-self:flex-start; font-family:'Unbounded',sans-serif; font-size:9px; font-weight:700;
+  letter-spacing:.16em; text-transform:uppercase; padding:5px 10px; border-radius:8px;
+  color:var(--amber-lite); background:rgba(200,134,10,.13); border:1px solid rgba(200,134,10,.4); }
+.title{ font-family:'Unbounded',sans-serif; font-weight:900; font-size:20px; line-height:1.15; margin:10px 0 8px;
+  text-shadow:0 2px 18px rgba(0,0,0,.5); }
+.text{ font-size:13.5px; line-height:1.48; color:#ded6c4; overflow:hidden; display:-webkit-box;
+  -webkit-line-clamp:5; -webkit-box-orient:vertical; }
+.spacer{ flex:1; min-height:4px; }
+
+/* choices */
+.choices{ display:flex; gap:8px; margin-top:10px; }
+.choice{ flex:1; padding:10px 8px; border-radius:13px; font-size:12px; font-weight:600; text-align:center;
+  border:1px solid var(--line); background:rgba(255,255,255,.035); color:#d6cebd; transition:border-color .15s; }
+.choice .dir{ display:block; font-size:9.5px; margin-bottom:3px; letter-spacing:.12em; }
+.choice.l .dir{ color:var(--rose); } .choice.r .dir{ color:var(--cyan); }
+
+/* штампы */
+.stamp{ position:absolute; top:28px; z-index:6; font-family:'Unbounded',sans-serif; font-weight:900;
+  font-size:21px; letter-spacing:.06em; padding:6px 13px; border-radius:10px; opacity:0; border:3px solid currentColor; }
+.stamp.l{ right:24px; transform:rotate(11deg); color:var(--rose); }
+.stamp.r{ left:24px; transform:rotate(-11deg); color:var(--cyan); }
+
+/* СДВИГ: раскол */
+.cfcard.shift .scene .grad{
+  background:
+    radial-gradient(70% 50% at 22% 12%, rgba(92,208,255,.18), transparent 55%),
+    radial-gradient(70% 50% at 78% 88%, rgba(255,111,134,.18), transparent 55%),
+    linear-gradient(180deg, rgba(8,12,20,.4), rgba(4,7,12,.92)); }
+.shift-intro{ font-size:12.5px; line-height:1.42; color:#cdd6e2; margin:4px 0 6px; }
+.vstack{ display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+.vpanel{ position:relative; padding:9px 12px; border-radius:12px; border:1px solid;
+  transition:transform .14s ease,opacity .14s ease,box-shadow .14s ease; }
+.vpanel .vlabel{ font-family:'Unbounded',sans-serif; font-weight:800; font-size:15px; letter-spacing:.04em; margin-bottom:4px; }
+.vpanel .vtext{ font-size:12px; line-height:1.36; opacity:.92; }
+.vpanel.a{ color:var(--cyan); border-color:rgba(92,208,255,.38);
+  background:linear-gradient(120deg, rgba(92,208,255,.13), rgba(92,208,255,.02)); }
+.vpanel.b{ color:var(--rose); border-color:rgba(255,111,134,.38);
+  background:linear-gradient(240deg, rgba(255,111,134,.13), rgba(255,111,134,.02)); }
+.vpanel.dim{ opacity:.34; } .vpanel.hot{ box-shadow:0 0 22px currentColor,inset 0 0 14px rgba(255,255,255,.06); transform:scale(1.025); }
+.seam{ height:2px; margin:0 12px; border-radius:2px;
+  background:linear-gradient(90deg,transparent,var(--amber-lite),#fff,var(--amber-lite),transparent);
+  box-shadow:0 0 10px var(--amber-lite); animation:seamflick 2s steps(2) infinite; }
+@keyframes seamflick{ 0%,90%{opacity:.85}93%{opacity:.3}96%{opacity:1}100%{opacity:.6} }
+
+/* ── СЖИГАНИЕ (огонь) ── */
+.cfcard.burning{ pointer-events:none; z-index:25; }
+.fire{ position:absolute; top:-6%; bottom:-6%; width:52px; transform:translateX(-50%);
+  pointer-events:none; z-index:9; mix-blend-mode:screen; will-change:left,opacity; }
+.fire::before{ content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,70,0,.38) 26%,rgba(255,150,40,.9) 44%,rgba(255,250,210,1) 50%,rgba(255,150,40,.9) 56%,rgba(255,70,0,.38) 74%,transparent);
+  filter:blur(2.5px); box-shadow:0 0 30px 8px rgba(255,110,20,.7),0 0 70px 18px rgba(255,60,0,.4);
+  animation:fireFlick .10s steps(2) infinite; }
+.fire::after{ content:''; position:absolute; left:50%; top:-4%; width:14px; height:108%; transform:translateX(-50%);
+  background:linear-gradient(180deg,transparent,rgba(255,240,190,.9) 28%,#fff 50%,rgba(255,240,190,.9) 72%,transparent);
+  filter:blur(1.2px); animation:fireFlick .08s steps(2) infinite; }
+@keyframes fireFlick{ 0%{opacity:.80;transform:translateX(-50%) scaleY(1)}100%{opacity:1;transform:translateX(-50%) scaleY(1.08)} }
+
+/* Синий огонь */
+.fire-blue::before{
+  background:linear-gradient(90deg,transparent,rgba(20,80,255,.38) 26%,rgba(60,160,255,.9) 44%,rgba(210,240,255,1) 50%,rgba(60,160,255,.9) 56%,rgba(20,80,255,.38) 74%,transparent);
+  box-shadow:0 0 30px 8px rgba(40,130,255,.7),0 0 70px 18px rgba(20,80,255,.4); }
+.fire-blue::after{
+  background:linear-gradient(180deg,transparent,rgba(160,225,255,.9) 28%,#fff 50%,rgba(160,225,255,.9) 72%,transparent); }
+
+/* искры */
+.spark{ position:absolute; width:4px; height:4px; border-radius:50%; pointer-events:none; z-index:10;
+  background:radial-gradient(circle,#fff,#ffd36b 40%,#ff7a18 72%,transparent);
+  box-shadow:0 0 8px 2px rgba(255,150,40,.8); animation:sparkUp var(--sd,900ms) ease-out forwards; }
+.spark-blue{
+  background:radial-gradient(circle,#fff,#a0d8ff 40%,#2563ff 72%,transparent);
+  box-shadow:0 0 8px 2px rgba(60,160,255,.8); }
+@keyframes sparkUp{ 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(var(--sx,0),var(--sy,-60px)) scale(.2);opacity:0} }
+
+/* дым */
+.smoke{ position:absolute; left:-6%; right:-6%; bottom:0; height:130%; z-index:7; pointer-events:none; opacity:0;
+  background:radial-gradient(72% 58% at 50% 100%,rgba(22,18,15,.7),transparent 72%); filter:blur(7px);
+  animation:smokeRise 1.9s ease-out forwards; }
+.smoke-blue{ background:radial-gradient(72% 58% at 50% 100%,rgba(10,20,50,.7),transparent 72%); }
+@keyframes smokeRise{ 0%{opacity:0;transform:translateY(12%) scale(1)}20%{opacity:.5}100%{opacity:0;transform:translateY(-34%) scale(1.25)} }
+
+/* ── мини-игра: замок ── */
+.card-lock{
+  position:absolute; bottom:0; left:0; right:0;
+  padding:12px 15px 14px; border-radius:0 0 14px 14px;
+  background:linear-gradient(0deg,rgba(5,8,13,.97) 0%,rgba(5,8,13,.82) 100%);
+  display:flex; flex-direction:column; align-items:center; gap:8px; z-index:10;
+}
+.card-lock-btn{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  width:100%; padding:12px 16px; border:none; border-radius:11px; cursor:pointer;
+  background:linear-gradient(135deg,rgba(200,134,10,.22),rgba(200,134,10,.1));
+  border:1px solid rgba(200,134,10,.5); color:var(--acc-2);
+  font-family:'Unbounded',sans-serif; font-weight:700; font-size:12.5px;
+  letter-spacing:.04em; transition:background .15s;
+}
+.card-lock-btn:active{ background:rgba(200,134,10,.3); }
+.clb-ico{ font-size:15px; }
+.card-lock-hint{ font-size:10px; letter-spacing:.17em; text-transform:uppercase; color:rgba(139,148,164,.55); }
+
+/* ── ev-chip в tools-bar ── */
+.ev-chip{
+  display:flex; align-items:center; gap:6px; padding:8px 12px;
+  border-radius:var(--rfull); cursor:pointer;
+  background:var(--glass-2); -webkit-backdrop-filter:blur(var(--glass-blur)); backdrop-filter:blur(var(--glass-blur));
+  border:1px solid var(--glass-line); font-size:12px; font-weight:600; pointer-events:auto;
+}
+.ev-chip b{ color:var(--acc-2); font-family:'Unbounded',sans-serif; }
+.ev-dot{ width:7px; height:7px; border-radius:50%; background:var(--acc); box-shadow:0 0 10px var(--acc); flex-shrink:0; }
+
+/* ── доска улик ── */
+.ev-panel{
+  position:fixed; left:0; right:0; bottom:0; z-index:150; max-width:480px; margin:0 auto;
+  background:rgba(8,12,19,.97); backdrop-filter:blur(16px);
+  border-top:1px solid var(--glass-line); border-radius:22px 22px 0 0;
+  padding:18px 18px max(18px,env(safe-area-inset-bottom));
+  transform:translateY(112%); transition:transform .3s cubic-bezier(.3,1,.4,1);
+}
+.ev-panel.open{ transform:translateY(0); }
+.ev-panel h3{ font-family:'Unbounded',sans-serif; font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--acc-2); margin:0 0 12px; }
+.ev-list{ display:flex; flex-direction:column; gap:8px; max-height:40vh; overflow:auto; }
+.ev-item{ font-size:13px; line-height:1.45; color:#d8d0bf; padding:10px 12px; border-radius:11px;
+  background:rgba(255,255,255,.04); border-left:3px solid var(--acc); }
+.ev-empty{ font-size:13px; color:var(--ink3); }
+.ev-close{ display:block; width:100%; margin-top:14px; padding:13px; border:none; border-radius:12px;
+  background:rgba(255,255,255,.06); color:var(--ink); font-weight:600; font-size:14px; cursor:pointer; }
+
+/* ── концовка ── */
+.ending{
+  position:fixed; inset:0; z-index:200; display:none; flex-direction:column;
+  align-items:center; justify-content:center; padding:28px; text-align:center;
+  background:radial-gradient(80% 60% at 50% 28%,rgba(18,26,40,.65),rgba(4,7,12,.97));
+}
+.ending.show{ display:flex; animation:cfade .55s ease; }
+@keyframes cfade{ from{opacity:0}to{opacity:1} }
+.seal{ width:106px; height:106px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-family:'Unbounded',sans-serif; font-weight:900; font-size:40px; margin-bottom:20px; border:3px solid;
+  box-shadow:0 0 34px currentColor; animation:sealpop .5s cubic-bezier(.2,1.5,.4,1) both; }
+@keyframes sealpop{ 0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1} }
+.seal.win{color:var(--ok)} .seal.partial{color:var(--acc-2)} .seal.fail{color:var(--no)}
+.e-verdict{ font-family:'Unbounded',sans-serif; font-weight:900; font-size:25px; letter-spacing:.03em; margin-bottom:8px; }
+.e-verdict.win{color:var(--ok)} .e-verdict.partial{color:var(--acc-2)} .e-verdict.fail{color:var(--no)}
+.e-text{ font-size:14.5px; line-height:1.6; color:#d8d0bf; max-width:350px; margin-bottom:16px; }
+.e-meta{ font-size:12px; color:var(--ink3); letter-spacing:.06em; margin-bottom:24px; }
+.e-meta b{ color:var(--acc-2); }
+.btn-ending{
+  font-family:'Unbounded',sans-serif; font-weight:800; font-size:14px; letter-spacing:.04em;
+  padding:15px 36px; border-radius:14px; border:none; cursor:pointer;
+  background:linear-gradient(180deg,#ffdf95,var(--acc)); color:#241701;
+  box-shadow:0 10px 26px rgba(200,134,10,.4);
+}
+
+/* ── логотип на сплэше и логине ── */
+.sdvig-logo{ width:min(78%,340px); filter:drop-shadow(0 18px 40px rgba(0,0,0,.65)) drop-shadow(0 0 30px rgba(204,140,30,.26)); }
+.login-logo{ width:min(68%,240px); margin-bottom:8px; filter:drop-shadow(0 12px 30px rgba(0,0,0,.6)) drop-shadow(0 0 20px rgba(204,140,30,.22)); }

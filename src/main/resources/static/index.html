@@ -20,7 +20,7 @@
 <div id="splash-screen" class="screen active">
   <div class="splash-scene">
     <div class="splash-emblem" id="splash-emblem">
-      <img class="emblem-img" src="/img/emblem.png" alt="СДВИГ">
+      <img class="emblem-img sdvig-logo" src="/img/logo-main.webp" alt="СДВИГ">
     </div>
     <div class="splash-title-row" id="splash-title"></div>
     <div class="splash-progress-wrap">
@@ -35,8 +35,7 @@
 <div id="login-screen" class="screen">
   <div class="login-wrap">
     <div class="login-header">
-      <div class="login-badge">С</div>
-      <div class="login-h1">СДВИГ</div>
+      <img class="login-logo" src="/img/logo-main.webp" alt="СДВИГ">
       <div class="login-tagline">Детективное агентство</div>
     </div>
     <div class="login-card">
@@ -81,12 +80,16 @@
   <div class="tab-area">
 
     <div class="tab-pane active" id="tab-cases">
-      <div class="swipe-zone" id="swipe-zone">
-        <div class="stack-card sc3"></div>
-        <div class="stack-card sc2"></div>
-        <div class="stack-card sc1"></div>
+      <div class="case-prog-bar"><i id="prog"></i></div>
+      <div class="stage" id="stage">
+        <div class="ring-scene"><div class="ring" id="ring"></div></div>
       </div>
       <div class="tools-bar" id="tools-bar">
+        <div class="ev-chip" id="ev-chip">
+          <span class="ev-dot"></span>
+          <span>Улики</span>
+          <b id="ev-count">0</b>
+        </div>
         <button class="tool-btn" data-tool="magnify" title="Лупа — подсветит важную улику">
           <span class="tool-ico" data-tico="magnify"></span>
           <span class="tool-badge" id="tool-magnify-n">2</span>
@@ -187,6 +190,23 @@
 <script src="/games/torn-letter.js"></script>
 <script src="/games/crime-board.js"></script>
 <script src="/games/arcade.js"></script>
+
+<!-- ══ ДОСКА УЛИК ══ -->
+<div class="ev-panel" id="ev-panel">
+  <h3>Доска улик</h3>
+  <div class="ev-list" id="ev-list"></div>
+  <button class="ev-close" id="ev-close">Закрыть</button>
+</div>
+
+<!-- ══ КОНЦОВКА ДЕЛА ══ -->
+<div class="ending" id="ending">
+  <div class="seal" id="e-seal"></div>
+  <div class="e-verdict" id="e-verdict"></div>
+  <div class="e-text" id="e-text"></div>
+  <div class="e-meta" id="e-meta"></div>
+  <button class="btn-ending" id="e-restart">Играть заново</button>
+</div>
+
 </body>
 </html>
 
