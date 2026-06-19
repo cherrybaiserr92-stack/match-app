@@ -253,6 +253,7 @@ function enterMain(){
   bindSoundBtn();
   bindTools();
   if(window.BgFx) BgFx.init();
+  try{installSceneParallax();}catch(_){}
   Icons.paint();
   try{ initCarousel(); }catch(e){ console.error('initCarousel',e); }
   try{ Sound.ambientOn(); }catch(_){}
@@ -457,7 +458,7 @@ function cardHTML(ev){
       +'<span class="badge">'+ev.badge+'</span>'
       +'<div class="title">'+ev.title+'</div>'
       +'<div class="text scrollable">'+fill(ev.text,CState.flags)+'</div>'
-      +(ev.dialogue?'<div class="dlg">'+ev.dialogue.replace(/\n/g,'<br>')+'</div>':'')
+      +((ev.dialogue&&!ev.speaker)?'<div class="dlg">'+ev.dialogue.replace(/\n/g,'<br>')+'</div>':'')
       +'<div class="spacer"></div>'
       +'<button class="linear-next">Далее \u2192</button>'
       +'</div>';
@@ -477,7 +478,7 @@ function cardHTML(ev){
     +'<div class="pad"><span class="badge">'+ev.badge+'</span>'
     +'<div class="title">'+ev.title+'</div>'
     +'<div class="text scrollable">'+fill(ev.text,CState.flags)+'</div>'
-    +(ev.dialogue?'<div class="dlg">'+ev.dialogue.replace(/\n/g,'<br>')+'</div>':'')
+    +((ev.dialogue&&!ev.speaker)?'<div class="dlg">'+ev.dialogue.replace(/\n/g,'<br>')+'</div>':'')
     +'<div class="spacer"></div><div class="choices">'
     +'<div class="choice l"><span class="dir">СВАЙП ВЛЕВО</span>'+ev.left.label+'</div>'
     +'<div class="choice r"><span class="dir">СВАЙП ВПРАВО</span>'+ev.right.label+'</div>'
@@ -887,32 +888,59 @@ let _charEl=null,_charId=null;
 function showChar(id){
   if(!id||!CHARS[id]){hideChar();return;}
   const def=CHARS[id];
+  var host=document.getElementById('main-screen')||document.body;
   if(!_charEl){
     _charEl=document.createElement('img');
-    _charEl.className='char-sprite';
-    (document.getElementById('main-screen')||document.body).appendChild(_charEl);
+    _charEl.alt=''; _charEl.className='char-sprite';
+    host.appendChild(_charEl);
   }
+  if(_charEl.parentNode!==host) host.appendChild(_charEl);
   if(_charId!==id){
-    _charEl.style.transition='none';
     _charEl.classList.remove('show');
-    _charEl.className='char-sprite '+def.side;
+    _charEl.className='char-sprite '+(def.side||'right');
+    _charEl.onload=function(){ _charEl.classList.add('show'); };
     _charEl.src=def.src; _charId=id;
-    /* double rAF гарантирует что CSS transition подхватит */
-    requestAnimationFrame(function(){requestAnimationFrame(function(){
-      _charEl.style.transition='';_charEl.classList.add('show');
-    });});
+    /* запасной показ, если onload уже отработал из кэша */
+    requestAnimationFrame(function(){requestAnimationFrame(function(){ _charEl.classList.add('show'); });});
   } else { _charEl.classList.add('show'); }
 }
+var _speechEl=null;
+function showSpeech(text){
+  var host=document.getElementById('main-screen')||document.body;
+  if(!_speechEl){ _speechEl=document.createElement('div'); _speechEl.className='char-speech'; host.appendChild(_speechEl); }
+  if(!text){ _speechEl.classList.remove('show'); return; }
+  _speechEl.innerHTML='<span class="cs-quote">'+text.replace(/^[^:]*:\s*/,'').replace(/[«»"]/g,'')+'</span>';
+  requestAnimationFrame(function(){requestAnimationFrame(function(){ _speechEl.classList.add('show'); });});
+}
 function hideChar(){
-  if(!_charEl)return; _charEl.classList.remove('show'); _charId=null;
+  if(_charEl)_charEl.classList.remove('show'); _charId=null;
+  if(_speechEl)_speechEl.classList.remove('show');
+}
+var _origBgFxDrag=null;
+function installSceneParallax(){
+  if(_origBgFxDrag) return;
+  _origBgFxDrag=window.BgFxDrag||function(){};
+  window.BgFxDrag=function(nx,ny){
+    try{_origBgFxDrag(nx,ny);}catch(_){}
+    var sb=document.getElementById('scene-bg');
+    if(sb&&sb.classList.contains('on')){
+      sb.style.transform='translate3d('+(-nx*14)+'px,'+(-ny*10)+'px,0) scale(1.08)';
+    }
+  };
 }
 function updateCaseBg(){
   try{
     const cid=CAMPAIGN&&CAMPAIGN.cases[_caseIdx]?CAMPAIGN.cases[_caseIdx].id:'';
     const bg=CASE_BGS[cid]||null;
-    const st=document.getElementById('stage'); if(!st)return;
-    if(bg){ st.style.backgroundImage="url('"+bg+"')"; st.style.backgroundSize='cover'; st.style.backgroundPosition='center top'; }
-    else { st.style.backgroundImage=''; }
+    const sb=document.getElementById('scene-bg');
+    const st=document.getElementById('stage'); if(st)st.style.backgroundImage='';
+    if(sb){
+      if(bg){ sb.style.backgroundImage="url('"+bg+"')"; sb.classList.add('on'); }
+      else { sb.style.backgroundImage=''; sb.classList.remove('on'); }
+    }
+    /* прячем параллакс кабинета, когда показан фон дела */
+    var bf=document.getElementById('bg-fx');
+    if(bf) bf.style.opacity = bg ? '0' : '1';
   }catch(_){}
 }
 function initCarousel(){

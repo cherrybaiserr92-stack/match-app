@@ -834,3 +834,48 @@
 }
 /* на СДВИГ-картах персонаж чуть прозрачнее (не мешает выбору) */
 .cfcard.active.shift ~ .char-sprite{ opacity:.55; }
+
+/* R25 */
+
+/* ════ R25 — фон сцены (движется), пузырь реплики, фикс лейаута ════ */
+
+/* слой фона дела — во весь экран, под каруселью, двигается параллаксом */
+.scene-bg{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-size:cover; background-position:center top;
+  opacity:0; transition:opacity .6s ease, transform .12s ease-out;
+  transform:scale(1.08); will-change:transform;
+}
+.scene-bg.on{ opacity:1; }
+/* затемнение под карточку поверх фона сцены */
+.scene-bg.on::after{
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(72% 56% at 50% 50%,rgba(8,10,16,.5) 0%,rgba(8,10,16,.72) 100%);
+}
+
+/* пузырь реплики персонажа (вместо текста в карточке) */
+.char-speech{
+  position:fixed; left:50%; bottom:calc(var(--navh,60px) + 12px + var(--safeb,0px));
+  transform:translate(-50%,16px); z-index:26; pointer-events:none;
+  max-width:min(78vw,420px); padding:11px 15px; border-radius:14px;
+  background:linear-gradient(160deg,rgba(26,21,15,.97),rgba(12,10,7,.97));
+  border:1px solid rgba(200,134,10,.5); border-bottom:3px solid var(--acc,#c8860a);
+  box-shadow:0 10px 30px rgba(0,0,0,.6);
+  opacity:0; transition:opacity .3s ease, transform .3s cubic-bezier(.25,1.2,.4,1);
+}
+.char-speech.show{ opacity:1; transform:translate(-50%,0); }
+.char-speech .cs-quote{
+  font-size:13px; line-height:1.45; color:#e7c98a; font-style:italic; display:block; text-align:center;
+}
+.char-speech::before{
+  content:'«'; color:var(--acc,#c8860a); font-size:18px; font-weight:800; opacity:.6;
+  margin-right:2px;
+}
+
+/* фикс: текст карточки не наезжает на кнопку «Найти улики» */
+.cfcard.active .text.scrollable{ max-height:26vh !important; }
+.cfcard.active .pad{ padding-bottom:8px !important; }
+
+/* спрайт поверх фона сцены, но под карточкой */
+.char-sprite{ z-index:6 !important; }
+.char-speech{ z-index:7 !important; }
