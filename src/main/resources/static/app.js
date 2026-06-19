@@ -1244,20 +1244,41 @@ function openHintGame(card){
   const modal=$('#hint-modal');
   modal.classList.remove('hidden');
   const mission = missionFor(card);
-  $('#hint-footer').textContent=mission.label;
+  $('#hint-footer').textContent='Колесо улик решает...';
   if(window.BgFx) BgFx.pause();
-  if(window.Match3){
-    Match3.start($('#hint-vp'), {
-      mission,
-      boosters:App.profile.boosters||0,
-      onWin:()=>{ modal.classList.add('hidden'); if(window.BgFx)BgFx.resume(); unlockSwipe(); },
-      onLose:()=>{ /* поражение усложняет путь: -1 кофе, репутация */
-        try{ const p=App.profile; if(p){ p.energy=clamp(p.energy-1,0,p.maxEnergy); addRapport(-1); renderHUD(); saveProfile(); } }catch(_){}
-        if(window.toast) toast('Улика ускользнула','Сдвиг недоволен. Попробуй снова.','\ud83d\udd0d');
-      }
-    });
+
+  const vp=$('#hint-vp');
+
+  function launchGame(gameId){
+    // сейчас готова только match3; остальные грани откатываются на неё в cube.js
+    startMiniGame(gameId, card, mission, modal);
   }
-  $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); if(window.BgFx)BgFx.resume(); Match3&&Match3.stop(); };
+
+  // показываем 3D-куб; он сам выберет грань и вызовет launchGame
+  if(window.MiniCube){
+    MiniCube.open(vp, { onPick:launchGame });
+  } else {
+    launchGame('match3'); // фолбэк, если куб не загрузился
+  }
+
+  $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); if(window.BgFx)BgFx.resume();
+    try{Match3&&Match3.stop();}catch(_){} try{MiniCube&&MiniCube.close();}catch(_){} };
+}
+
+function startMiniGame(gameId, card, mission, modal){
+  const vp=$('#hint-vp');
+  $('#hint-footer').textContent=mission.label;
+  const onWin=()=>{ modal.classList.add('hidden'); if(window.BgFx)BgFx.resume(); unlockSwipe(); };
+  const onLose=()=>{
+    try{ const p=App.profile; if(p){ p.energy=clamp(p.energy-1,0,p.maxEnergy); addRapport(-1); renderHUD(); saveProfile(); } }catch(_){}
+    if(window.toast) toast('Улика ускользнула','Сдвиг недоволен. Попробуй снова.','\ud83d\udd0d');
+  };
+  // роутер мини-игр (расширяемый): пока все ведут на match3
+  if(gameId==='match3' && window.Match3){
+    Match3.start(vp, { mission, boosters:App.profile.boosters||0, onWin, onLose });
+  } else if(window.Match3){
+    Match3.start(vp, { mission, boosters:App.profile.boosters||0, onWin, onLose });
+  }
 }
 function pickMission(){
   const M=[
