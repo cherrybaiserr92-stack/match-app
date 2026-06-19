@@ -1,221 +1,217 @@
 #!/usr/bin/env bash
-# СДВИГ R28 — новая механика карт-решений + фикс спрайтов + переименование
-# ════════════════════════════════════════════════
-# ПЕРЕД ЗАПУСКОМ обнови очищенные спрайты в репозитории:
-#   cp /sdcard/Download/chars/*.png src/main/resources/static/img/chars/
-# (это PNG с убранным фоном)
-# ════════════════════════════════════════════════
+# СДВИГ R29 — куб мини-игр переписан на плавную rAF-физику (v2)
 set -e
+echo ""; echo "══ cube.js → v2 (плавное вращение) ══════════════════"
+C="src/main/resources/static/games/cube.js"
+cp "$C" "${C}.v1.bak" 2>/dev/null || true
+cat > "$C" << 'CUBE_EOF'
+/* ═══════════════════════════════════════════════════════════
+   СДВИГ · cube.js v2 — 3D-куб «рулетка мини-игр»
+   Переписан на requestAnimationFrame-физику:
+   • плавное вращение покадрово (ease-out), без рывков CSS-transition
+   • фиксированные пиксельные размеры (никаких var() в transform)
+   • чистый зум выпавшей грани
+   API: MiniCube.open(container,{onPick}) / MiniCube.close()
+═══════════════════════════════════════════════════════════ */
+(function(){
+  'use strict';
 
-echo ""; echo "══ 1/4  Переименование «Самоцветы улик» → «Улики» ══"
-python3 - << 'PYEOF'
-import os, re
-files = ["src/main/resources/static/games/match3.js",
-         "src/main/resources/static/games/cube.js",
-         "src/main/resources/static/app.js"]
-n=0
-for path in files:
-    if not os.path.exists(path): continue
-    with open(path, encoding="utf-8") as f: t=f.read()
-    before=t
-    t=t.replace("Самоцветы улик","Улики дела").replace("Самоцветы","Улики")
-    if t!=before:
-        with open(path,"w",encoding="utf-8") as f: f.write(t)
-        n+=1; print(f"  + переименовано в {os.path.basename(path)}")
-print(f"✓ файлов изменено: {n}")
-PYEOF
+  const FACES=[
+    {id:'match3',  name:'Улики дела', ico:'💎', sub:'Три в ряд', available:true,  c1:'#e0a020',c2:'#7a4e08'},
+    {id:'board',   name:'Доска улик', ico:'🧷', sub:'Связи',     available:false, c1:'#c86464',c2:'#5e2626'},
+    {id:'wiretap', name:'Перехват',   ico:'📻', sub:'Частота',   available:false, c1:'#5ab0a0',c2:'#1d4a43'},
+    {id:'spot',    name:'Сверка',     ico:'🔍', sub:'Детали',    available:false, c1:'#6c8fc0',c2:'#28384f'},
+    {id:'dossier', name:'Картотека',  ico:'🗂', sub:'Сортировка',available:false, c1:'#a78fc0',c2:'#4a3f5a'},
+    {id:'match3b', name:'Улики дела', ico:'💎', sub:'Три в ряд', available:true,  c1:'#e0a020',c2:'#7a4e08'}
+  ];
+  // грань → целевые углы (deg), чтобы она смотрела в камеру
+  const FACE_ANGLE=[
+    {x:0,   y:0  },  // 0 front
+    {x:0,   y:180},  // 1 back
+    {x:0,   y:-90},  // 2 right
+    {x:0,   y:90 },  // 3 left
+    {x:-90, y:0  },  // 4 top
+    {x:90,  y:0  }   // 5 bottom
+  ];
+  // позиция каждой грани в кубе (для статической раскладки)
+  const FACE_POS=[
+    'rotateY(0deg)',
+    'rotateY(180deg)',
+    'rotateY(90deg)',
+    'rotateY(-90deg)',
+    'rotateX(90deg)',
+    'rotateX(-90deg)'
+  ];
 
+  let _root,_css=false,_onPick,_cube,_half=100,_raf=null,_active=false;
 
-echo ""; echo "══ 2/4  CSS — фикс спрайтов (стороны, фон) ═════════"
-python3 - << 'PYEOF'
-path = "src/main/resources/static/card-design.css"
-with open(path, encoding="utf-8") as f: txt = f.read()
+  window.MiniCube={
+    open(container,opts){ _onPick=(opts&&opts.onPick)||function(){};
+      injectCSS(); build(container); spin(); },
+    close(){ _active=false; if(_raf)cancelAnimationFrame(_raf);
+      if(_root&&_root.parentNode) _root.parentNode.innerHTML=''; _root=null; }
+  };
 
-# Фикс: Сдвиг и Рекрут — слева, остальные справа. Раньше .left/.right
-# зависели от def.side в CHARS — проверим что Сдвиг реально left.
-# Здесь же убираем любые остатки фона у спрайта.
-if "/* R28 */" not in txt:
-    css = r"""
-/* ════ R28 — фикс спрайтов + карта-решение ════ */
+  function injectCSS(){
+    if(_css)return; _css=true;
+    const s=document.createElement('style'); s.id='minicube-css';
+    s.textContent=`
+    .mc-root{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:radial-gradient(circle at 50% 38%,#1c1812,#0a0806);overflow:hidden;}
+    .mc-title{font-family:Unbounded,sans-serif;font-weight:800;font-size:15px;letter-spacing:.05em;color:#f3d27a;
+      text-align:center;opacity:0;animation:mcIn .5s .1s forwards;}
+    .mc-sub{font-size:11px;color:#9aa3b2;margin-bottom:30px;opacity:0;animation:mcIn .5s .25s forwards;text-align:center;}
+    @keyframes mcIn{to{opacity:1}}
+    .mc-stage{perspective:760px;perspective-origin:50% 50%;position:relative;}
+    .mc-cube{position:relative;transform-style:preserve-3d;}
+    .mc-face{position:absolute;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+      border:2px solid rgba(255,255,255,.16);overflow:hidden;
+      box-shadow:inset 0 0 36px rgba(0,0,0,.5);}
+    .mcf-glow{position:absolute;inset:0;}
+    .mcf-sheen{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.22),transparent 45%);}
+    .mcf-ico{font-size:46px;line-height:1;z-index:2;filter:drop-shadow(0 3px 8px rgba(0,0,0,.6));}
+    .mcf-name{font-family:Unbounded,sans-serif;font-weight:800;font-size:13px;color:#fff;z-index:2;
+      text-shadow:0 2px 6px rgba(0,0,0,.7);text-align:center;padding:0 6px;}
+    .mcf-sub{font-size:10px;color:rgba(255,255,255,.85);z-index:2;letter-spacing:.06em;}
+    .mcf-lock{position:absolute;top:9px;right:11px;font-size:12px;z-index:3;opacity:.75;}
+    .mc-face.dim .mcf-glow{filter:saturate(.5) brightness(.7);}
+    .mc-face.dim::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:1;}
+    .mc-hint{margin-top:34px;font-size:12px;color:#c8a05a;letter-spacing:.06em;height:16px;
+      opacity:0;animation:mcPulse 1.6s ease-in-out infinite;}
+    @keyframes mcPulse{0%,100%{opacity:.4}50%{opacity:1}}
+    .mc-hint.hide{opacity:0 !important;animation:none;}
+    .mc-result{position:absolute;bottom:16%;left:0;right:0;text-align:center;
+      font-family:Unbounded,sans-serif;font-weight:900;font-size:21px;color:#ffcf6b;
+      text-shadow:0 0 22px #c8860a;opacity:0;}
+    .mc-result.show{animation:mcRes .5s ease forwards;}
+    @keyframes mcRes{0%{opacity:0;transform:translateY(14px) scale(.85)}100%{opacity:1;transform:none}}
+    .mc-flash{position:absolute;inset:0;pointer-events:none;opacity:0;
+      background:radial-gradient(circle at 50% 45%,rgba(255,207,107,.55),transparent 55%);}
+    .mc-flash.go{animation:mcFl .5s ease;}
+    @keyframes mcFl{0%{opacity:0}28%{opacity:1}100%{opacity:0}}
+    `;
+    document.head.appendChild(s);
+  }
 
-/* спрайт: гарантируем прозрачность, корректные стороны */
-.char-sprite{ background:transparent !important; }
-.char-sprite.left{  left:2vw;  right:auto; transform:translate3d(-120%,0,0) !important; }
-.char-sprite.right{ right:2vw; left:auto;  transform:translate3d(120%,0,0)  !important; }
-.char-sprite.left.show,
-.char-sprite.right.show{ transform:translate3d(0,0,0) !important; }
+  function build(container){
+    container.innerHTML='';
+    _root=document.createElement('div'); _root.className='mc-root';
+    const cw=container.getBoundingClientRect().width||320;
+    const side=Math.round(Math.min(cw*0.5,170));   // ребро куба, px
+    _half=side/2;
 
-/* ── РЕЖИМ КАРТЫ-РЕШЕНИЯ ── */
-/* когда мини-игра пройдена: карта по центру, таймер, тряска, корни исходов */
-.stage.decision-mode .cfcard:not(.active){ opacity:.15; filter:blur(2px); }
-.cfcard.active.decision{
-  animation:cardTension 2.6s ease-in-out infinite;
-}
-@keyframes cardTension{
-  0%,100%{ transform:translate(-50%,-50%) rotate(0deg); }
-  25%{ transform:translate(calc(-50% - 1.5px),calc(-50% + 1px)) rotate(-.25deg); }
-  50%{ transform:translate(calc(-50% + 1px),calc(-50% - 1.5px)) rotate(.25deg); }
-  75%{ transform:translate(calc(-50% - 1px),-50%) rotate(-.15deg); }
-}
+    _root.innerHTML=
+      '<div class="mc-title">КОЛЕСО УЛИК</div>'+
+      '<div class="mc-sub">Куб решит, как ты добудешь улику</div>'+
+      '<div class="mc-stage" style="width:'+side+'px;height:'+side+'px">'+
+        '<div class="mc-cube" id="mc-cube" style="width:'+side+'px;height:'+side+'px">'+
+          FACES.map((f,i)=>faceHtml(f,i,side)).join('')+
+        '</div>'+
+      '</div>'+
+      '<div class="mc-hint" id="mc-hint">⟳ Куб вращается…</div>'+
+      '<div class="mc-result" id="mc-result"></div>'+
+      '<div class="mc-flash" id="mc-flash"></div>';
+    container.appendChild(_root);
+    _cube=document.getElementById('mc-cube');
+    setCube(0,0,0); // стартовая ориентация
+  }
 
-/* таймер решения */
-.decision-timer{
-  position:fixed; top:calc(var(--hudh,76px) + 8px); left:50%; transform:translateX(-50%);
-  z-index:30; display:flex; flex-direction:column; align-items:center; gap:3px;
-  pointer-events:none; opacity:0; transition:opacity .3s;
-}
-.decision-timer.show{ opacity:1; }
-.dt-ring{ width:52px; height:52px; }
-.dt-ring svg{ width:100%; height:100%; transform:rotate(-90deg); }
-.dt-ring .dt-bg{ fill:none; stroke:rgba(255,255,255,.1); stroke-width:5; }
-.dt-ring .dt-fg{ fill:none; stroke:var(--acc,#c8860a); stroke-width:5; stroke-linecap:round;
-  transition:stroke-dashoffset .25s linear, stroke .3s; }
-.dt-num{ position:absolute; top:0; left:0; width:52px; height:52px; display:flex; align-items:center; justify-content:center;
-  font-family:Unbounded,sans-serif; font-weight:900; font-size:18px; color:#fff; }
-.decision-timer.urgent .dt-fg{ stroke:#ff5d6c; }
-.decision-timer.urgent .dt-num{ color:#ff5d6c; animation:dtPulse .5s ease-in-out infinite; }
-@keyframes dtPulse{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
-.dt-label{ font-size:9px; letter-spacing:.1em; color:#c8a05a; font-family:Unbounded,sans-serif; }
+  function faceHtml(f,i,side){
+    return '<div class="mc-face'+(f.available?'':' dim')+'" '+
+      'style="width:'+side+'px;height:'+side+'px;transform:'+FACE_POS[i]+' translateZ('+_half+'px)">'+
+      '<div class="mcf-glow" style="background:radial-gradient(circle at 50% 32%,'+f.c1+','+f.c2+')"></div>'+
+      '<div class="mcf-sheen"></div>'+
+      (f.available?'':'<span class="mcf-lock">🔒</span>')+
+      '<span class="mcf-ico">'+f.ico+'</span>'+
+      '<span class="mcf-name">'+f.name+'</span>'+
+      '<span class="mcf-sub">'+f.sub+'</span>'+
+    '</div>';
+  }
 
-/* корни-исходы по бокам карты */
-.outcome-roots{ position:fixed; inset:0; z-index:8; pointer-events:none; opacity:0; transition:opacity .5s; }
-.outcome-roots.show{ opacity:1; }
-.outcome-roots svg{ width:100%; height:100%; }
-.or-path{ fill:none; stroke-width:2.5; stroke-linecap:round; opacity:.5;
-  stroke-dasharray:6 8; animation:rootFlow 1.4s linear infinite; }
-.or-left{ stroke:#ff7a5d; }   /* левый исход — тёплый */
-.or-right{ stroke:#5cd0ff; }  /* правый исход — холодный */
-@keyframes rootFlow{ to{ stroke-dashoffset:-14; } }
-.or-label{ font-family:Unbounded,sans-serif; font-size:10px; font-weight:700; letter-spacing:.04em; }
-.or-label.left{ fill:#ff9d85; }
-.or-label.right{ fill:#9fe0ff; }
-"""
-    txt += "\n/* R28 */\n" + css
-    with open(path, "w", encoding="utf-8") as f: f.write(txt)
-    print("  + фикс спрайтов + CSS карты-решения")
-else:
-    print("  · уже применено")
-PYEOF
+  // ставим куб в ориентацию (px-translateZ, без var())
+  function setCube(rx,ry,zoom){
+    if(!_cube)return;
+    const tz = zoom||(-_half);
+    _cube.style.transform='translateZ('+tz+'px) rotateX('+rx+'deg) rotateY('+ry+'deg)';
+  }
 
+  /* ── ВРАЩЕНИЕ покадрово (ease-out), без CSS-transition ── */
+  function spin(){
+    _active=true;
+    try{ Sound.transition&&Sound.transition(); }catch(_){}
 
-echo ""; echo "══ 3/4  index.html — слои таймера и корней ═════════"
-python3 - << 'PYEOF'
-path = "src/main/resources/static/index.html"
-with open(path, encoding="utf-8") as f: txt = f.read()
-n=0
-if 'id="decision-timer"' not in txt:
-    layers = '''
-<!-- ══ РЕЖИМ РЕШЕНИЯ (R28) ══ -->
-<div class="decision-timer" id="decision-timer">
-  <div class="dt-ring" style="position:relative">
-    <svg viewBox="0 0 52 52"><circle class="dt-bg" cx="26" cy="26" r="22"/><circle class="dt-fg" id="dt-fg" cx="26" cy="26" r="22"/></svg>
-    <div class="dt-num" id="dt-num">10</div>
-  </div>
-  <div class="dt-label">РЕШЕНИЕ</div>
-</div>
-<div class="outcome-roots" id="outcome-roots">
-  <svg viewBox="0 0 100 100" preserveAspectRatio="none" id="roots-svg"></svg>
-</div>
-'''
-    txt = txt.replace('</body>', layers+'</body>', 1)
-    n+=1; print("  + слои таймера + корней")
-with open(path, "w", encoding="utf-8") as f: f.write(txt)
-print("✓ index.html: %d" % n)
-PYEOF
+    // выбираем доступную грань
+    const avail=FACES.map((f,i)=>f.available?i:-1).filter(i=>i>=0);
+    const pickI=avail[Math.floor(Math.random()*avail.length)];
+    const target=FACE_ANGLE[pickI];
 
+    // стартовые и конечные углы: несколько оборотов + доводка до грани
+    const turns=3+Math.floor(Math.random()*2);
+    const startX=0, startY=0;
+    const endX=target.x + 360*turns;       // крутим по X
+    const endY=target.y + 360*turns;       // и по Y
+    const dur=2600;                         // мс
+    const t0=performance.now();
 
-echo ""; echo "══ 4/4  app.js — логика карты-решения ══════════════"
-python3 - << 'PYEOF'
-path = "src/main/resources/static/app.js"
-with open(path, encoding="utf-8") as f: txt = f.read()
-n=0
+    let lastTick=0;
+    function frame(now){
+      if(!_active)return;
+      let p=(now-t0)/dur; if(p>1)p=1;
+      // ease-out cubic — быстрый старт, плавное замедление
+      const e=1-Math.pow(1-p,3);
+      const rx=startX+(endX-startX)*e;
+      const ry=startY+(endY-startY)*e;
+      setCube(rx,ry);
+      // клац по мере замедления
+      const tick=Math.floor(ry/45);
+      if(tick!==lastTick && p<0.96){ lastTick=tick; try{Sound.tap&&Sound.tap();}catch(_){} }
+      if(p<1){ _raf=requestAnimationFrame(frame); }
+      else { setCube(target.x,target.y); onStop(pickI); }
+    }
+    _raf=requestAnimationFrame(frame);
+  }
 
-# unlockSwipe → запуск режима решения (таймер + тряска + корни)
-old = ("function unlockSwipe(){\n"
-       "  App.swipeUnlocked=true;\n"
-       "  vibrate(20); try{Sound.booster();}catch(_){}\n"
-       "  try{removeLockOverlay();}catch(_){}\n"
-       "}")
-new = ("function unlockSwipe(){\n"
-       "  App.swipeUnlocked=true;\n"
-       "  vibrate(20); try{Sound.booster();}catch(_){}\n"
-       "  try{removeLockOverlay();}catch(_){}\n"
-       "  try{ startDecisionMode(); }catch(_){}\n"
-       "}\n"
-       "\n"
-       "var _decTimer=null,_decLeft=0;\n"
-       "function startDecisionMode(){\n"
-       "  var ev=App.currentCard; if(!ev||ev.linear) return;\n"
-       "  /* карта по центру + тряска */\n"
-       "  var st=document.getElementById('stage'); if(st)st.classList.add('decision-mode');\n"
-       "  if(cActive)cActive.classList.add('decision');\n"
-       "  /* корни-исходы по бокам */\n"
-       "  showOutcomeRoots(ev);\n"
-       "  /* таймер на решение */\n"
-       "  _decLeft=15; var dt=document.getElementById('decision-timer');\n"
-       "  var fg=document.getElementById('dt-fg'); var num=document.getElementById('dt-num');\n"
-       "  var R=22, C=2*Math.PI*R;\n"
-       "  if(fg){ fg.style.strokeDasharray=C; fg.style.strokeDashoffset=0; }\n"
-       "  if(dt){ dt.classList.add('show'); dt.classList.remove('urgent'); }\n"
-       "  if(num) num.textContent=_decLeft;\n"
-       "  clearInterval(_decTimer);\n"
-       "  var total=15;\n"
-       "  _decTimer=setInterval(function(){\n"
-       "    _decLeft--;\n"
-       "    if(num) num.textContent=Math.max(0,_decLeft);\n"
-       "    if(fg){ var frac=_decLeft/total; fg.style.strokeDashoffset=C*(1-frac); }\n"
-       "    if(_decLeft<=5 && dt){ dt.classList.add('urgent'); try{Sound.tap&&Sound.tap();}catch(_){} }\n"
-       "    if(_decLeft<=0){ clearInterval(_decTimer); onDecisionTimeout(); }\n"
-       "  },1000);\n"
-       "}\n"
-       "function endDecisionMode(){\n"
-       "  clearInterval(_decTimer);\n"
-       "  var st=document.getElementById('stage'); if(st)st.classList.remove('decision-mode');\n"
-       "  if(cActive)cActive.classList.remove('decision');\n"
-       "  var dt=document.getElementById('decision-timer'); if(dt)dt.classList.remove('show');\n"
-       "  var or=document.getElementById('outcome-roots'); if(or)or.classList.remove('show');\n"
-       "}\n"
-       "function onDecisionTimeout(){\n"
-       "  /* время вышло — Сдвиг подгоняет, но не штрафуем жёстко */\n"
-       "  if(window.toast) toast('Время уходит','Сдвиг: «Решай, рекрут. Промедление — тоже выбор».','\\u23f1');\n"
-       "  var dt=document.getElementById('decision-timer');\n"
-       "  if(dt){ var num=document.getElementById('dt-num'); if(num)num.textContent='!'; }\n"
-       "}\n"
-       "function showOutcomeRoots(ev){\n"
-       "  var or=document.getElementById('outcome-roots'); var svg=document.getElementById('roots-svg');\n"
-       "  if(!or||!svg) return;\n"
-       "  var lLabel=(ev.left&&ev.left.label)?ev.left.label.replace(/^◄\\s*/,''):'влево';\n"
-       "  var rLabel=(ev.right&&ev.right.label)?ev.right.label.replace(/\\s*►$/,''):'вправо';\n"
-       "  if(ev.shift){ lLabel=(ev.a&&ev.a.label||'').replace(/^◄\\s*/,''); rLabel=(ev.b&&ev.b.label||'').replace(/\\s*►$/,''); }\n"
-       "  /* рисуем ветвящиеся корни от центра к краям */\n"
-       "  svg.innerHTML=\n"
-       "    '<path class=\"or-path or-left\" d=\"M50 50 Q 30 48 20 40 T 4 30\"/>'+\n"
-       "    '<path class=\"or-path or-left\" d=\"M50 50 Q 32 54 22 58 T 6 66\"/>'+\n"
-       "    '<path class=\"or-path or-right\" d=\"M50 50 Q 70 48 80 40 T 96 30\"/>'+\n"
-       "    '<path class=\"or-path or-right\" d=\"M50 50 Q 68 54 78 58 T 94 66\"/>'+\n"
-       "    '<text class=\"or-label left\" x=\"3\" y=\"26\">'+esc(lLabel)+'</text>'+\n"
-       "    '<text class=\"or-label right\" x=\"60\" y=\"26\">'+esc(rLabel)+'</text>';\n"
-       "  or.classList.add('show');\n"
-       "}\n"
-       "function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }")
-if old in txt:
-    txt = txt.replace(old, new, 1); n+=1; print("  + режим карты-решения (таймер+тряска+корни)")
+  function onStop(pickI){
+    const f=FACES[pickI];
+    const hint=document.getElementById('mc-hint');
+    const res=document.getElementById('mc-result');
+    const flash=document.getElementById('mc-flash');
+    if(hint) hint.classList.add('hide');
+    try{ Sound.win&&Sound.win(); vibrate&&vibrate([10,30,10]); }catch(_){}
+    if(res){ res.textContent=f.name; res.classList.add('show'); }
+    if(flash) flash.classList.add('go');
+    setTimeout(()=>zoom(pickI), 1050);
+  }
 
-# При свайпе (cAdvance) — завершаем режим решения
-old_adv = "function cAdvance(dir,ev,opt){\n  if(cBusy) return; cBusy=true;"
-new_adv = "function cAdvance(dir,ev,opt){\n  if(cBusy) return; cBusy=true;\n  try{endDecisionMode();}catch(_){}"
-if old_adv in txt and "endDecisionMode" not in txt.split("function cAdvance")[1][:200]:
-    txt = txt.replace(old_adv, new_adv, 1); n+=1; print("  + свайп завершает режим решения")
+  /* зум выпавшей грани — тоже покадрово (плавно «входим» в грань) */
+  function zoom(pickI){
+    const target=FACE_ANGLE[pickI];
+    const t0=performance.now(); const dur=850;
+    const startZoom=-_half, endZoom=_half*2.4; // придвигаем грань к камере
+    function frame(now){
+      if(!_active)return;
+      let p=(now-t0)/dur; if(p>1)p=1;
+      const e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2; // ease-in-out
+      setCube(target.x,target.y, startZoom+(endZoom-startZoom)*e);
+      // плавно гасим антураж
+      if(_root){ _root.style.opacity=String(1-e*0.5); }
+      if(p<1){ _raf=requestAnimationFrame(frame); }
+      else { launch(pickI); }
+    }
+    _raf=requestAnimationFrame(frame);
+  }
 
-with open(path, "w", encoding="utf-8") as f: f.write(txt)
-print("✓ app.js: %d" % n)
-PYEOF
+  function launch(pickI){
+    const gameId=FACES[pickI].available ? (FACES[pickI].id==='match3b'?'match3':FACES[pickI].id) : 'match3';
+    try{ _onPick(gameId); }catch(e){ console.error('cube onPick',e); }
+  }
 
+})();
+
+CUBE_EOF
+echo "✓ cube.js → v2 (старый → cube.js.v1.bak)"
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R28 готов — карта-решение + фикс спрайтов"
-echo "   Не забудь обновить очищенные спрайты:"
-echo "   cp /sdcard/Download/chars/*.png src/main/resources/static/img/chars/"
-echo ""
-echo "   git add -A && git commit -m 'R28: decision-card mechanic + sprite fixes + rename' && git push"
+echo "✅  R29 — куб переписан (плавная анимация)"
+echo "   git add -A && git commit -m 'R29: smooth rAF-driven cube animation' && git push"
 echo "═══════════════════════════════════════════════════════"
