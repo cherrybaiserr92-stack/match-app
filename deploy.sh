@@ -1,292 +1,166 @@
 #!/usr/bin/env bash
-# СДВИГ R32 — диалоговая система (typewriter, тап, прямая речь в окне)
+# СДВИГ R33 — фиксы диалога: спрайт над scrim, текст карточки динамический, тап вместо «Далее»
 set -e
 
-echo ""; echo "══ 1/4  dialogue.js — модуль ═══════════════════════"
-cat > src/main/resources/static/games/dialogue.js << 'DLG_EOF'
-/* ═══════════════════════════════════════════════════════════
-   СДВИГ · dialogue.js — диалоговая система (визуальная новелла)
-   • прямая речь печатается динамически (typewriter) в окне внизу
-   • тап = дописать мгновенно; ещё тап = следующая реплика
-   • персонажи выезжают с разных сторон, говорящий подсвечен
-   • фон притухает, инструменты прячутся на время диалога
-   • в карточке остаётся ТОЛЬКО авторский текст (нарратив)
-
-   API:
-   Dialogue.play(lines, onDone)   // lines: [{speaker, text}]
-   Dialogue.isActive()
-   Dialogue.skip()
-═══════════════════════════════════════════════════════════ */
-(function(){
-  'use strict';
-
-  // имена для подписи (id → отображение)
-  const NAMES={
-    shift:'Сдвиг', recruit:'Рекрут', kurator:'Куратор', arundel:'Аранделл',
-    miller:'Миллер', hayes:'Хейс', romero:'Ромеро', conroy:'Конрой',
-    jiang:'Цзян', purcell:'Пёрселл', danny:'Дэнни', guests:'Гости'
-  };
-
-  let _box=null, _name=null, _text=null, _hint=null, _scrim=null;
-  let _lines=[], _i=0, _onDone=null, _active=false;
-  let _typing=false, _typeTimer=null, _full='', _shown=0;
-
-  window.Dialogue={
-    isActive(){ return _active; },
-    play(lines, onDone){
-      if(!lines||!lines.length){ onDone&&onDone(); return; }
-      _lines=lines; _i=0; _onDone=onDone||null; _active=true;
-      injectCSS(); buildUI(); enterMode(); showLine();
-    },
-    skip(){ finish(); }
-  };
-
-  function injectCSS(){
-    if(document.getElementById('dlg-css')) return;
-    const s=document.createElement('style'); s.id='dlg-css';
-    s.textContent=`
-    .dlg-scrim{position:fixed;inset:0;z-index:22;background:rgba(6,8,13,.55);
-      backdrop-filter:blur(1.5px);opacity:0;transition:opacity .4s;pointer-events:auto;}
-    .dlg-scrim.show{opacity:1;}
-    /* притушить карточки ленты во время диалога */
-    body.dlg-on .feed .fcard{filter:brightness(.4) saturate(.8);transition:filter .4s;}
-    body.dlg-on .tools-bar{opacity:0;pointer-events:none;transition:opacity .3s;transform:translateY(20px);}
-    /* говорящий персонаж — ярче, неговорящий — притушен */
-    .char-sprite.dlg-dim{filter:brightness(.5) saturate(.85) blur(.5px);}
-    .char-sprite.dlg-active{filter:drop-shadow(0 8px 28px rgba(0,0,0,.75)) drop-shadow(0 0 18px rgba(200,134,10,.3));}
-
-    .dlg-box{position:fixed;left:12px;right:12px;z-index:28;
-      bottom:calc(var(--navh,60px) + 12px + var(--safeb,0px));
-      border-radius:18px;padding:0;overflow:hidden;
-      background:linear-gradient(160deg,rgba(24,20,14,.98),rgba(12,10,7,.99));
-      border:1px solid rgba(200,134,10,.45);
-      box-shadow:0 16px 44px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06);
-      opacity:0;transform:translateY(24px);transition:opacity .35s,transform .35s cubic-bezier(.25,1.1,.4,1);}
-    .dlg-box.show{opacity:1;transform:none;}
-    .dlg-namebar{display:flex;align-items:center;gap:8px;padding:10px 16px 0;}
-    .dlg-namechip{font-family:Unbounded,sans-serif;font-weight:800;font-size:12px;letter-spacing:.04em;
-      color:#241701;padding:5px 13px;border-radius:9px;
-      background:linear-gradient(180deg,#ffdf95,var(--acc,#c8860a));
-      box-shadow:0 3px 8px rgba(200,134,10,.3);}
-    .dlg-namechip.narr{background:rgba(255,255,255,.08);color:#9aa3b2;box-shadow:none;}
-    .dlg-body{padding:12px 18px 16px;min-height:64px;}
-    .dlg-textline{font-size:15px;line-height:1.55;color:#ece2cf;}
-    .dlg-textline.narr{font-style:italic;color:#b9b0a0;}
-    .dlg-textline .caret{display:inline-block;width:8px;color:var(--acc-2,#ffcf6b);animation:dlgCaret .7s steps(1) infinite;}
-    @keyframes dlgCaret{0%,50%{opacity:1}50.01%,100%{opacity:0}}
-    .dlg-hint{position:absolute;right:16px;bottom:10px;font-size:10px;color:#c8a05a;
-      letter-spacing:.05em;opacity:0;transition:opacity .3s;display:flex;align-items:center;gap:5px;}
-    .dlg-hint.show{opacity:.8;animation:dlgHint 1.4s ease-in-out infinite;}
-    @keyframes dlgHint{0%,100%{opacity:.4}50%{opacity:.85}}
-    .dlg-hint .tri{font-size:13px;}
-    `;
-    document.head.appendChild(s);
-  }
-
-  function buildUI(){
-    const host=document.getElementById('main-screen')||document.body;
-    if(!_scrim){ _scrim=document.createElement('div'); _scrim.className='dlg-scrim'; host.appendChild(_scrim); }
-    if(!_box){
-      _box=document.createElement('div'); _box.className='dlg-box';
-      _box.innerHTML=
-        '<div class="dlg-namebar"><span class="dlg-namechip" id="dlg-name">—</span></div>'+
-        '<div class="dlg-body"><div class="dlg-textline" id="dlg-text"></div></div>'+
-        '<div class="dlg-hint" id="dlg-hint"><span class="tri">▸</span> тап</div>';
-      host.appendChild(_box);
-      _name=_box.querySelector('#dlg-name');
-      _text=_box.querySelector('#dlg-text');
-      _hint=_box.querySelector('#dlg-hint');
-    }
-    // тап по всему экрану продвигает диалог
-    _scrim.onclick=onTap;
-    _box.onclick=function(e){ e.stopPropagation(); onTap(); };
-  }
-
-  function enterMode(){
-    document.body.classList.add('dlg-on');
-    requestAnimationFrame(()=>{ _scrim.classList.add('show'); _box.classList.add('show'); });
-  }
-  function exitMode(){
-    document.body.classList.remove('dlg-on');
-    _scrim.classList.remove('show'); _box.classList.remove('show');
-    // вернуть спрайты в норму
-    document.querySelectorAll('.char-sprite').forEach(s=>{ s.classList.remove('dlg-dim','dlg-active'); });
-    try{ if(window.hideChar) hideChar(); }catch(_){}
-  }
-
-  /* показать текущую реплику */
-  function showLine(){
-    const line=_lines[_i]; if(!line){ finish(); return; }
-    const spk=line.speaker;
-    const isNarr=!spk||spk==='narrator';
-
-    // имя
-    if(isNarr){ _name.textContent='Рекрут'; _name.classList.add('narr'); }
-    else { _name.textContent=NAMES[spk]||spk; _name.classList.remove('narr'); }
-
-    // персонажи: говорящий активен, прочие притушены
-    updateSprites(spk, isNarr);
-
-    // печать
-    _full=line.text||'';
-    _text.className='dlg-textline'+(isNarr?' narr':'');
-    startType();
-  }
-
-  function updateSprites(spk, isNarr){
-    // показываем говорящего (если есть спрайт)
-    try{
-      if(!isNarr && window.showChar){ showChar(spk); }
-    }catch(_){}
-    // подсветка: активный ярче
-    setTimeout(()=>{
-      document.querySelectorAll('.char-sprite').forEach(s=>{
-        s.classList.remove('dlg-dim','dlg-active');
-        if(!isNarr){ s.classList.add('dlg-active'); }
-      });
-    }, 30);
-  }
-
-  /* typewriter */
-  function startType(){
-    _typing=true; _shown=0; _text.innerHTML='<span class="caret">▌</span>';
-    _hint.classList.remove('show');
-    clearInterval(_typeTimer);
-    const speed=18; // мс на символ
-    _typeTimer=setInterval(()=>{
-      _shown++;
-      if(_shown>=_full.length){
-        clearInterval(_typeTimer); _typing=false;
-        _text.textContent=_full;
-        _hint.classList.add('show');
-        return;
-      }
-      _text.innerHTML=esc(_full.slice(0,_shown))+'<span class="caret">▌</span>';
-      // звук печати (редко, чтобы не трещало)
-      if(_shown%3===0){ try{Sound.tap&&Sound.tap();}catch(_){} }
-    }, speed);
-  }
-
-  function onTap(){
-    if(_typing){
-      // дописать мгновенно
-      clearInterval(_typeTimer); _typing=false;
-      _text.textContent=_full; _hint.classList.add('show');
-      try{Sound.tap&&Sound.tap();}catch(_){}
-      return;
-    }
-    // следующая реплика
-    _i++;
-    if(_i>=_lines.length){ finish(); }
-    else { try{Sound.nav&&Sound.nav();}catch(_){} showLine(); }
-  }
-
-  function finish(){
-    clearInterval(_typeTimer); _typing=false; _active=false;
-    exitMode();
-    const cb=_onDone; _onDone=null; _lines=[]; _i=0;
-    setTimeout(()=>{ if(cb)cb(); }, 360);
-  }
-
-  function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
-
-  /* ── парсер: превращает поле dialogue события в массив реплик ──
-     Формат поля dialogue может быть:
-       "Сдвиг: «реплика»\nРекрут: «ответ»"
-     или просто текст одной реплики (тогда speaker берётся из ev.speaker)
-  */
-  window.parseDialogue=function(ev){
-    const out=[];
-    const raw=(ev.dialogue||'').trim();
-    if(!raw){ return out; }
-    // разбиваем по строкам «Имя: реплика»
-    const lines=raw.split(/\n+/);
-    const nameMap={'сдвиг':'shift','рекрут':'recruit','куратор':'kurator','аранделл':'arundel',
-      'миллер':'miller','хейс':'hayes','ромеро':'romero','конрой':'conroy','цзян':'jiang',
-      'пёрселл':'purcell','перселл':'purcell','дэнни':'danny','гости':'guests'};
-    lines.forEach(ln=>{
-      const m=ln.match(/^([А-ЯЁA-Z][а-яёa-z]+)\s*[:—-]\s*(.+)$/);
-      if(m){
-        const sid=nameMap[m[1].toLowerCase()]||ev.speaker||null;
-        out.push({speaker:sid, text:cleanQuotes(m[2])});
-      } else {
-        out.push({speaker:ev.speaker||null, text:cleanQuotes(ln)});
-      }
-    });
-    return out;
-  };
-  function cleanQuotes(s){ return (s||'').replace(/^[«»"]/,'').replace(/[«»"]$/,'').trim(); }
-
-})();
-
-DLG_EOF
-echo "✓ games/dialogue.js создан"
-
-echo ""; echo "══ 2/4  index.html — подключаем dialogue.js ════════"
+echo ""; echo "══ 1/3  dialogue.js — спрайт поверх scrim + убрать «тап»"
 python3 - << 'PYEOF'
-path = "src/main/resources/static/index.html"
+path = "src/main/resources/static/games/dialogue.js"
 with open(path, encoding="utf-8") as f: txt = f.read()
-if 'games/dialogue.js' in txt:
-    print("  · уже подключён")
-else:
-    if 'games/feed.js' in txt:
-        txt = txt.replace('<script src="/games/feed.js"></script>',
-                          '<script src="/games/dialogue.js"></script>\n<script src="/games/feed.js"></script>', 1)
-    else:
-        txt = txt.replace('</body>', '<script src="/games/dialogue.js"></script>\n</body>', 1)
-    with open(path, "w", encoding="utf-8") as f: f.write(txt)
-    print("  + dialogue.js подключён")
+n=0
+
+# Говорящий спрайт должен быть ПОВЕРХ scrim (z-index выше 22) и НЕ размываться
+old_active = ".char-sprite.dlg-active{filter:drop-shadow(0 8px 28px rgba(0,0,0,.75)) drop-shadow(0 0 18px rgba(200,134,10,.3));}"
+new_active = ".char-sprite.dlg-active{z-index:25 !important;filter:drop-shadow(0 8px 28px rgba(0,0,0,.75)) drop-shadow(0 0 18px rgba(200,134,10,.35)) !important;}"
+if old_active in txt:
+    txt = txt.replace(old_active, new_active, 1); n+=1; print("  + говорящий спрайт над scrim (z-index 25)")
+
+# scrim не должен блюрить — убираем backdrop-filter (он мылит спрайт)
+old_scrim = ".dlg-scrim{position:fixed;inset:0;z-index:22;background:rgba(6,8,13,.55);\n      backdrop-filter:blur(1.5px);opacity:0;transition:opacity .4s;pointer-events:auto;}"
+new_scrim = ".dlg-scrim{position:fixed;inset:0;z-index:22;background:rgba(6,8,13,.62);\n      opacity:0;transition:opacity .4s;pointer-events:auto;}"
+if old_scrim in txt:
+    txt = txt.replace(old_scrim, new_scrim, 1); n+=1; print("  + scrim без blur (спрайт не мылится)")
+
+# убираем подсказку «тап»
+old_hint = ('        \'<div class="dlg-hint" id="dlg-hint"><span class="tri">▸</span> тап</div>\';')
+new_hint = ('        \'\';')
+if old_hint in txt:
+    txt = txt.replace(old_hint, new_hint, 1); n+=1; print("  + надпись «тап» убрана")
+# и обращения к _hint делаем безопасными
+txt = txt.replace("_hint=_box.querySelector('#dlg-hint');", "_hint=_box.querySelector('#dlg-hint')||{classList:{add(){},remove(){}}};")
+
+with open(path, "w", encoding="utf-8") as f: f.write(txt)
+print("✓ dialogue.js: %d" % n)
 PYEOF
 
-echo ""; echo "══ 3/4  feed.js — диалог вместо пузыря + без дублей ═"
+echo ""; echo "══ 2/3  feed.js — текст карточки динамический + тап ════"
 python3 - << 'PYEOF'
 path = "src/main/resources/static/games/feed.js"
 with open(path, encoding="utf-8") as f: txt = f.read()
 n=0
 
-# pushCard: вместо showSpeech запускаем Dialogue.play (прямая речь — в окне)
-old = ("    // персонаж + реплика (из app.js)\n"
-       "    try{ if(window.showChar) showChar(ev.speaker||null); if(window.showSpeech) showSpeech(ev.speaker?ev.dialogue:null); }catch(_){}\n"
-       "    try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}")
-new = ("    try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}\n"
-       "    // прямая речь → диалоговая система (typewriter). В карточке только нарратив.\n"
-       "    try{\n"
-       "      if(window.Dialogue && window.parseDialogue && ev.dialogue){\n"
-       "        var _lines=parseDialogue(ev);\n"
-       "        if(_lines.length){ setTimeout(function(){ Dialogue.play(_lines); }, 320); }\n"
-       "      } else if(window.showChar){ showChar(ev.speaker||null); }\n"
-       "    }catch(_){}")
-if old in txt:
-    txt = txt.replace(old, new, 1); n+=1; print("  + диалог запускается через Dialogue.play")
-
-# cardInner: убираем fc-dlg (реплика больше НЕ в карточке — она в окне диалога)
-old_inner = "      ((ev.dialogue&&!ev.speaker)?'<div class=\"fc-dlg\">'+ev.dialogue.replace(/\\n/g,'<br>')+'</div>':'');"
-new_inner = "      '';  // прямая речь вынесена в диалоговое окно (R32)"
+# cardInner: убираем кнопку «Далее» у линейных карт (продвижение тапом).
+# Кнопку «Найти улики» оставляем (нужно явное действие). Текст в обёртке для печати.
+old_inner = '''  function cardInner(ev){
+    let body='<div class="fc-pad">'+
+      '<span class="fc-badge">'+(ev.badge||'')+'</span>'+
+      '<div class="fc-title">'+(ev.title||'')+'</div>'+
+      '<div class="fc-text">'+fillSafe(ev.text)+'</div>'+
+      '';  // прямая речь вынесена в диалоговое окно (R32)
+    if(ev.linear){
+      body+='<button class="fc-next" data-act="next">Далее →</button>';
+    } else {
+      // карта-решение: сперва «Найти улики» (мини-игра), потом свайп
+      body+='<button class="fc-find" data-act="find">🔍 Найти улики</button>';
+    }
+    body+='</div>';
+    return body;
+  }'''
+new_inner = '''  function cardInner(ev){
+    let body='<div class="fc-pad">'+
+      '<span class="fc-badge">'+(ev.badge||'')+'</span>'+
+      '<div class="fc-title">'+(ev.title||'')+'</div>'+
+      '<div class="fc-text" data-full="'+escAttr(fillSafe(ev.text))+'"></div>';
+    if(ev.linear){
+      // линейная карта: продвижение ТАПОМ по карте, без кнопки
+      body+='<div class="fc-taphint" data-act="next">▸ нажми, чтобы продолжить</div>';
+    } else {
+      body+='<button class="fc-find" data-act="find">🔍 Найти улики</button>';
+    }
+    body+='</div>';
+    return body;
+  }
+  function escAttr(s){ return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }'''
 if old_inner in txt:
-    txt = txt.replace(old_inner, new_inner, 1); n+=1; print("  + fc-dlg убран из карточки (нет дублей)")
+    txt = txt.replace(old_inner, new_inner, 1); n+=1; print("  + кнопка «Далее» → тап-подсказка, текст в data-full")
+
+# pushCard: после вставки карты — печатаем текст динамически
+old_push = "    bindCard(card, ev, evId);"
+new_push = ("    typeCardText(card);\n"
+            "    bindCard(card, ev, evId);")
+if old_push in txt:
+    txt = txt.replace(old_push, new_push, 1); n+=1; print("  + вызов typeCardText")
+
+# функция печати текста карты
+if "function typeCardText" not in txt:
+    anchor = "  function bindCard(card, ev, evId){"
+    fn = ('''  function typeCardText(card){
+    var el=card.querySelector('.fc-text'); if(!el) return;
+    var full=el.getAttribute('data-full')||''; el._full=full; el._typing=true;
+    var i=0; el.innerHTML='<span class="fc-caret">▌</span>';
+    clearInterval(el._tt);
+    el._tt=setInterval(function(){
+      i++;
+      if(i>=full.length){ clearInterval(el._tt); el._typing=false; el.textContent=full; return; }
+      el.innerHTML=full.slice(0,i).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'<span class="fc-caret">▌</span>';
+    }, 16);
+  }
+  function finishCardText(card){
+    var el=card.querySelector('.fc-text'); if(!el||!el._typing) return false;
+    clearInterval(el._tt); el._typing=false; el.textContent=el._full||''; return true;
+  }
+''')
+    txt = txt.replace(anchor, fn+anchor, 1); n+=1; print("  + typeCardText (печать текста карты)")
+
+# bindCard: тап по всей карте — дописать текст или продвинуть
+old_bind = '''  function bindCard(card, ev, evId){
+    const btn=card.querySelector('[data-act]');
+    if(!btn) return;
+    btn.onclick=()=>{
+      if(_busy) return;
+      try{Sound.tap&&Sound.tap();}catch(_){}
+      const act=btn.getAttribute('data-act');
+      if(act==='next'){ advanceLinear(ev); }
+      else if(act==='find'){ openMiniGame(ev, card); }
+    };
+  }'''
+new_bind = '''  function bindCard(card, ev, evId){
+    const act = ev.linear ? 'next' : 'find';
+    // тап по всей карте
+    card.onclick=(e)=>{
+      if(_busy) return;
+      // если идёт диалог — пусть им управляет Dialogue
+      if(window.Dialogue && Dialogue.isActive()) return;
+      // 1) если текст ещё печатается — дописать
+      if(finishCardText(card)){ try{Sound.tap&&Sound.tap();}catch(_){} return; }
+      // 2) иначе действие карты
+      try{Sound.tap&&Sound.tap();}catch(_){}
+      if(act==='next'){ advanceLinear(ev); }
+      else if(act==='find'){
+        // на карте-решении «Найти улики» — только по кнопке, не по всей карте
+        const btn=e.target.closest&&e.target.closest('.fc-find');
+        if(btn){ openMiniGame(ev, card); }
+      }
+    };
+  }'''
+if old_bind in txt:
+    txt = txt.replace(old_bind, new_bind, 1); n+=1; print("  + тап по карте: дописать/продвинуть")
 
 with open(path, "w", encoding="utf-8") as f: f.write(txt)
 print("✓ feed.js: %d" % n)
 PYEOF
 
-echo ""; echo "══ 4/4  app.js — отключаем старый showSpeech-пузырь ═"
+echo ""; echo "══ 3/3  CSS — каретка, тап-подсказка ═══════════════"
 python3 - << 'PYEOF'
-path = "src/main/resources/static/app.js"
+path = "src/main/resources/static/games/feed.js"
 with open(path, encoding="utf-8") as f: txt = f.read()
-n=0
-
-# В setActive больше не вызываем showSpeech (диалог теперь в feed через Dialogue)
-old = "  try{ showChar(ev.speaker||null); showSpeech(ev.speaker?ev.dialogue:null); }catch(_){}"
-new = "  /* речь обрабатывается диалоговой системой (R32) */"
-if old in txt:
-    txt = txt.replace(old, new, 1); n+=1; print("  + старый пузырь-реплика отключён в setActive")
-
-with open(path, "w", encoding="utf-8") as f: f.write(txt)
-print("✓ app.js: %d" % n)
+# добавим стили каретки и тап-подсказки в инжектируемый CSS feed
+if ".fc-caret" not in txt:
+    anchor = ".fcard.past{opacity:.55;}"
+    css = (".fcard.past{opacity:.55;}\n"
+           "    .fc-caret{display:inline-block;width:7px;color:var(--acc-2,#ffcf6b);animation:fcCaret .7s steps(1) infinite;}\n"
+           "    @keyframes fcCaret{0%,50%{opacity:1}50.01%,100%{opacity:0}}\n"
+           "    .fc-taphint{margin-top:14px;text-align:center;font-size:11px;color:#c8a05a;letter-spacing:.05em;\n"
+           "      font-family:Unbounded,sans-serif;opacity:.7;animation:fcTap 1.5s ease-in-out infinite;}\n"
+           "    @keyframes fcTap{0%,100%{opacity:.4}50%{opacity:.8}}")
+    txt = txt.replace(anchor, css, 1)
+    with open(path, "w", encoding="utf-8") as f: f.write(txt)
+    print("  + CSS каретки и тап-подсказки")
+else:
+    print("  · уже есть")
 PYEOF
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R32 — диалоговая система"
-echo "   git add -A && git commit -m 'R32: dialogue system - typewriter, tap-advance, speech in box' && git push"
+echo "✅  R33 — спрайт над окном, текст печатается, тап вместо кнопки"
+echo "   git add -A && git commit -m 'R33: sprite over scrim, typed card text, tap-to-advance' && git push"
 echo "═══════════════════════════════════════════════════════"

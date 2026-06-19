@@ -39,15 +39,15 @@
     if(document.getElementById('dlg-css')) return;
     const s=document.createElement('style'); s.id='dlg-css';
     s.textContent=`
-    .dlg-scrim{position:fixed;inset:0;z-index:22;background:rgba(6,8,13,.55);
-      backdrop-filter:blur(1.5px);opacity:0;transition:opacity .4s;pointer-events:auto;}
+    .dlg-scrim{position:fixed;inset:0;z-index:22;background:rgba(6,8,13,.62);
+      opacity:0;transition:opacity .4s;pointer-events:auto;}
     .dlg-scrim.show{opacity:1;}
     /* притушить карточки ленты во время диалога */
     body.dlg-on .feed .fcard{filter:brightness(.4) saturate(.8);transition:filter .4s;}
     body.dlg-on .tools-bar{opacity:0;pointer-events:none;transition:opacity .3s;transform:translateY(20px);}
     /* говорящий персонаж — ярче, неговорящий — притушен */
     .char-sprite.dlg-dim{filter:brightness(.5) saturate(.85) blur(.5px);}
-    .char-sprite.dlg-active{filter:drop-shadow(0 8px 28px rgba(0,0,0,.75)) drop-shadow(0 0 18px rgba(200,134,10,.3));}
+    .char-sprite.dlg-active{z-index:25 !important;filter:drop-shadow(0 8px 28px rgba(0,0,0,.75)) drop-shadow(0 0 18px rgba(200,134,10,.35)) !important;}
 
     .dlg-box{position:fixed;left:12px;right:12px;z-index:28;
       bottom:calc(var(--navh,60px) + 12px + var(--safeb,0px));
@@ -85,11 +85,11 @@
       _box.innerHTML=
         '<div class="dlg-namebar"><span class="dlg-namechip" id="dlg-name">—</span></div>'+
         '<div class="dlg-body"><div class="dlg-textline" id="dlg-text"></div></div>'+
-        '<div class="dlg-hint" id="dlg-hint"><span class="tri">▸</span> тап</div>';
+        '';
       host.appendChild(_box);
       _name=_box.querySelector('#dlg-name');
       _text=_box.querySelector('#dlg-text');
-      _hint=_box.querySelector('#dlg-hint');
+      _hint=_box.querySelector('#dlg-hint')||{classList:{add(){},remove(){}}};
     }
     // тап по всему экрану продвигает диалог
     _scrim.onclick=onTap;

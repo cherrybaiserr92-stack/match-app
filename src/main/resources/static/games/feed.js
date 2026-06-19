@@ -64,6 +64,11 @@
       box-shadow:0 6px 18px rgba(200,134,10,.32);}
     .fcard.dim{opacity:.4;}
     .fcard.past{opacity:.55;}
+    .fc-caret{display:inline-block;width:7px;color:var(--acc-2,#ffcf6b);animation:fcCaret .7s steps(1) infinite;}
+    @keyframes fcCaret{0%,50%{opacity:1}50.01%,100%{opacity:0}}
+    .fc-taphint{margin-top:14px;text-align:center;font-size:11px;color:#c8a05a;letter-spacing:.05em;
+      font-family:Unbounded,sans-serif;opacity:.7;animation:fcTap 1.5s ease-in-out infinite;}
+    @keyframes fcTap{0%,100%{opacity:.4}50%{opacity:.8}}
 
     /* ── ФАЗА РЕШЕНИЯ ── */
     .feed.decision{overflow:hidden;}
@@ -148,6 +153,7 @@
     // прокрутка к новой карте
     setTimeout(()=>{ card.scrollIntoView({behavior:instant?'auto':'smooth', block:'center'}); }, 60);
 
+    typeCardText(card);
     bindCard(card, ev, evId);
     try{ if(window.saveCaseState) saveCaseState(); }catch(_){}
   }
@@ -156,28 +162,51 @@
     let body='<div class="fc-pad">'+
       '<span class="fc-badge">'+(ev.badge||'')+'</span>'+
       '<div class="fc-title">'+(ev.title||'')+'</div>'+
-      '<div class="fc-text">'+fillSafe(ev.text)+'</div>'+
-      '';  // прямая речь вынесена в диалоговое окно (R32)
+      '<div class="fc-text" data-full="'+escAttr(fillSafe(ev.text))+'"></div>';
     if(ev.linear){
-      body+='<button class="fc-next" data-act="next">Далее →</button>';
+      // линейная карта: продвижение ТАПОМ по карте, без кнопки
+      body+='<div class="fc-taphint" data-act="next">▸ нажми, чтобы продолжить</div>';
     } else {
-      // карта-решение: сперва «Найти улики» (мини-игра), потом свайп
       body+='<button class="fc-find" data-act="find">🔍 Найти улики</button>';
     }
     body+='</div>';
     return body;
   }
+  function escAttr(s){ return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
   function fillSafe(t){ try{ return window.fill?fill(t,CState.flags):t; }catch(_){ return t||''; } }
 
+  function typeCardText(card){
+    var el=card.querySelector('.fc-text'); if(!el) return;
+    var full=el.getAttribute('data-full')||''; el._full=full; el._typing=true;
+    var i=0; el.innerHTML='<span class="fc-caret">▌</span>';
+    clearInterval(el._tt);
+    el._tt=setInterval(function(){
+      i++;
+      if(i>=full.length){ clearInterval(el._tt); el._typing=false; el.textContent=full; return; }
+      el.innerHTML=full.slice(0,i).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'<span class="fc-caret">▌</span>';
+    }, 16);
+  }
+  function finishCardText(card){
+    var el=card.querySelector('.fc-text'); if(!el||!el._typing) return false;
+    clearInterval(el._tt); el._typing=false; el.textContent=el._full||''; return true;
+  }
   function bindCard(card, ev, evId){
-    const btn=card.querySelector('[data-act]');
-    if(!btn) return;
-    btn.onclick=()=>{
+    const act = ev.linear ? 'next' : 'find';
+    // тап по всей карте
+    card.onclick=(e)=>{
       if(_busy) return;
+      // если идёт диалог — пусть им управляет Dialogue
+      if(window.Dialogue && Dialogue.isActive()) return;
+      // 1) если текст ещё печатается — дописать
+      if(finishCardText(card)){ try{Sound.tap&&Sound.tap();}catch(_){} return; }
+      // 2) иначе действие карты
       try{Sound.tap&&Sound.tap();}catch(_){}
-      const act=btn.getAttribute('data-act');
       if(act==='next'){ advanceLinear(ev); }
-      else if(act==='find'){ openMiniGame(ev, card); }
+      else if(act==='find'){
+        // на карте-решении «Найти улики» — только по кнопке, не по всей карте
+        const btn=e.target.closest&&e.target.closest('.fc-find');
+        if(btn){ openMiniGame(ev, card); }
+      }
     };
   }
 
