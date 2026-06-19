@@ -255,7 +255,7 @@ function enterMain(){
   if(window.BgFx) BgFx.init();
   try{installSceneParallax();}catch(_){}
   Icons.paint();
-  try{ initCarousel(); }catch(e){ console.error('initCarousel',e); }
+  try{ if(window.Feed){ initCarousel_data(); Feed.init(); } else { initCarousel(); } }catch(e){ console.error('feed init',e); try{initCarousel();}catch(_){} }
   try{ Sound.ambientOn(); }catch(_){}
   try{ regenEnergy(); if(!App._energyTimer) App._energyTimer=setInterval(regenEnergy,60*1000); }catch(_){}
   try{ renderHUD(); }catch(e){ console.error('renderHUD',e); }
@@ -581,7 +581,8 @@ function unlockSwipe(){
   App.swipeUnlocked=true;
   vibrate(20); try{Sound.booster();}catch(_){}
   try{removeLockOverlay();}catch(_){}
-  try{ startDecisionMode(); }catch(_){}
+  if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} }
+  else { try{ startDecisionMode(); }catch(_){} }
 }
 
 var _decTimer=null,_decLeft=0;
@@ -850,7 +851,7 @@ function initEvPanel(){
   if(restartBtn) restartBtn.addEventListener("click",function(){
     const _hn=CAMPAIGN&&(_caseIdx+1)<CAMPAIGN.cases.length;
     if(_hn){ loadCaseByIndex(_caseIdx+1); computeEnding._invalidate=true; }
-    restartCarousel();
+    if(window.Feed){ initCarousel_data(); Feed.reset(); Feed.init(); } else { restartCarousel(); }
   });
 }
 
@@ -1001,6 +1002,18 @@ function updateCaseBg(){
     var bf=document.getElementById('bg-fx');
     if(bf) bf.style.opacity = bg ? '0' : '1';
   }catch(_){}
+}
+function initCarousel_data(){
+  // подготовка состояния дела без 3D-кольца (для ленты)
+  try{
+    var _saved=window.loadCaseState?loadCaseState():null;
+    if(_saved){ CState.ev=_saved.ev; CState.flags=_saved.flags||{}; CState.evidence=_saved.evidence||[]; CState.step=_saved.step||0; }
+    else { CState.ev=CASE.start; CState.flags={}; CState.evidence=[]; CState.step=0; }
+    var _cn=document.getElementById('case-name'); if(_cn)_cn.textContent=CASE.name||'';
+    if(window.cSetProgress)cSetProgress();
+    if(window.initEvPanel)initEvPanel();
+    if(window.updateCaseBg)updateCaseBg();
+  }catch(e){ console.error('initCarousel_data',e); }
 }
 function initCarousel(){
   _ring=document.getElementById("ring");
