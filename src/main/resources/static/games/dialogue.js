@@ -40,14 +40,14 @@
     const s=document.createElement('style'); s.id='dlg-css';
     s.textContent=`
     .dlg-scrim{position:fixed;inset:0;z-index:22;background:rgba(6,8,13,.62);
-      opacity:0;transition:opacity .4s;pointer-events:auto;}
-    .dlg-scrim.show{opacity:1;}
+      opacity:0;transition:opacity .4s;pointer-events:none;}
+    .dlg-scrim.show{opacity:1;pointer-events:auto;}
     /* притушить карточки ленты во время диалога */
     body.dlg-on .feed .fcard{filter:brightness(.4) saturate(.8);transition:filter .4s;}
     body.dlg-on .tools-bar{opacity:0;pointer-events:none;transition:opacity .3s;transform:translateY(20px);}
     /* говорящий персонаж — ярче, неговорящий — притушен */
     .char-sprite.dlg-dim{filter:brightness(.5) saturate(.85) blur(.5px);}
-    .char-sprite.dlg-active{z-index:25 !important;filter:drop-shadow(0 8px 28px rgba(0,0,0,.75)) drop-shadow(0 0 18px rgba(200,134,10,.35)) !important;}
+    .char-sprite.dlg-active{z-index:25 !important;bottom:calc(var(--navh,60px) + 180px + var(--safeb,0px)) !important;filter:drop-shadow(0 8px 28px rgba(0,0,0,.75)) drop-shadow(0 0 18px rgba(200,134,10,.35)) !important;}
 
     .dlg-box{position:fixed;left:12px;right:12px;z-index:28;
       bottom:calc(var(--navh,60px) + 12px + var(--safeb,0px));
@@ -79,6 +79,7 @@
 
   function buildUI(){
     const host=document.getElementById('main-screen')||document.body;
+    _scrim=null; _box=null;
     if(!_scrim){ _scrim=document.createElement('div'); _scrim.className='dlg-scrim'; host.appendChild(_scrim); }
     if(!_box){
       _box=document.createElement('div'); _box.className='dlg-box';
@@ -179,7 +180,12 @@
     clearInterval(_typeTimer); _typing=false; _active=false;
     exitMode();
     const cb=_onDone; _onDone=null; _lines=[]; _i=0;
-    setTimeout(()=>{ if(cb)cb(); }, 360);
+    setTimeout(()=>{
+      // ПОЛНОСТЬЮ убираем scrim/box из DOM, чтобы не блокировать тапы
+      try{ if(_scrim&&_scrim.parentNode){_scrim.parentNode.removeChild(_scrim);} _scrim=null; }catch(_){}
+      try{ if(_box&&_box.parentNode){_box.parentNode.removeChild(_box);} _box=null; }catch(_){}
+      if(cb)cb();
+    }, 360);
   }
 
   function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
