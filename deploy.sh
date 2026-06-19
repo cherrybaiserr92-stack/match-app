@@ -1,298 +1,211 @@
 #!/usr/bin/env bash
-# СДВИГ R27 — 3D-куб «рулетка мини-игр» перед игрой
+# СДВИГ R28 — новая механика карт-решений + фикс спрайтов + переименование
+# ════════════════════════════════════════════════
+# ПЕРЕД ЗАПУСКОМ обнови очищенные спрайты в репозитории:
+#   cp /sdcard/Download/chars/*.png src/main/resources/static/img/chars/
+# (это PNG с убранным фоном)
+# ════════════════════════════════════════════════
 set -e
 
-echo ""; echo "══ 1/3  cube.js — новый модуль ═════════════════════"
-mkdir -p src/main/resources/static/games
-cat > src/main/resources/static/games/cube.js << 'CUBE_EOF'
-/* ═══════════════════════════════════════════════════════════
-   СДВИГ · cube.js — 3D-куб «рулетка мини-игр»
-   При «Найти улики» открывается куб. Грань = мини-игра.
-   Куб крутится → останавливается → выпавшая грань зумится
-   на весь экран → запускается соответствующая игра.
+echo ""; echo "══ 1/4  Переименование «Самоцветы улик» → «Улики» ══"
+python3 - << 'PYEOF'
+import os, re
+files = ["src/main/resources/static/games/match3.js",
+         "src/main/resources/static/games/cube.js",
+         "src/main/resources/static/app.js"]
+n=0
+for path in files:
+    if not os.path.exists(path): continue
+    with open(path, encoding="utf-8") as f: t=f.read()
+    before=t
+    t=t.replace("Самоцветы улик","Улики дела").replace("Самоцветы","Улики")
+    if t!=before:
+        with open(path,"w",encoding="utf-8") as f: f.write(t)
+        n+=1; print(f"  + переименовано в {os.path.basename(path)}")
+print(f"✓ файлов изменено: {n}")
+PYEOF
 
-   API:  MiniCube.open(container, { onPick(gameId){...} })
-═══════════════════════════════════════════════════════════ */
-(function(){
-  'use strict';
 
-  /* 6 граней. available:false → грань-превью (ещё не готова).
-     Сейчас готов только match3; чтобы игроку всегда выпадало рабочее,
-     невыпавшие-неготовые перекидывают на match3 (см. resolvePick). */
-  const FACES=[
-    {id:'match3',  name:'Самоцветы улик', ico:'💎', sub:'Три в ряд', available:true,  col1:'#c8860a',col2:'#7a4e08'},
-    {id:'board',   name:'Доска улик',     ico:'🧷', sub:'Связи',     available:false, col1:'#b05050',col2:'#5e2626'},
-    {id:'wiretap', name:'Перехват',       ico:'📻', sub:'Частота',   available:false, col1:'#4a9b8e',col2:'#1d4a43'},
-    {id:'spot',    name:'Сверка',         ico:'🔍', sub:'Детали',    available:false, col1:'#5c7fb0',col2:'#28384f'},
-    {id:'dossier', name:'Картотека',      ico:'🗂', sub:'Сортировка',available:false, col1:'#9a7fb0',col2:'#4a3f5a'},
-    {id:'match3b', name:'Самоцветы улик', ico:'💎', sub:'Три в ряд', available:true,  col1:'#c8860a',col2:'#7a4e08'}
-  ];
+echo ""; echo "══ 2/4  CSS — фикс спрайтов (стороны, фон) ═════════"
+python3 - << 'PYEOF'
+path = "src/main/resources/static/card-design.css"
+with open(path, encoding="utf-8") as f: txt = f.read()
 
-  // ориентации куба, чтобы нужная грань смотрела на зрителя
-  // порядок граней: front, back, right, left, top, bottom
-  const FACE_TRANSFORM=[
-    'translateZ(var(--h))',                          // 0 front
-    'rotateY(180deg) translateZ(var(--h))',          // 1 back
-    'rotateY(90deg)  translateZ(var(--h))',          // 2 right
-    'rotateY(-90deg) translateZ(var(--h))',          // 3 left
-    'rotateX(90deg)  translateZ(var(--h))',          // 4 top
-    'rotateX(-90deg) translateZ(var(--h))'           // 5 bottom
-  ];
-  // какой rotate привести куб, чтобы грань i оказалась спереди
-  const SHOW_FACE=[
-    'rotateY(0deg)',
-    'rotateY(-180deg)',
-    'rotateY(-90deg)',
-    'rotateY(90deg)',
-    'rotateX(-90deg)',
-    'rotateX(90deg)'
-  ];
+# Фикс: Сдвиг и Рекрут — слева, остальные справа. Раньше .left/.right
+# зависели от def.side в CHARS — проверим что Сдвиг реально left.
+# Здесь же убираем любые остатки фона у спрайта.
+if "/* R28 */" not in txt:
+    css = r"""
+/* ════ R28 — фикс спрайтов + карта-решение ════ */
 
-  let _root,_css=false,_onPick,_spinning=false;
+/* спрайт: гарантируем прозрачность, корректные стороны */
+.char-sprite{ background:transparent !important; }
+.char-sprite.left{  left:2vw;  right:auto; transform:translate3d(-120%,0,0) !important; }
+.char-sprite.right{ right:2vw; left:auto;  transform:translate3d(120%,0,0)  !important; }
+.char-sprite.left.show,
+.char-sprite.right.show{ transform:translate3d(0,0,0) !important; }
 
-  window.MiniCube={
-    open(container, opts){
-      _onPick=(opts&&opts.onPick)||function(){};
-      injectCSS(); build(container); startSpin();
-    },
-    close(){ if(_root&&_root.parentNode) _root.parentNode.innerHTML=''; _root=null; }
-  };
+/* ── РЕЖИМ КАРТЫ-РЕШЕНИЯ ── */
+/* когда мини-игра пройдена: карта по центру, таймер, тряска, корни исходов */
+.stage.decision-mode .cfcard:not(.active){ opacity:.15; filter:blur(2px); }
+.cfcard.active.decision{
+  animation:cardTension 2.6s ease-in-out infinite;
+}
+@keyframes cardTension{
+  0%,100%{ transform:translate(-50%,-50%) rotate(0deg); }
+  25%{ transform:translate(calc(-50% - 1.5px),calc(-50% + 1px)) rotate(-.25deg); }
+  50%{ transform:translate(calc(-50% + 1px),calc(-50% - 1.5px)) rotate(.25deg); }
+  75%{ transform:translate(calc(-50% - 1px),-50%) rotate(-.15deg); }
+}
 
-  function injectCSS(){
-    if(_css) return; _css=true;
-    const s=document.createElement('style'); s.id='minicube-css';
-    s.textContent=`
-    .mc-root{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-      background:radial-gradient(circle at 50% 40%,#1a1611,#0a0806);overflow:hidden;}
-    .mc-title{font-family:Unbounded,sans-serif;font-weight:800;font-size:15px;letter-spacing:.04em;color:#f3d27a;
-      margin-bottom:6px;text-align:center;opacity:0;animation:mcFadeIn .4s .1s forwards;}
-    .mc-sub{font-size:11px;color:#9aa3b2;margin-bottom:26px;opacity:0;animation:mcFadeIn .4s .2s forwards;text-align:center;}
-    @keyframes mcFadeIn{to{opacity:1}}
-    .mc-stage{perspective:900px;width:var(--cube);height:var(--cube);position:relative;}
-    .mc-cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;
-      transform:translateZ(calc(var(--h) * -1));}
-    .mc-cube.spin{transition:transform 3.6s cubic-bezier(.12,.62,.18,1);}
-    .mc-cube.zoom{transition:transform 1.1s cubic-bezier(.5,0,.2,1);}
-    .mc-face{position:absolute;width:var(--cube);height:var(--cube);border-radius:18px;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
-      border:2px solid rgba(255,255,255,.18);box-shadow:inset 0 0 40px rgba(0,0,0,.45);
-      backface-visibility:hidden;overflow:hidden;}
-    .mc-face .mcf-glow{position:absolute;inset:0;opacity:.9;}
-    .mc-face .mcf-ico{font-size:54px;line-height:1;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5));z-index:2;}
-    .mc-face .mcf-name{font-family:Unbounded,sans-serif;font-weight:800;font-size:15px;color:#fff;
-      text-shadow:0 2px 8px rgba(0,0,0,.7);z-index:2;text-align:center;padding:0 8px;}
-    .mc-face .mcf-sub{font-size:11px;color:rgba(255,255,255,.85);z-index:2;letter-spacing:.05em;}
-    .mc-face .mcf-lock{position:absolute;top:10px;right:12px;font-size:13px;opacity:.7;z-index:3;}
-    .mc-face.dim::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:2;}
-    .mc-spinhint{margin-top:30px;font-size:12px;color:#c8a05a;letter-spacing:.06em;
-      opacity:0;animation:mcPulse 1.6s ease-in-out infinite;}
-    @keyframes mcPulse{0%,100%{opacity:.4}50%{opacity:1}}
-    .mc-spinhint.hide{display:none;}
-    .mc-result{position:absolute;bottom:18%;left:0;right:0;text-align:center;
-      font-family:Unbounded,sans-serif;font-weight:900;font-size:20px;color:#ffcf6b;
-      text-shadow:0 0 20px #c8860a;opacity:0;}
-    .mc-result.show{animation:mcResult .6s ease forwards;}
-    @keyframes mcResult{0%{opacity:0;transform:translateY(12px) scale(.9)}100%{opacity:1;transform:none}}
-    .mc-flash{position:absolute;inset:0;background:radial-gradient(circle,rgba(255,207,107,.5),transparent 60%);
-      opacity:0;pointer-events:none;}
-    .mc-flash.go{animation:mcFlash .5s ease;}
-    @keyframes mcFlash{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
-    `;
-    document.head.appendChild(s);
-  }
+/* таймер решения */
+.decision-timer{
+  position:fixed; top:calc(var(--hudh,76px) + 8px); left:50%; transform:translateX(-50%);
+  z-index:30; display:flex; flex-direction:column; align-items:center; gap:3px;
+  pointer-events:none; opacity:0; transition:opacity .3s;
+}
+.decision-timer.show{ opacity:1; }
+.dt-ring{ width:52px; height:52px; }
+.dt-ring svg{ width:100%; height:100%; transform:rotate(-90deg); }
+.dt-ring .dt-bg{ fill:none; stroke:rgba(255,255,255,.1); stroke-width:5; }
+.dt-ring .dt-fg{ fill:none; stroke:var(--acc,#c8860a); stroke-width:5; stroke-linecap:round;
+  transition:stroke-dashoffset .25s linear, stroke .3s; }
+.dt-num{ position:absolute; top:0; left:0; width:52px; height:52px; display:flex; align-items:center; justify-content:center;
+  font-family:Unbounded,sans-serif; font-weight:900; font-size:18px; color:#fff; }
+.decision-timer.urgent .dt-fg{ stroke:#ff5d6c; }
+.decision-timer.urgent .dt-num{ color:#ff5d6c; animation:dtPulse .5s ease-in-out infinite; }
+@keyframes dtPulse{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+.dt-label{ font-size:9px; letter-spacing:.1em; color:#c8a05a; font-family:Unbounded,sans-serif; }
 
-  function build(container){
-    container.innerHTML='';
-    _root=document.createElement('div'); _root.className='mc-root';
-    // размеры куба от ширины контейнера
-    const w=Math.min(container.getBoundingClientRect().width||320, 360);
-    const cube=Math.round(Math.min(w*0.56,200));
-    _root.style.setProperty('--cube', cube+'px');
-    _root.style.setProperty('--h', (cube/2)+'px');
+/* корни-исходы по бокам карты */
+.outcome-roots{ position:fixed; inset:0; z-index:8; pointer-events:none; opacity:0; transition:opacity .5s; }
+.outcome-roots.show{ opacity:1; }
+.outcome-roots svg{ width:100%; height:100%; }
+.or-path{ fill:none; stroke-width:2.5; stroke-linecap:round; opacity:.5;
+  stroke-dasharray:6 8; animation:rootFlow 1.4s linear infinite; }
+.or-left{ stroke:#ff7a5d; }   /* левый исход — тёплый */
+.or-right{ stroke:#5cd0ff; }  /* правый исход — холодный */
+@keyframes rootFlow{ to{ stroke-dashoffset:-14; } }
+.or-label{ font-family:Unbounded,sans-serif; font-size:10px; font-weight:700; letter-spacing:.04em; }
+.or-label.left{ fill:#ff9d85; }
+.or-label.right{ fill:#9fe0ff; }
+"""
+    txt += "\n/* R28 */\n" + css
+    with open(path, "w", encoding="utf-8") as f: f.write(txt)
+    print("  + фикс спрайтов + CSS карты-решения")
+else:
+    print("  · уже применено")
+PYEOF
 
-    _root.innerHTML=
-      '<div class="mc-title">КОЛЕСО УЛИК</div>'+
-      '<div class="mc-sub">Куб решит, как ты добудешь улику</div>'+
-      '<div class="mc-stage"><div class="mc-cube" id="mc-cube">'+
-        FACES.map((f,i)=>faceHtml(f,i)).join('')+
-      '</div></div>'+
-      '<div class="mc-spinhint" id="mc-spinhint">⟳ Куб вращается…</div>'+
-      '<div class="mc-result" id="mc-result"></div>'+
-      '<div class="mc-flash" id="mc-flash"></div>';
-    container.appendChild(_root);
-  }
 
-  function faceHtml(f,i){
-    return '<div class="mc-face'+(f.available?'':' dim')+'" style="transform:'+FACE_TRANSFORM[i]+'" data-i="'+i+'">'+
-      '<div class="mcf-glow" style="background:radial-gradient(circle at 50% 35%,'+f.col1+','+f.col2+')"></div>'+
-      (f.available?'':'<span class="mcf-lock">🔒</span>')+
-      '<span class="mcf-ico">'+f.ico+'</span>'+
-      '<span class="mcf-name">'+f.name+'</span>'+
-      '<span class="mcf-sub">'+f.sub+'</span>'+
-    '</div>';
-  }
-
-  function startSpin(){
-    if(_spinning) return; _spinning=true;
-    const cube=document.getElementById('mc-cube');
-    try{ Sound.transition&&Sound.transition(); }catch(_){}
-
-    // выбираем грань: только доступные (чтобы выпало проходимое)
-    const availIdx=FACES.map((f,i)=>f.available?i:-1).filter(i=>i>=0);
-    const pickI=availIdx[Math.floor(Math.random()*availIdx.length)];
-
-    // много оборотов + финальная ориентация на выбранную грань
-    const spins=4+Math.floor(Math.random()*2);
-    const base=SHOW_FACE[pickI];
-    cube.classList.add('spin');
-    // крутим: добавляем полные обороты по обеим осям + финал
-    cube.style.transform='translateZ(calc(var(--h) * -1)) rotateX('+(spins*360)+'deg) rotateY('+(spins*360)+'deg) '+base;
-
-    // клац-клац во время вращения
-    let ticks=0; const tickTimer=setInterval(()=>{ try{Sound.tap&&Sound.tap();}catch(_){} if(++ticks>18)clearInterval(tickTimer); },180);
-
-    setTimeout(()=>{
-      clearInterval(tickTimer);
-      onSpinEnd(pickI);
-    }, 3700);
-  }
-
-  function onSpinEnd(pickI){
-    const f=FACES[pickI];
-    const hint=document.getElementById('mc-spinhint');
-    const res=document.getElementById('mc-result');
-    const flash=document.getElementById('mc-flash');
-    if(hint) hint.classList.add('hide');
-    try{ Sound.win&&Sound.win(); vibrate&&vibrate([10,30,10]); }catch(_){}
-    if(res){ res.textContent=f.name; res.classList.add('show'); }
-    if(flash) flash.classList.add('go');
-
-    // пауза, потом зум грани на весь экран → запуск игры
-    setTimeout(()=>{ zoomAndLaunch(pickI); }, 1100);
-  }
-
-  function zoomAndLaunch(pickI){
-    const cube=document.getElementById('mc-cube');
-    const stage=_root.querySelector('.mc-stage');
-    if(cube){
-      cube.classList.remove('spin'); cube.classList.add('zoom');
-      // приближаем выбранную грань к камере (z вперёд) — эффект «вход в грань»
-      const base=SHOW_FACE[pickI];
-      cube.style.transform='translateZ(140px) '+base;
-    }
-    // затемняем антураж
-    if(stage) stage.style.transition='opacity .8s ease';
-    setTimeout(()=>{
-      const gameId=resolvePick(FACES[pickI]);
-      try{ _onPick(gameId); }catch(e){ console.error('cube onPick',e); }
-    }, 950);
-  }
-
-  /* если грань-превью (недоступна) — откатываем на match3,
-     чтобы игрок всё равно сыграл в готовую игру */
-  function resolvePick(face){
-    if(face.available) return face.id==='match3b'?'match3':face.id;
-    return 'match3';
-  }
-
-})();
-
-CUBE_EOF
-echo "✓ games/cube.js создан"
-
-echo ""; echo "══ 2/3  index.html — подключаем cube.js ════════════"
+echo ""; echo "══ 3/4  index.html — слои таймера и корней ═════════"
 python3 - << 'PYEOF'
 path = "src/main/resources/static/index.html"
 with open(path, encoding="utf-8") as f: txt = f.read()
-if 'games/cube.js' in txt:
-    print("  · уже подключён")
-else:
-    # подключаем перед match3.js (или перед закрытием body)
-    if '<script src="/games/match3.js"></script>' in txt:
-        txt = txt.replace('<script src="/games/match3.js"></script>',
-                          '<script src="/games/cube.js"></script>\n<script src="/games/match3.js"></script>', 1)
-    elif 'games/match3.js' in txt:
-        import re
-        txt = re.sub(r'(<script src="[^"]*match3\.js"></script>)',
-                     r'<script src="/games/cube.js"></script>\n\1', txt, count=1)
-    else:
-        txt = txt.replace('</body>', '<script src="/games/cube.js"></script>\n</body>', 1)
-    with open(path, "w", encoding="utf-8") as f: f.write(txt)
-    print("  + cube.js подключён")
+n=0
+if 'id="decision-timer"' not in txt:
+    layers = '''
+<!-- ══ РЕЖИМ РЕШЕНИЯ (R28) ══ -->
+<div class="decision-timer" id="decision-timer">
+  <div class="dt-ring" style="position:relative">
+    <svg viewBox="0 0 52 52"><circle class="dt-bg" cx="26" cy="26" r="22"/><circle class="dt-fg" id="dt-fg" cx="26" cy="26" r="22"/></svg>
+    <div class="dt-num" id="dt-num">10</div>
+  </div>
+  <div class="dt-label">РЕШЕНИЕ</div>
+</div>
+<div class="outcome-roots" id="outcome-roots">
+  <svg viewBox="0 0 100 100" preserveAspectRatio="none" id="roots-svg"></svg>
+</div>
+'''
+    txt = txt.replace('</body>', layers+'</body>', 1)
+    n+=1; print("  + слои таймера + корней")
+with open(path, "w", encoding="utf-8") as f: f.write(txt)
+print("✓ index.html: %d" % n)
 PYEOF
 
-echo ""; echo "══ 3/3  app.js — куб перед мини-игрой ══════════════"
+
+echo ""; echo "══ 4/4  app.js — логика карты-решения ══════════════"
 python3 - << 'PYEOF'
 path = "src/main/resources/static/app.js"
 with open(path, encoding="utf-8") as f: txt = f.read()
 n=0
 
-# Переписываем openHintGame: сначала куб, по onPick — запуск выбранной игры
-old = '''function openHintGame(card){
-  const modal=$('#hint-modal');
-  modal.classList.remove('hidden');
-  const mission = missionFor(card);
-  $('#hint-footer').textContent=mission.label;
-  if(window.BgFx) BgFx.pause();
-  if(window.Match3){
-    Match3.start($('#hint-vp'), {
-      mission,
-      boosters:App.profile.boosters||0,
-      onWin:()=>{ modal.classList.add('hidden'); if(window.BgFx)BgFx.resume(); unlockSwipe(); },
-      onLose:()=>{ /* поражение усложняет путь: -1 кофе, репутация */
-        try{ const p=App.profile; if(p){ p.energy=clamp(p.energy-1,0,p.maxEnergy); addRapport(-1); renderHUD(); saveProfile(); } }catch(_){}
-        if(window.toast) toast('Улика ускользнула','Сдвиг недоволен. Попробуй снова.','\\ud83d\\udd0d');
-      }
-    });
-  }
-  $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); if(window.BgFx)BgFx.resume(); Match3&&Match3.stop(); };
-}'''
-
-new = '''function openHintGame(card){
-  const modal=$('#hint-modal');
-  modal.classList.remove('hidden');
-  const mission = missionFor(card);
-  $('#hint-footer').textContent='Колесо улик решает...';
-  if(window.BgFx) BgFx.pause();
-
-  const vp=$('#hint-vp');
-
-  function launchGame(gameId){
-    // сейчас готова только match3; остальные грани откатываются на неё в cube.js
-    startMiniGame(gameId, card, mission, modal);
-  }
-
-  // показываем 3D-куб; он сам выберет грань и вызовет launchGame
-  if(window.MiniCube){
-    MiniCube.open(vp, { onPick:launchGame });
-  } else {
-    launchGame('match3'); // фолбэк, если куб не загрузился
-  }
-
-  $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); if(window.BgFx)BgFx.resume();
-    try{Match3&&Match3.stop();}catch(_){} try{MiniCube&&MiniCube.close();}catch(_){} };
-}
-
-function startMiniGame(gameId, card, mission, modal){
-  const vp=$('#hint-vp');
-  $('#hint-footer').textContent=mission.label;
-  const onWin=()=>{ modal.classList.add('hidden'); if(window.BgFx)BgFx.resume(); unlockSwipe(); };
-  const onLose=()=>{
-    try{ const p=App.profile; if(p){ p.energy=clamp(p.energy-1,0,p.maxEnergy); addRapport(-1); renderHUD(); saveProfile(); } }catch(_){}
-    if(window.toast) toast('Улика ускользнула','Сдвиг недоволен. Попробуй снова.','\\ud83d\\udd0d');
-  };
-  // роутер мини-игр (расширяемый): пока все ведут на match3
-  if(gameId==='match3' && window.Match3){
-    Match3.start(vp, { mission, boosters:App.profile.boosters||0, onWin, onLose });
-  } else if(window.Match3){
-    Match3.start(vp, { mission, boosters:App.profile.boosters||0, onWin, onLose });
-  }
-}'''
-
+# unlockSwipe → запуск режима решения (таймер + тряска + корни)
+old = ("function unlockSwipe(){\n"
+       "  App.swipeUnlocked=true;\n"
+       "  vibrate(20); try{Sound.booster();}catch(_){}\n"
+       "  try{removeLockOverlay();}catch(_){}\n"
+       "}")
+new = ("function unlockSwipe(){\n"
+       "  App.swipeUnlocked=true;\n"
+       "  vibrate(20); try{Sound.booster();}catch(_){}\n"
+       "  try{removeLockOverlay();}catch(_){}\n"
+       "  try{ startDecisionMode(); }catch(_){}\n"
+       "}\n"
+       "\n"
+       "var _decTimer=null,_decLeft=0;\n"
+       "function startDecisionMode(){\n"
+       "  var ev=App.currentCard; if(!ev||ev.linear) return;\n"
+       "  /* карта по центру + тряска */\n"
+       "  var st=document.getElementById('stage'); if(st)st.classList.add('decision-mode');\n"
+       "  if(cActive)cActive.classList.add('decision');\n"
+       "  /* корни-исходы по бокам */\n"
+       "  showOutcomeRoots(ev);\n"
+       "  /* таймер на решение */\n"
+       "  _decLeft=15; var dt=document.getElementById('decision-timer');\n"
+       "  var fg=document.getElementById('dt-fg'); var num=document.getElementById('dt-num');\n"
+       "  var R=22, C=2*Math.PI*R;\n"
+       "  if(fg){ fg.style.strokeDasharray=C; fg.style.strokeDashoffset=0; }\n"
+       "  if(dt){ dt.classList.add('show'); dt.classList.remove('urgent'); }\n"
+       "  if(num) num.textContent=_decLeft;\n"
+       "  clearInterval(_decTimer);\n"
+       "  var total=15;\n"
+       "  _decTimer=setInterval(function(){\n"
+       "    _decLeft--;\n"
+       "    if(num) num.textContent=Math.max(0,_decLeft);\n"
+       "    if(fg){ var frac=_decLeft/total; fg.style.strokeDashoffset=C*(1-frac); }\n"
+       "    if(_decLeft<=5 && dt){ dt.classList.add('urgent'); try{Sound.tap&&Sound.tap();}catch(_){} }\n"
+       "    if(_decLeft<=0){ clearInterval(_decTimer); onDecisionTimeout(); }\n"
+       "  },1000);\n"
+       "}\n"
+       "function endDecisionMode(){\n"
+       "  clearInterval(_decTimer);\n"
+       "  var st=document.getElementById('stage'); if(st)st.classList.remove('decision-mode');\n"
+       "  if(cActive)cActive.classList.remove('decision');\n"
+       "  var dt=document.getElementById('decision-timer'); if(dt)dt.classList.remove('show');\n"
+       "  var or=document.getElementById('outcome-roots'); if(or)or.classList.remove('show');\n"
+       "}\n"
+       "function onDecisionTimeout(){\n"
+       "  /* время вышло — Сдвиг подгоняет, но не штрафуем жёстко */\n"
+       "  if(window.toast) toast('Время уходит','Сдвиг: «Решай, рекрут. Промедление — тоже выбор».','\\u23f1');\n"
+       "  var dt=document.getElementById('decision-timer');\n"
+       "  if(dt){ var num=document.getElementById('dt-num'); if(num)num.textContent='!'; }\n"
+       "}\n"
+       "function showOutcomeRoots(ev){\n"
+       "  var or=document.getElementById('outcome-roots'); var svg=document.getElementById('roots-svg');\n"
+       "  if(!or||!svg) return;\n"
+       "  var lLabel=(ev.left&&ev.left.label)?ev.left.label.replace(/^◄\\s*/,''):'влево';\n"
+       "  var rLabel=(ev.right&&ev.right.label)?ev.right.label.replace(/\\s*►$/,''):'вправо';\n"
+       "  if(ev.shift){ lLabel=(ev.a&&ev.a.label||'').replace(/^◄\\s*/,''); rLabel=(ev.b&&ev.b.label||'').replace(/\\s*►$/,''); }\n"
+       "  /* рисуем ветвящиеся корни от центра к краям */\n"
+       "  svg.innerHTML=\n"
+       "    '<path class=\"or-path or-left\" d=\"M50 50 Q 30 48 20 40 T 4 30\"/>'+\n"
+       "    '<path class=\"or-path or-left\" d=\"M50 50 Q 32 54 22 58 T 6 66\"/>'+\n"
+       "    '<path class=\"or-path or-right\" d=\"M50 50 Q 70 48 80 40 T 96 30\"/>'+\n"
+       "    '<path class=\"or-path or-right\" d=\"M50 50 Q 68 54 78 58 T 94 66\"/>'+\n"
+       "    '<text class=\"or-label left\" x=\"3\" y=\"26\">'+esc(lLabel)+'</text>'+\n"
+       "    '<text class=\"or-label right\" x=\"60\" y=\"26\">'+esc(rLabel)+'</text>';\n"
+       "  or.classList.add('show');\n"
+       "}\n"
+       "function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }")
 if old in txt:
-    txt = txt.replace(old, new, 1); n+=1; print("  + openHintGame показывает куб → startMiniGame")
-else:
-    print("  ✗ openHintGame не совпал — проверь вручную")
+    txt = txt.replace(old, new, 1); n+=1; print("  + режим карты-решения (таймер+тряска+корни)")
+
+# При свайпе (cAdvance) — завершаем режим решения
+old_adv = "function cAdvance(dir,ev,opt){\n  if(cBusy) return; cBusy=true;"
+new_adv = "function cAdvance(dir,ev,opt){\n  if(cBusy) return; cBusy=true;\n  try{endDecisionMode();}catch(_){}"
+if old_adv in txt and "endDecisionMode" not in txt.split("function cAdvance")[1][:200]:
+    txt = txt.replace(old_adv, new_adv, 1); n+=1; print("  + свайп завершает режим решения")
 
 with open(path, "w", encoding="utf-8") as f: f.write(txt)
 print("✓ app.js: %d" % n)
@@ -300,6 +213,9 @@ PYEOF
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R27 готов — 3D-куб рулетка мини-игр"
-echo "   git add -A && git commit -m 'R27: 3D mini-game cube roulette' && git push"
+echo "✅  R28 готов — карта-решение + фикс спрайтов"
+echo "   Не забудь обновить очищенные спрайты:"
+echo "   cp /sdcard/Download/chars/*.png src/main/resources/static/img/chars/"
+echo ""
+echo "   git add -A && git commit -m 'R28: decision-card mechanic + sprite fixes + rename' && git push"
 echo "═══════════════════════════════════════════════════════"

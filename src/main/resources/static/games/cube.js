@@ -13,12 +13,12 @@
      Сейчас готов только match3; чтобы игроку всегда выпадало рабочее,
      невыпавшие-неготовые перекидывают на match3 (см. resolvePick). */
   const FACES=[
-    {id:'match3',  name:'Самоцветы улик', ico:'💎', sub:'Три в ряд', available:true,  col1:'#c8860a',col2:'#7a4e08'},
+    {id:'match3',  name:'Улики дела', ico:'💎', sub:'Три в ряд', available:true,  col1:'#c8860a',col2:'#7a4e08'},
     {id:'board',   name:'Доска улик',     ico:'🧷', sub:'Связи',     available:false, col1:'#b05050',col2:'#5e2626'},
     {id:'wiretap', name:'Перехват',       ico:'📻', sub:'Частота',   available:false, col1:'#4a9b8e',col2:'#1d4a43'},
     {id:'spot',    name:'Сверка',         ico:'🔍', sub:'Детали',    available:false, col1:'#5c7fb0',col2:'#28384f'},
     {id:'dossier', name:'Картотека',      ico:'🗂', sub:'Сортировка',available:false, col1:'#9a7fb0',col2:'#4a3f5a'},
-    {id:'match3b', name:'Самоцветы улик', ico:'💎', sub:'Три в ряд', available:true,  col1:'#c8860a',col2:'#7a4e08'}
+    {id:'match3b', name:'Улики дела', ico:'💎', sub:'Три в ряд', available:true,  col1:'#c8860a',col2:'#7a4e08'}
   ];
 
   // ориентации куба, чтобы нужная грань смотрела на зрителя

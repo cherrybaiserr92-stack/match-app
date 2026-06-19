@@ -581,7 +581,64 @@ function unlockSwipe(){
   App.swipeUnlocked=true;
   vibrate(20); try{Sound.booster();}catch(_){}
   try{removeLockOverlay();}catch(_){}
+  try{ startDecisionMode(); }catch(_){}
 }
+
+var _decTimer=null,_decLeft=0;
+function startDecisionMode(){
+  var ev=App.currentCard; if(!ev||ev.linear) return;
+  /* карта по центру + тряска */
+  var st=document.getElementById('stage'); if(st)st.classList.add('decision-mode');
+  if(cActive)cActive.classList.add('decision');
+  /* корни-исходы по бокам */
+  showOutcomeRoots(ev);
+  /* таймер на решение */
+  _decLeft=15; var dt=document.getElementById('decision-timer');
+  var fg=document.getElementById('dt-fg'); var num=document.getElementById('dt-num');
+  var R=22, C=2*Math.PI*R;
+  if(fg){ fg.style.strokeDasharray=C; fg.style.strokeDashoffset=0; }
+  if(dt){ dt.classList.add('show'); dt.classList.remove('urgent'); }
+  if(num) num.textContent=_decLeft;
+  clearInterval(_decTimer);
+  var total=15;
+  _decTimer=setInterval(function(){
+    _decLeft--;
+    if(num) num.textContent=Math.max(0,_decLeft);
+    if(fg){ var frac=_decLeft/total; fg.style.strokeDashoffset=C*(1-frac); }
+    if(_decLeft<=5 && dt){ dt.classList.add('urgent'); try{Sound.tap&&Sound.tap();}catch(_){} }
+    if(_decLeft<=0){ clearInterval(_decTimer); onDecisionTimeout(); }
+  },1000);
+}
+function endDecisionMode(){
+  clearInterval(_decTimer);
+  var st=document.getElementById('stage'); if(st)st.classList.remove('decision-mode');
+  if(cActive)cActive.classList.remove('decision');
+  var dt=document.getElementById('decision-timer'); if(dt)dt.classList.remove('show');
+  var or=document.getElementById('outcome-roots'); if(or)or.classList.remove('show');
+}
+function onDecisionTimeout(){
+  /* время вышло — Сдвиг подгоняет, но не штрафуем жёстко */
+  if(window.toast) toast('Время уходит','Сдвиг: «Решай, рекрут. Промедление — тоже выбор».','\u23f1');
+  var dt=document.getElementById('decision-timer');
+  if(dt){ var num=document.getElementById('dt-num'); if(num)num.textContent='!'; }
+}
+function showOutcomeRoots(ev){
+  var or=document.getElementById('outcome-roots'); var svg=document.getElementById('roots-svg');
+  if(!or||!svg) return;
+  var lLabel=(ev.left&&ev.left.label)?ev.left.label.replace(/^◄\s*/,''):'влево';
+  var rLabel=(ev.right&&ev.right.label)?ev.right.label.replace(/\s*►$/,''):'вправо';
+  if(ev.shift){ lLabel=(ev.a&&ev.a.label||'').replace(/^◄\s*/,''); rLabel=(ev.b&&ev.b.label||'').replace(/\s*►$/,''); }
+  /* рисуем ветвящиеся корни от центра к краям */
+  svg.innerHTML=
+    '<path class="or-path or-left" d="M50 50 Q 30 48 20 40 T 4 30"/>'+
+    '<path class="or-path or-left" d="M50 50 Q 32 54 22 58 T 6 66"/>'+
+    '<path class="or-path or-right" d="M50 50 Q 70 48 80 40 T 96 30"/>'+
+    '<path class="or-path or-right" d="M50 50 Q 68 54 78 58 T 94 66"/>'+
+    '<text class="or-label left" x="3" y="26">'+esc(lLabel)+'</text>'+
+    '<text class="or-label right" x="60" y="26">'+esc(rLabel)+'</text>';
+  or.classList.add('show');
+}
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function removeLockOverlay(){
   const lock=document.querySelector('.cfcard.active .card-lock');
   if(!lock) return;
@@ -649,6 +706,7 @@ function linearAdvance(ev){
 }
 function cAdvance(dir,ev,opt){
   if(cBusy) return; cBusy=true;
+  try{endDecisionMode();}catch(_){}
   cApplyOption(opt);
   const c0=cfCards[centerIndex]; c0.onpointerdown=null;
   function turn(){
@@ -838,7 +896,7 @@ var ONB_ICONS={
 
 var ONB_STEPS=[
   {key:'gems',  icon:'gems',  title:'Сначала — улики',
-    text:'Каждая карта дела заперта. Нажми «Найти улики» и пройди мини-игру «Самоцветы», чтобы разблокировать выбор.'},
+    text:'Каждая карта дела заперта. Нажми «Найти улики» и пройди мини-игру «Улики», чтобы разблокировать выбор.'},
   {key:'swipe', icon:'swipe', title:'Свайп решает',
     text:'После мини-игры тяни карту влево или вправо — это твой выбор в расследовании. Каждый свайп тратит ☕ кофе (энергию).'},
   {key:'shift', icon:'shift', title:'Момент СДВИГА',
