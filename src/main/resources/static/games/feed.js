@@ -144,10 +144,13 @@
     try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}
     // прямая речь → диалоговая система (typewriter). В карточке только нарратив.
     try{
-      if(window.Dialogue && window.parseDialogue && ev.dialogue){
-        var _lines=parseDialogue(ev);
-        if(_lines.length){ setTimeout(function(){ Dialogue.play(_lines); }, 320); }
-      } else if(window.showChar){ showChar(ev.speaker||null); }
+      if(window.showChar) showChar(ev.speaker||null);
+      card._afterType=function(){
+        if(window.Dialogue && window.parseDialogue && ev.dialogue){
+          var _lines=parseDialogue(ev);
+          if(_lines.length){ Dialogue.play(_lines); }
+        }
+      };
     }catch(_){}
 
     // прокрутка к новой карте
@@ -182,13 +185,16 @@
     clearInterval(el._tt);
     el._tt=setInterval(function(){
       i++;
-      if(i>=full.length){ clearInterval(el._tt); el._typing=false; el.textContent=full; return; }
+      if(i>=full.length){ clearInterval(el._tt); el._typing=false; el.textContent=full;
+        if(card._afterType){ var f=card._afterType; card._afterType=null; setTimeout(f,250); } return; }
       el.innerHTML=full.slice(0,i).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'<span class="fc-caret">▌</span>';
     }, 16);
   }
   function finishCardText(card){
     var el=card.querySelector('.fc-text'); if(!el||!el._typing) return false;
-    clearInterval(el._tt); el._typing=false; el.textContent=el._full||''; return true;
+    clearInterval(el._tt); el._typing=false; el.textContent=el._full||'';
+    if(card._afterType){ var f=card._afterType; card._afterType=null; setTimeout(f,200); }
+    return true;
   }
   function bindCard(card, ev, evId){
     const act = ev.linear ? 'next' : 'find';

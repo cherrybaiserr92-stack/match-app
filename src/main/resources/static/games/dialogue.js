@@ -47,10 +47,10 @@
     body.dlg-on .tools-bar{opacity:0;pointer-events:none;transition:opacity .3s;transform:translateY(20px);}
     /* говорящий персонаж — ярче, неговорящий — притушен */
     .char-sprite.dlg-dim{filter:brightness(.5) saturate(.85) blur(.5px);}
-    .char-sprite.dlg-active{z-index:25 !important;bottom:calc(var(--navh,60px) + 180px + var(--safeb,0px)) !important;filter:drop-shadow(0 8px 28px rgba(0,0,0,.75)) drop-shadow(0 0 18px rgba(200,134,10,.35)) !important;}
+    .char-sprite.dlg-active{z-index:23 !important;filter:drop-shadow(0 8px 28px rgba(0,0,0,.75)) drop-shadow(0 0 18px rgba(200,134,10,.35)) !important;}
 
-    .dlg-box{position:fixed;left:12px;right:12px;z-index:28;
-      bottom:calc(var(--navh,60px) + 12px + var(--safeb,0px));
+    .dlg-box{position:fixed;left:10px;right:10px;z-index:28;
+      bottom:calc(var(--navh,60px) + 6px + var(--safeb,0px));
       border-radius:18px;padding:0;overflow:hidden;
       background:linear-gradient(160deg,rgba(24,20,14,.98),rgba(12,10,7,.99));
       border:1px solid rgba(200,134,10,.45);

@@ -928,7 +928,7 @@ function onbMaybeStart(){
 /* ═══ ПЕРСОНАЖИ-СПРАЙТЫ (R24) ═══ */
 const CHAR_VER='3';  /* поднимай при замене артов — пробивает кэш */
 const CHARS={
-  shift:  {src:'/img/chars/char-shift.png',   side:'left'},
+  shift:  {src:'/img/chars/char-shift.png',   side:'right'},
   recruit:{src:'/img/chars/char-recruit.png', side:'left'},
   kurator:{src:'/img/chars/char-kurator.png', side:'right'},
   arundel:{src:'/img/chars/char-arundel.png', side:'right'},
