@@ -926,6 +926,7 @@ function onbMaybeStart(){
 
 
 /* ═══ ПЕРСОНАЖИ-СПРАЙТЫ (R24) ═══ */
+const CHAR_VER='3';  /* поднимай при замене артов — пробивает кэш */
 const CHARS={
   shift:  {src:'/img/chars/char-shift.png',   side:'left'},
   recruit:{src:'/img/chars/char-recruit.png', side:'left'},
@@ -959,7 +960,7 @@ function showChar(id){
     _charEl.classList.remove('show');
     _charEl.className='char-sprite '+(def.side||'right');
     _charEl.onload=function(){ _charEl.classList.add('show'); };
-    _charEl.src=def.src; _charId=id;
+    _charEl.src=def.src+'?v='+CHAR_VER; _charId=id;
     /* запасной показ, если onload уже отработал из кэша */
     requestAnimationFrame(function(){requestAnimationFrame(function(){ _charEl.classList.add('show'); });});
   } else { _charEl.classList.add('show'); }
