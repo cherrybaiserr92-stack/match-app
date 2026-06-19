@@ -493,7 +493,7 @@ function setActive(el,ev){
   el.innerHTML='<div class="cfinner">'+cardHTML(ev)+'</div>'; el._ev=ev; cActive=el;
   App.currentCard=ev; App.swipeUnlocked=false;
   if(ev&&ev._id){ CState.ev=ev._id; }
-  try{ showChar(ev.speaker||null); showSpeech(ev.speaker?ev.dialogue:null); }catch(_){}
+  /* речь обрабатывается диалоговой системой (R32) */
   if(ev.linear){
     var btn=el.querySelector('.linear-next');
     if(btn) btn.addEventListener('click',function(){ try{Sound.tap();}catch(_){} linearAdvance(ev); });

@@ -136,9 +136,14 @@
     card.innerHTML=cardInner(ev);
     _wrap.appendChild(card);
 
-    // персонаж + реплика (из app.js)
-    try{ if(window.showChar) showChar(ev.speaker||null); if(window.showSpeech) showSpeech(ev.speaker?ev.dialogue:null); }catch(_){}
     try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}
+    // прямая речь → диалоговая система (typewriter). В карточке только нарратив.
+    try{
+      if(window.Dialogue && window.parseDialogue && ev.dialogue){
+        var _lines=parseDialogue(ev);
+        if(_lines.length){ setTimeout(function(){ Dialogue.play(_lines); }, 320); }
+      } else if(window.showChar){ showChar(ev.speaker||null); }
+    }catch(_){}
 
     // прокрутка к новой карте
     setTimeout(()=>{ card.scrollIntoView({behavior:instant?'auto':'smooth', block:'center'}); }, 60);
@@ -152,7 +157,7 @@
       '<span class="fc-badge">'+(ev.badge||'')+'</span>'+
       '<div class="fc-title">'+(ev.title||'')+'</div>'+
       '<div class="fc-text">'+fillSafe(ev.text)+'</div>'+
-      ((ev.dialogue&&!ev.speaker)?'<div class="fc-dlg">'+ev.dialogue.replace(/\n/g,'<br>')+'</div>':'');
+      '';  // прямая речь вынесена в диалоговое окно (R32)
     if(ev.linear){
       body+='<button class="fc-next" data-act="next">Далее →</button>';
     } else {
