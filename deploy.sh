@@ -1,169 +1,195 @@
 #!/usr/bin/env bash
-# СДВИГ R44 — накопительная лента (история главы), фикс застревания, защита от пересоздания
+# СДВИГ R45 — большой фикс: сюжет под исчезновение (12+), аватары, дизайн карточки-свайпа
 set -e
 
-echo ""; echo "══ 1/3  feed.js — НАКОПИТЕЛЬНАЯ лента (история) ════"
+echo "══ штамп → R45 ══"
+sed -i "s/SDVIG_BUILD='R44'/SDVIG_BUILD='R45'/" src/main/resources/static/app.js
+sed -i 's/>R44</>R45</' src/main/resources/static/index.html
+echo "  + штамп R45"
+
+echo ""; echo "══ 1/4  сюжет — вступление под ИСЧЕЗНОВЕНИЕ (12+) ═══"
+python3 - << 'PYEOF'
+import json
+path="src/main/resources/static/scenarios/case001.json"
+d=json.load(open(path,encoding='utf-8'))
+ev=d['events']
+
+# Переписываем вступление: НЕ труп, а ИСЧЕЗНОВЕНИЕ. Убираем мистику-проклятие.
+INTRO={
+ 'L1_c1':{'badge':'Октябрь 1987','title':'Дождь над кварталом',
+   'text':'Дождь смывал грязь с улиц, но не из людей. Дворники полицейского «Форда» размазывали воду по стеклу — туда, обратно, как маятник, который никуда не ведёт.',
+   'dialogue':'Рекрут: «Музей уже оцепили?»\nСдвиг: «Оцепили пустоту, малыш. Директор пропал прямо из запертого зала».'},
+ 'L1_c2':{'badge':'Напарник','title':'Щелчок диктофона',
+   'text':'Человек на пассажирском сиденье не шевелился. Он слушал кассету. Щелчок. Тишина. Щелчок. Будто разбирал чужую речь на детали.',
+   'dialogue':'Сдвиг: «Веришь в проклятия, малыш? Городской департамент верит. Боятся войти в музей».\nРекрут: «Я верю в улики. Проклятия их не оставляют».\nСдвиг: «Вот поэтому ты мне и нужен».'},
+ 'L1_c3':{'badge':'Музей','title':'Готическая глыба',
+   'text':'Здание нависло над улицей. Каменные львы у входа блестели от дождя, отсветы мигалок ползли по их мордам.',
+   'dialogue':'Рекрут: «По рации сказали — человек исчез из запертой комнаты. Ни окон, ни второго выхода».'},
+ 'L1_c4':{'badge':'Метод','title':'Сухой смешок',
+   'text':'Сдвиг усмехнулся — звук как треск ломающейся ветки.',
+   'dialogue':'Сдвиг: «Исчезновение из запертой комнаты. Банально. Люди верят в магию, лишь бы не думать».\nРекрут: «А ты во что веришь?»\nСдвиг: «У каждого фокуса есть механик за кулисами. Пошли искать его».'},
+ 'L1_c5':{'badge':'Запах','title':'Гроза в помещении',
+   'text':'Под лентой — запах старой бумаги, нафталина и чего-то едкого. Озон. Воздух будто наэлектризован.',
+   'dialogue':'Сдвиг: «Чувствуешь? Пахнет грозой за закрытой дверью. Запомни этот запах».'},
+ 'L1_c6':{'badge':'Главный зал','title':'Пустой постамент',
+   'text':'Зал с колоннами. В центре — пустой постамент и опрокинутый стул. Директор должен был встречать гостей здесь. Вместо него — тишина и холодный мрамор.',
+   'dialogue':'Патрульный: «Клянусь, дверь была заперта изнутри! Горгульи… это проклятие семьи основателя!»'},
+ 'L1_c7':{'badge':'Дедукция','title':'Следы у входа',
+   'text':'Сдвиг не стал слушать про горгулий. Он присел над лужей у входа и тронул её пальцем в перчатке.',
+   'dialogue':'Сдвиг: «Проклятие, которое носит одиннадцатый размер и оставляет машинное масло».\nРекрут: «Думаешь, кто-то из своих?»\nСдвиг: «Думаю, призраки не смазывают петли. А кто-то здесь — смазал».'},
+ 'L1_c8':{'badge':'Куантико','title':'Надевай перчатки',
+   'text':'Он поднял на меня взгляд — холоднее ноябрьского ливня. Первое настоящее дело начиналось здесь и сейчас.',
+   'dialogue':'Сдвиг: «Время показать, чему тебя учили. Надевай перчатки, рекрут».\nРекрут: «С чего начнём?»\nСдвиг: «С того, что все проглядели. Смотри не глазами — головой».'}
+}
+for eid,data in INTRO.items():
+    if eid in ev:
+        ev[eid].update(data)
+        # чистим возможные старые поля _split
+        ev[eid].pop('_split',None); ev[eid].pop('_split2',None)
+
+# e0 — место преступления БЕЗ трупа
+ev['e0'].update({
+  'badge':'Октябрь 1987','title':'Пустой постамент',
+  'text':'Музей под тридцатифутовым куполом. Зал заперт изнутри, а директора нет — только опрокинутый стул и следы машинного масла на мраморе. Полиция шепчет про проклятие. Сдвиг молчит.',
+  'speaker':None
+})
+ev['e0'].pop('dialogue',None)  # убираем обрывок «проклятие горгулий»
+
+# Чистим остальные упоминания трупа
+for k,e in ev.items():
+    for field in ['text','title']:
+        v=e.get(field,'')
+        if v:
+            v=v.replace('мёртвый директор','директор').replace('парил мёртвый','исчез').replace('тело висит','человек исчез')
+            v=v.replace('Тело под куполом','Пустой постамент').replace('тело','след')
+            e[field]=v
+
+json.dump(d,open(path,'w',encoding='utf-8'),ensure_ascii=False,indent=2)
+print("  + вступление переписано под исчезновение (12+, без трупа/мистики)")
+print(f"  + e0: '{ev['e0']['title']}'")
+PYEOF
+
+
+echo ""; echo "══ 2/4  feed.js — аватар: индивидуальный кроп ══════"
 python3 - << 'PYEOF'
 path="src/main/resources/static/games/feed.js"
 with open(path,encoding="utf-8") as f: txt=f.read()
 n=0
+# Разные персонажи — разный кроп головы. Сдвиг в шляпе (профиль) — нужен особый.
+# Делаем data-атрибут с позицией и индивидуальные правила.
+# Проще: object-fit на <img> вместо background — точнее кроп.
+old_av=".m2-av{width:54px;height:54px;border-radius:13px;flex-shrink:0;overflow:hidden;border:2px solid;position:relative;\n      background-size:200% auto;background-position:50% 8%;transition:all .3s;background-repeat:no-repeat;}"
+new_av=(".m2-av{width:56px;height:56px;border-radius:13px;flex-shrink:0;overflow:hidden;border:2px solid;position:relative;}\n"
+        "    .m2-av img{position:absolute;width:175%;left:-37%;top:6%;max-width:none;}\n"
+        "    /* индивидуальный кроп под персонажа */\n"
+        "    .m2-av.av-shift img{width:200%;left:-50%;top:2%;}\n"
+        "    .m2-av.av-recruit img{width:170%;left:-35%;top:7%;}\n"
+        "    .m2-av.av-miller img{width:165%;left:-32%;top:6%;}")
+if old_av in txt:
+    txt=txt.replace(old_av,new_av,1); n+=1; print("  + аватар через <img> с индивидуальным кропом")
 
-# Храним историю показанных событий
-if "var _history=[]" not in txt:
-    txt=txt.replace("  let _wrap=null, _busy=false, _decision=false, _decTimer=null;",
-        "  let _wrap=null, _busy=false, _decision=false, _decTimer=null;\n  var _history=[];  // история показанных событий (вся глава)\n  var _builtFor=null;  // для какого CState.ev построена лента")
-    n+=1; print("  + хранилище истории _history")
+# меняем рендер аватара: background-image → <img> внутри
+old_render='el.innerHTML=\'<div class="m2-av" style="background-image:url(\'+av+\')"><span class="m2-ring"></span></div>\'+'
+new_render='el.innerHTML=\'<div class="m2-av av-\'+spk+\'"><img src="\'+av+\'"><span class="m2-ring"></span></div>\'+'
+if old_render in txt:
+    txt=txt.replace(old_render,new_render,1); n+=1; print("  + говорящий аватар = img")
 
-# pushEvent: НЕ чистим ленту — добавляем событие к истории
-old=("  function pushEvent(evId, instant){\n"
-     "    const ev=CASE.events[evId]; if(!ev) return;\n"
-     "    // защита от повторного рендера того же события (лента не сбрасывается)\n"
-     "    if(_lastRenderedEv===evId && _wrap && _wrap.children.length>0) return;\n"
-     "    _lastRenderedEv=evId;\n"
-     "    CState.ev=evId;\n"
-     "    if(_wrap) _wrap.innerHTML='';\n"
-     "    _wrap.onclick=null;\n"
-     "    try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}")
-new=("  function pushEvent(evId, instant){\n"
-     "    const ev=CASE.events[evId]; if(!ev) return;\n"
-     "    // защита от повторного рендера того же события\n"
-     "    if(_lastRenderedEv===evId && _wrap && _wrap.children.length>0) return;\n"
-     "    _lastRenderedEv=evId;\n"
-     "    CState.ev=evId;\n"
-     "    // добавляем в историю (не дублируя)\n"
-     "    if(_history.indexOf(evId)<0) _history.push(evId);\n"
-     "    // убираем прошлую кнопку/подсказку, но НЕ стираем ленту (история копится)\n"
-     "    var oldc=_wrap.querySelector('.feed2-next,.feed2-find'); if(oldc)oldc.remove();\n"
-     "    _wrap.onclick=null;\n"
-     "    // прошлые сообщения тускнеют\n"
-     "    _wrap.querySelectorAll('.msg2').forEach(function(m){ m.classList.add('m2-past'); m.classList.remove('active'); });\n"
-     "    try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}")
-if old in txt:
-    txt=txt.replace(old,new,1); n+=1; print("  + события КОПЯТСЯ в ленте (история главы)")
-
-# разделитель события (тонкая линия с бейджем) перед новым событием
-old_msgs="    const msgs=buildMessages(ev);\n    let mi=0;"
-new_msgs=("    // разделитель главы перед новым событием (кроме первого)\n"
-          "    if(_wrap.children.length>0 && ev.badge){\n"
-          "      var sep=document.createElement('div'); sep.className='feed2-sep';\n"
-          "      sep.innerHTML='<span>'+esc(ev.badge)+'</span>';\n"
-          "      _wrap.appendChild(sep);\n"
-          "    }\n"
-          "    const msgs=buildMessages(ev);\n    let mi=0;")
-if old_msgs in txt:
-    txt=txt.replace(old_msgs,new_msgs,1); n+=1; print("  + разделитель между событиями")
+# статичный рендер тоже
+old_static='el.innerHTML=\'<div class="m2-av" style="background-image:url(\'+avatar(spk)+\')"></div><div class="m2-body">'
+new_static='el.innerHTML=\'<div class="m2-av av-\'+spk+\'"><img src="\'+avatar(spk)+\'"></div><div class="m2-body">'
+if old_static in txt:
+    txt=txt.replace(old_static,new_static,1); n+=1; print("  + статичный аватар = img")
 
 with open(path,"w",encoding="utf-8") as f: f.write(txt)
 print("✓ feed.js: %d"%n)
 PYEOF
 
 
-echo ""; echo "══ 2/3  feed.js — init восстанавливает ВСЮ историю ═"
+echo ""; echo "══ 3/4  feed.js — НОВЫЙ дизайн карточки-свайпа ═════"
 python3 - << 'PYEOF'
 path="src/main/resources/static/games/feed.js"
 with open(path,encoding="utf-8") as f: txt=f.read()
 n=0
-
-# renderFromState: восстанавливаем всю историю, не только текущее
-old=("  function renderFromState(){\n"
-     "    if(!_wrap) return; _wrap.innerHTML='';\n"
-     "    pushEvent(CState.ev||CASE.start, true);\n"
-     "  }")
-new=("  function renderFromState(){\n"
-     "    if(!_wrap) return;\n"
-     "    // если лента уже построена для этого события — не пересоздаём (не мигает)\n"
-     "    if(_builtFor===CState.ev && _wrap.children.length>0) return;\n"
-     "    _builtFor=CState.ev;\n"
-     "    _wrap.innerHTML=''; _lastRenderedEv=null;\n"
-     "    // восстанавливаем всю историю кроме последнего (его покажем интерактивно)\n"
-     "    var hist=_history.slice(); var cur=CState.ev||CASE.start;\n"
-     "    if(hist.length===0 || hist[hist.length-1]!==cur){\n"
-     "      // нет истории — начинаем с текущего\n"
-     "      pushEvent(cur, true);\n"
-     "    } else {\n"
-     "      // восстанавливаем прошлые события статично, последнее — интерактивно\n"
-     "      for(var i=0;i<hist.length-1;i++){ renderStatic(hist[i]); }\n"
-     "      _lastRenderedEv=null; pushEvent(cur, true);\n"
-     "    }\n"
-     "  }\n"
-     "  // статичный рендер прошлого события (вся реплики сразу, без печати)\n"
-     "  function renderStatic(evId){\n"
-     "    var ev=CASE.events[evId]; if(!ev) return;\n"
-     "    if(ev.badge && _wrap.children.length>0){\n"
-     "      var sep=document.createElement('div'); sep.className='feed2-sep';\n"
-     "      sep.innerHTML='<span>'+esc(ev.badge)+'</span>'; _wrap.appendChild(sep);\n"
-     "    }\n"
-     "    var msgs=buildMessages(ev);\n"
-     "    msgs.forEach(function(m){ addMessageStatic(m); });\n"
-     "  }\n"
-     "  // добавить сообщение без анимации печати (для истории)\n"
-     "  function addMessageStatic(m){\n"
-     "    var el=document.createElement('div');\n"
-     "    if(m.type==='narr'){ el.className='msg2 narr m2-past';\n"
-     "      el.innerHTML='<div class=\"m2-narr\">'+renderClues(m.text)+'</div>'; }\n"
-     "    else if(m.type==='deduce'){ el.className='msg2 deduce m2-past';\n"
-     "      el.innerHTML='<div class=\"m2-av\">🧠</div><div class=\"m2-body\"><div class=\"m2-head\"><span class=\"m2-nm\">Дедукция</span></div><div class=\"m2-bubble\">'+renderClues(m.text)+'</div></div>'; }\n"
-     "    else { var spk=m.speaker||'narrator'; var cls=(spk==='shift')?'shift':(spk==='recruit')?'recruit':'other';\n"
-     "      el.className='msg2 '+cls+' m2-past';\n"
-     "      el.innerHTML='<div class=\"m2-av\" style=\"background-image:url('+avatar(spk)+')\"></div><div class=\"m2-body\"><div class=\"m2-head\"><span class=\"m2-nm\">'+(NAMES[spk]||spk)+'</span></div><div class=\"m2-bubble\">'+renderClues(m.text)+'</div></div>'; }\n"
-     "    _wrap.appendChild(el);\n"
-     "    var b=el.querySelector('.m2-bubble,.m2-narr'); if(b) bindClues(b);\n"
-     "  }")
+# Переделываем decCardInner — красивая карточка вместо примитивных прямоугольников
+old=('''  function decCardInner(ev){
+    const lL=ev.shift?(ev.a&&ev.a.label||''):(ev.left&&ev.left.label||'');
+    const rL=ev.shift?(ev.b&&ev.b.label||''):(ev.right&&ev.right.label||'');
+    return '<div class="fc-pad"><span class="fc-badge">'+(ev.badge||'')+'</span>'+
+      '<div class="fc-title">'+(ev.title||'')+'</div>'+
+      '<div style="margin-top:12px;display:flex;gap:8px;font-size:11px">'+
+      '<div style="flex:1;padding:8px;border-radius:8px;background:rgba(176,80,80,.2);border:1px solid rgba(176,80,80,.4);color:#ff9d85;text-align:center">◄ '+esc(lL.replace(/^◄\\s*/,''))+'</div>'+
+      '<div style="flex:1;padding:8px;border-radius:8px;background:rgba(74,155,142,.2);border:1px solid rgba(74,155,142,.4);color:#9fe0ff;text-align:center">'+esc(rL.replace(/\\s*►$/,''))+' ►</div>'+
+      '</div></div>';
+  }''')
+new=('''  function decCardInner(ev){
+    const lL=ev.shift?(ev.a&&ev.a.label||''):(ev.left&&ev.left.label||'');
+    const rL=ev.shift?(ev.b&&ev.b.label||''):(ev.right&&ev.right.label||'');
+    const intro=ev.intro||'Реши, как действовать.';
+    return '<div class="dc-inner">'+
+      '<span class="dc-badge">'+esc(ev.badge||'РЕШЕНИЕ')+'</span>'+
+      '<div class="dc-title">'+esc(ev.title||'')+'</div>'+
+      '<div class="dc-intro">'+esc(intro)+'</div>'+
+      '<div class="dc-choices">'+
+        '<div class="dc-choice left"><span class="dc-arrow">◄</span><span class="dc-lbl">'+esc(lL.replace(/^◄\\s*/,''))+'</span></div>'+
+        '<div class="dc-or">или</div>'+
+        '<div class="dc-choice right"><span class="dc-lbl">'+esc(rL.replace(/\\s*►$/,''))+'</span><span class="dc-arrow">►</span></div>'+
+      '</div></div>';
+  }''')
 if old in txt:
-    txt=txt.replace(old,new,1); n+=1; print("  + init восстанавливает ВСЮ историю главы")
-
-# reset чистит историю
-txt=txt.replace("reset(){ _lastRenderedEv=null; if(_wrap)_wrap.innerHTML='';",
-                "reset(){ _lastRenderedEv=null; _history=[]; _builtFor=null; if(_wrap)_wrap.innerHTML='';")
-
+    txt=txt.replace(old,new,1); n+=1; print("  + новый decCardInner (красивая карточка)")
 with open(path,"w",encoding="utf-8") as f: f.write(txt)
 print("✓ feed.js: %d"%n)
 PYEOF
 
 
-echo ""; echo "══ 3/3  CSS — разделитель + тусклые прошлые реплики ═"
+echo ""; echo "══ 4/4  CSS — стиль новой карточки-свайпа ══════════"
 python3 - << 'PYEOF'
 path="src/main/resources/static/games/feed.js"
 with open(path,encoding="utf-8") as f: txt=f.read()
-if ".feed2-sep" not in txt:
-    anchor="    .clue-fly2{"
-    css=("""    .feed2-sep{display:flex;align-items:center;gap:10px;margin:6px 2px;opacity:.5;}
-    .feed2-sep::before,.feed2-sep::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(200,134,10,.4),transparent);}
-    .feed2-sep span{font-family:Unbounded,sans-serif;font-size:9px;letter-spacing:.12em;color:#c8a05a;text-transform:uppercase;white-space:nowrap;}
-    .msg2.m2-past{opacity:.62;}
-    .msg2.m2-past .m2-av{filter:grayscale(.3) brightness(.85);}
-""")
+if ".dc-inner" not in txt:
+    anchor="    .dec-card .fc-pad{"
+    css="""    .dc-inner{padding:20px 20px 22px;text-align:center;}
+    .dc-badge{display:inline-block;font-family:Unbounded,sans-serif;font-weight:700;font-size:10px;
+      letter-spacing:.14em;color:#241701;padding:5px 13px;border-radius:8px;
+      background:linear-gradient(180deg,#ffe09a,#c8860a);margin-bottom:12px;}
+    .dc-title{font-family:Unbounded,sans-serif;font-weight:900;font-size:20px;line-height:1.12;color:#fff;margin-bottom:8px;}
+    .dc-intro{font-size:13px;line-height:1.5;color:#b8b0a0;font-style:italic;margin-bottom:18px;}
+    .dc-choices{display:flex;align-items:stretch;gap:8px;}
+    .dc-choice{flex:1;display:flex;align-items:center;gap:7px;padding:13px 12px;border-radius:13px;
+      font-family:Unbounded,sans-serif;font-weight:700;font-size:12px;line-height:1.2;transition:transform .15s;}
+    .dc-choice.left{background:linear-gradient(135deg,rgba(176,80,80,.28),rgba(120,45,45,.16));
+      border:1.5px solid rgba(220,120,120,.45);color:#ffb3a0;justify-content:flex-start;text-align:left;}
+    .dc-choice.right{background:linear-gradient(135deg,rgba(74,170,150,.28),rgba(40,110,95,.16));
+      border:1.5px solid rgba(110,210,185,.45);color:#9fe8d4;justify-content:flex-end;text-align:right;}
+    .dc-arrow{font-size:18px;opacity:.8;flex-shrink:0;}
+    .dc-lbl{flex:1;}
+    .dc-or{display:flex;align-items:center;font-size:10px;color:#7a7264;font-family:Unbounded,sans-serif;
+      text-transform:uppercase;letter-spacing:.08em;}
+    .dc-choice.left.lit{transform:scale(1.04);box-shadow:0 0 18px rgba(220,120,120,.4);}
+    .dc-choice.right.lit{transform:scale(1.04);box-shadow:0 0 18px rgba(110,210,185,.4);}
+"""
     txt=txt.replace(anchor,css+anchor,1)
     with open(path,"w",encoding="utf-8") as f: f.write(txt)
-    print("  + CSS разделителя и тусклых прошлых реплик")
+    print("  + CSS новой карточки-свайпа")
 PYEOF
 
-
-echo ""; echo "══ штамп версии R44 (видно живую версию) ══════════"
-python3 - << 'PYEOF2'
-path="src/main/resources/static/app.js"
+# Подсветка выбора при свайпе
+python3 - << 'PYEOF'
+path="src/main/resources/static/games/feed.js"
 with open(path,encoding="utf-8") as f: txt=f.read()
-# выводим версию в консоль и на экран при старте
-if "SDVIG_BUILD" not in txt:
-    txt="window.SDVIG_BUILD='R44';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');\n"+txt
+old=("    card.addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-sx;card.style.transform='translateX('+dx*.5+'px) rotate('+dx*.02+'deg)';});")
+new=("    card.addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-sx;\n"
+     "      card.style.transform='translateX('+dx*.5+'px) rotate('+dx*.02+'deg)';\n"
+     "      var cl=card.querySelector('.dc-choice.left'),cr=card.querySelector('.dc-choice.right');\n"
+     "      if(cl)cl.classList.toggle('lit',dx<-30); if(cr)cr.classList.toggle('lit',dx>30);});")
+if old in txt:
+    txt=txt.replace(old,new,1)
     with open(path,"w",encoding="utf-8") as f: f.write(txt)
-    print("  + штамп R44 (в консоли F12 видно версию)")
-PYEOF2
-
-# маленький штамп в углу шапки
-python3 - << 'PYEOF3'
-import re
-path="src/main/resources/static/index.html"
-with open(path,encoding="utf-8") as f: txt=f.read()
-if "build-tag" not in txt:
-    # добавляем после <body>
-    txt=re.sub(r'(<body[^>]*>)', r'\1\n<div id="build-tag" style="position:fixed;bottom:2px;right:4px;z-index:9999;font-size:8px;color:rgba(200,160,90,.4);pointer-events:none;font-family:monospace">R44</div>', txt, count=1)
-    with open(path,"w",encoding="utf-8") as f: f.write(txt)
-    print("  + штамп R44 в углу экрана")
-PYEOF3
+    print("  + подсветка выбора при свайпе")
+PYEOF
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R44 — лента копит историю главы (видно с начала)"
-echo "   git add -A && git commit -m 'R44: accumulative feed - full chapter history visible' && git push"
+echo "✅  R45 — сюжет под исчезновение, аватары, новая карточка"
+echo "   git add -A && git commit -m 'R45: rewrite story (disappearance), avatar crop, decision card redesign' && git push"
 echo "═══════════════════════════════════════════════════════"

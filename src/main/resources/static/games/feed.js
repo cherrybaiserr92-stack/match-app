@@ -48,8 +48,12 @@
     .feed2::-webkit-scrollbar{width:0;}
     .msg2{display:flex;gap:11px;opacity:0;transform:translateY(14px);animation:m2In .5s cubic-bezier(.2,1,.3,1) forwards;}
     @keyframes m2In{to{opacity:1;transform:none}}
-    .m2-av{width:54px;height:54px;border-radius:13px;flex-shrink:0;overflow:hidden;border:2px solid;position:relative;
-      background-size:200% auto;background-position:50% 8%;transition:all .3s;background-repeat:no-repeat;}
+    .m2-av{width:56px;height:56px;border-radius:13px;flex-shrink:0;overflow:hidden;border:2px solid;position:relative;}
+    .m2-av img{position:absolute;width:175%;left:-37%;top:6%;max-width:none;}
+    /* индивидуальный кроп под персонажа */
+    .m2-av.av-shift img{width:200%;left:-50%;top:2%;}
+    .m2-av.av-recruit img{width:170%;left:-35%;top:7%;}
+    .m2-av.av-miller img{width:165%;left:-32%;top:6%;}
     .m2-ring{position:absolute;inset:-2px;border-radius:12px;opacity:0;transition:opacity .3s;}
     .msg2.active .m2-av{transform:scale(1.05);}
     .msg2.active .m2-ring{opacity:1;box-shadow:0 0 0 2px currentColor,0 0 16px currentColor;}
@@ -106,6 +110,25 @@
     .dec-card.swipe-right{animation:decFR .5s ease-in forwards;}
     @keyframes decFL{to{transform:translateX(-140%) rotate(-18deg);opacity:0}}
     @keyframes decFR{to{transform:translateX(140%) rotate(18deg);opacity:0}}
+    .dc-inner{padding:20px 20px 22px;text-align:center;}
+    .dc-badge{display:inline-block;font-family:Unbounded,sans-serif;font-weight:700;font-size:10px;
+      letter-spacing:.14em;color:#241701;padding:5px 13px;border-radius:8px;
+      background:linear-gradient(180deg,#ffe09a,#c8860a);margin-bottom:12px;}
+    .dc-title{font-family:Unbounded,sans-serif;font-weight:900;font-size:20px;line-height:1.12;color:#fff;margin-bottom:8px;}
+    .dc-intro{font-size:13px;line-height:1.5;color:#b8b0a0;font-style:italic;margin-bottom:18px;}
+    .dc-choices{display:flex;align-items:stretch;gap:8px;}
+    .dc-choice{flex:1;display:flex;align-items:center;gap:7px;padding:13px 12px;border-radius:13px;
+      font-family:Unbounded,sans-serif;font-weight:700;font-size:12px;line-height:1.2;transition:transform .15s;}
+    .dc-choice.left{background:linear-gradient(135deg,rgba(176,80,80,.28),rgba(120,45,45,.16));
+      border:1.5px solid rgba(220,120,120,.45);color:#ffb3a0;justify-content:flex-start;text-align:left;}
+    .dc-choice.right{background:linear-gradient(135deg,rgba(74,170,150,.28),rgba(40,110,95,.16));
+      border:1.5px solid rgba(110,210,185,.45);color:#9fe8d4;justify-content:flex-end;text-align:right;}
+    .dc-arrow{font-size:18px;opacity:.8;flex-shrink:0;}
+    .dc-lbl{flex:1;}
+    .dc-or{display:flex;align-items:center;font-size:10px;color:#7a7264;font-family:Unbounded,sans-serif;
+      text-transform:uppercase;letter-spacing:.08em;}
+    .dc-choice.left.lit{transform:scale(1.04);box-shadow:0 0 18px rgba(220,120,120,.4);}
+    .dc-choice.right.lit{transform:scale(1.04);box-shadow:0 0 18px rgba(110,210,185,.4);}
     .dec-card .fc-pad{padding:18px 18px 20px;}
     .dec-card .fc-badge{display:inline-block;font-family:Unbounded,sans-serif;font-weight:700;font-size:10px;
       letter-spacing:.12em;color:#ffcf6b;padding:5px 11px;border-radius:8px;
@@ -184,7 +207,7 @@
       el.innerHTML='<div class="m2-av">🧠</div><div class="m2-body"><div class="m2-head"><span class="m2-nm">Дедукция</span></div><div class="m2-bubble">'+renderClues(m.text)+'</div></div>'; }
     else { var spk=m.speaker||'narrator'; var cls=(spk==='shift')?'shift':(spk==='recruit')?'recruit':'other';
       el.className='msg2 '+cls+' m2-past';
-      el.innerHTML='<div class="m2-av" style="background-image:url('+avatar(spk)+')"></div><div class="m2-body"><div class="m2-head"><span class="m2-nm">'+(NAMES[spk]||spk)+'</span></div><div class="m2-bubble">'+renderClues(m.text)+'</div></div>'; }
+      el.innerHTML='<div class="m2-av av-'+spk+'"><img src="'+avatar(spk)+'"></div><div class="m2-body"><div class="m2-head"><span class="m2-nm">'+(NAMES[spk]||spk)+'</span></div><div class="m2-bubble">'+renderClues(m.text)+'</div></div>'; }
     _wrap.appendChild(el);
     var b=el.querySelector('.m2-bubble,.m2-narr'); if(b) bindClues(b);
   }
@@ -276,7 +299,7 @@
       el.className='msg2 '+cls+' active';
       const av=avatar(spk);
       const moodHtml=m.mood?'<span class="m2-mood" style="background:'+m.moodc+'22;color:'+m.moodc+';border:1px solid '+m.moodc+'55">'+m.mood+'</span>':'';
-      el.innerHTML='<div class="m2-av" style="background-image:url('+av+')"><span class="m2-ring"></span></div>'+
+      el.innerHTML='<div class="m2-av av-'+spk+'"><img src="'+av+'"><span class="m2-ring"></span></div>'+
         '<div class="m2-body"><div class="m2-head"><span class="m2-nm">'+(NAMES[spk]||spk)+'</span>'+moodHtml+'</div>'+
         '<div class="m2-bubble"></div></div>';
       _wrap.appendChild(el);
@@ -432,18 +455,25 @@
   function decCardInner(ev){
     const lL=ev.shift?(ev.a&&ev.a.label||''):(ev.left&&ev.left.label||'');
     const rL=ev.shift?(ev.b&&ev.b.label||''):(ev.right&&ev.right.label||'');
-    return '<div class="fc-pad"><span class="fc-badge">'+(ev.badge||'')+'</span>'+
-      '<div class="fc-title">'+(ev.title||'')+'</div>'+
-      '<div style="margin-top:12px;display:flex;gap:8px;font-size:11px">'+
-      '<div style="flex:1;padding:8px;border-radius:8px;background:rgba(176,80,80,.2);border:1px solid rgba(176,80,80,.4);color:#ff9d85;text-align:center">◄ '+esc(lL.replace(/^◄\s*/,''))+'</div>'+
-      '<div style="flex:1;padding:8px;border-radius:8px;background:rgba(74,155,142,.2);border:1px solid rgba(74,155,142,.4);color:#9fe0ff;text-align:center">'+esc(rL.replace(/\s*►$/,''))+' ►</div>'+
+    const intro=ev.intro||'Реши, как действовать.';
+    return '<div class="dc-inner">'+
+      '<span class="dc-badge">'+esc(ev.badge||'РЕШЕНИЕ')+'</span>'+
+      '<div class="dc-title">'+esc(ev.title||'')+'</div>'+
+      '<div class="dc-intro">'+esc(intro)+'</div>'+
+      '<div class="dc-choices">'+
+        '<div class="dc-choice left"><span class="dc-arrow">◄</span><span class="dc-lbl">'+esc(lL.replace(/^◄\s*/,''))+'</span></div>'+
+        '<div class="dc-or">или</div>'+
+        '<div class="dc-choice right"><span class="dc-lbl">'+esc(rL.replace(/\s*►$/,''))+'</span><span class="dc-arrow">►</span></div>'+
       '</div></div>';
   }
   function bindDecisionSwipe(ev){
     const card=document.getElementById('dec-card'); if(!card) return;
     let sx=0,down=false;
     card.addEventListener('pointerdown',e=>{down=true;sx=e.clientX;card.setPointerCapture&&card.setPointerCapture(e.pointerId);});
-    card.addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-sx;card.style.transform='translateX('+dx*.5+'px) rotate('+dx*.02+'deg)';});
+    card.addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-sx;
+      card.style.transform='translateX('+dx*.5+'px) rotate('+dx*.02+'deg)';
+      var cl=card.querySelector('.dc-choice.left'),cr=card.querySelector('.dc-choice.right');
+      if(cl)cl.classList.toggle('lit',dx<-30); if(cr)cr.classList.toggle('lit',dx>30);});
     card.addEventListener('pointerup',e=>{if(!down)return;down=false;const dx=e.clientX-sx;
       if(Math.abs(dx)>60)commitDecision(ev,dx<0?'left':'right');else card.style.transform='';});
   }
