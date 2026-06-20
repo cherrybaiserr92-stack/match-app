@@ -273,6 +273,7 @@ function bindNav(){
   nav.addEventListener('click',e=>{
     const b=e.target.closest('.nb'); if(!b) return;
     const tab=b.dataset.tab; if(!tab || tab===App.tab) return;
+    try{ if(window.Dialogue && Dialogue.isActive()) Dialogue.skip(); }catch(_){}
     try{ Sound.nav(); }catch(_){}
     vibrate(8);
     App.tab=tab;

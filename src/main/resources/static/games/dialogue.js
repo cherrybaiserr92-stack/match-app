@@ -29,6 +29,8 @@
     isActive(){ return _active; },
     play(lines, onDone){
       if(!lines||!lines.length){ onDone&&onDone(); return; }
+      // если предыдущий диалог не закрылся — закрываем принудительно
+      if(_active){ try{ document.body.classList.remove('dlg-on'); }catch(_){} }
       _lines=lines; _i=0; _onDone=onDone||null; _active=true;
       injectCSS(); buildUI(); enterMode(); showLine();
     },
@@ -79,6 +81,8 @@
 
   function buildUI(){
     const host=document.getElementById('main-screen')||document.body;
+    // КРИТИЧНО: убираем все старые диалоговые элементы из DOM (иначе блокируют тапы)
+    try{ document.querySelectorAll('.dlg-scrim,.dlg-box').forEach(function(el){ if(el.parentNode)el.parentNode.removeChild(el); }); }catch(_){}
     _scrim=null; _box=null;
     if(!_scrim){ _scrim=document.createElement('div'); _scrim.className='dlg-scrim'; host.appendChild(_scrim); }
     if(!_box){
@@ -103,6 +107,7 @@
   }
   function exitMode(){
     document.body.classList.remove('dlg-on');
+    try{ document.querySelectorAll('.dlg-scrim,.dlg-box').forEach(function(el){ if(el.parentNode)el.parentNode.removeChild(el); }); }catch(_){}
     _scrim.classList.remove('show'); _box.classList.remove('show');
     // вернуть спрайты в норму
     document.querySelectorAll('.char-sprite').forEach(s=>{ s.classList.remove('dlg-dim','dlg-active'); });
