@@ -972,6 +972,7 @@ const CHARS={
   danny:  {src:'/img/chars/char-danny.png',   side:'right'},
   guests: {src:'/img/chars/char-guests.png',  side:'right'}
 };
+window.CHARS=CHARS; window.CHAR_VER=CHAR_VER;
 const CASE_BGS={
   'case001':'/img/bg/bg-ch1-hall.png'
   /* остальные фоны добавить, когда арт будет готов */

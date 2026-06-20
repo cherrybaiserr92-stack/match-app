@@ -16,7 +16,11 @@
     miller:'Миллер',hayes:'Хейс',romero:'Ромеро',conroy:'Конрой',jiang:'Цзян',
     purcell:'Пёрселл',danny:'Дэнни',guests:'Гости'};
   const CHARV=(window.CHAR_VER||'3');
-  function avatar(id){ return id&&window.CHARS&&CHARS[id]?CHARS[id].src+'?v='+CHARV:''; }
+  function avatar(id){
+    var C=window.CHARS||(typeof CHARS!=='undefined'?CHARS:null);
+    if(id&&C&&C[id]) return C[id].src+'?v='+CHARV;
+    return '';
+  }
 
   window.Feed={
     init(){ buildShell(); renderFromState(); },
@@ -28,6 +32,7 @@
   function buildShell(){
     const stage=document.getElementById('stage'); if(!stage) return;
     stage.innerHTML='<div class="feed2" id="feed2"></div>';
+    try{ if(window.hideChar) hideChar(); }catch(_){}
     _wrap=document.getElementById('feed2');
     injectCSS();
   }
@@ -41,8 +46,8 @@
     .feed2::-webkit-scrollbar{width:0;}
     .msg2{display:flex;gap:11px;opacity:0;transform:translateY(14px);animation:m2In .5s cubic-bezier(.2,1,.3,1) forwards;}
     @keyframes m2In{to{opacity:1;transform:none}}
-    .m2-av{width:42px;height:42px;border-radius:12px;flex-shrink:0;overflow:hidden;border:2px solid;position:relative;
-      background-size:cover;background-position:center top;transition:all .3s;}
+    .m2-av{width:44px;height:44px;border-radius:12px;flex-shrink:0;overflow:hidden;border:2px solid;position:relative;
+      background-size:280%;background-position:center -2px;transition:all .3s;background-repeat:no-repeat;}
     .m2-ring{position:absolute;inset:-2px;border-radius:12px;opacity:0;transition:opacity .3s;}
     .msg2.active .m2-av{transform:scale(1.05);}
     .msg2.active .m2-ring{opacity:1;box-shadow:0 0 0 2px currentColor,0 0 16px currentColor;}
@@ -102,6 +107,9 @@
   function pushEvent(evId, instant){
     const ev=CASE.events[evId]; if(!ev) return;
     CState.ev=evId;
+    // ФИКС наложения: чистим ленту перед новым событием
+    if(_wrap) _wrap.innerHTML='';
+    _wrap.onclick=null;
     try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}
 
     const msgs=buildMessages(ev);
@@ -169,8 +177,7 @@
         '<div class="m2-bubble"></div></div>';
       _wrap.appendChild(el);
       typeInto(el.querySelector('.m2-bubble'), m.text, done);
-      // спрайт говорящего сбоку
-      try{ if(window.showChar && spk!=='narrator') showChar(spk); }catch(_){}
+      // в ленте спрайт сбоку НЕ показываем — есть аватар (не перекрывает интерфейс)
     }
   }
 
