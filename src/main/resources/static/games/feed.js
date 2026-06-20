@@ -26,7 +26,7 @@
     init(){ buildShell(); renderFromState(); },
     show(evId){ pushEvent(evId); },
     enterDecision(){ enterDecisionMode(); },
-    reset(){ if(_wrap)_wrap.innerHTML=''; _busy=false; _decision=false; clearInterval(_decTimer); }
+    reset(){ _lastRenderedEv=null; if(_wrap)_wrap.innerHTML=''; _busy=false; _decision=false; clearInterval(_decTimer); }
   };
 
   function buildShell(){
@@ -47,7 +47,7 @@
     .msg2{display:flex;gap:11px;opacity:0;transform:translateY(14px);animation:m2In .5s cubic-bezier(.2,1,.3,1) forwards;}
     @keyframes m2In{to{opacity:1;transform:none}}
     .m2-av{width:44px;height:44px;border-radius:12px;flex-shrink:0;overflow:hidden;border:2px solid;position:relative;
-      background-size:280%;background-position:center -2px;transition:all .3s;background-repeat:no-repeat;}
+      background-size:160% auto;background-position:center top;transition:all .3s;background-repeat:no-repeat;}
     .m2-ring{position:absolute;inset:-2px;border-radius:12px;opacity:0;transition:opacity .3s;}
     .msg2.active .m2-av{transform:scale(1.05);}
     .msg2.active .m2-ring{opacity:1;box-shadow:0 0 0 2px currentColor,0 0 16px currentColor;}
@@ -92,6 +92,49 @@
     .feed2-find{align-self:center;margin-top:8px;padding:13px 28px;border:none;border-radius:13px;cursor:pointer;
       background:linear-gradient(180deg,#ffe09a,#c8860a);color:#241701;font-family:Unbounded,sans-serif;
       font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(200,134,10,.32);}
+    .decision-stage{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(70% 60% at 50% 45%,rgba(10,14,22,.7),rgba(6,8,13,.95));}
+    .dec-card{position:relative;width:min(74vw,300px);border-radius:18px;overflow:hidden;z-index:5;
+      background:linear-gradient(160deg,rgba(28,23,16,.99),rgba(13,11,8,.99));
+      border:1.5px solid var(--acc,#c8860a);box-shadow:0 16px 44px rgba(0,0,0,.6),0 0 28px rgba(200,134,10,.2);
+      animation:decT 2.8s ease-in-out infinite;}
+    @keyframes decT{0%,100%{transform:rotate(0) translate(0,0)}25%{transform:rotate(-.3deg) translate(-1.5px,1px)}
+      50%{transform:rotate(.3deg) translate(1.5px,-1.5px)}75%{transform:rotate(-.15deg) translate(-1px,0)}}
+    .dec-card.swipe-left{animation:decFL .5s ease-in forwards;}
+    .dec-card.swipe-right{animation:decFR .5s ease-in forwards;}
+    @keyframes decFL{to{transform:translateX(-140%) rotate(-18deg);opacity:0}}
+    @keyframes decFR{to{transform:translateX(140%) rotate(18deg);opacity:0}}
+    .dec-card .fc-pad{padding:18px 18px 20px;}
+    .dec-card .fc-badge{display:inline-block;font-family:Unbounded,sans-serif;font-weight:700;font-size:10px;
+      letter-spacing:.12em;color:#ffcf6b;padding:5px 11px;border-radius:8px;
+      background:rgba(200,134,10,.16);border:1px solid rgba(200,134,10,.4);margin-bottom:10px;}
+    .dec-card .fc-title{font-family:Unbounded,sans-serif;font-weight:800;font-size:18px;line-height:1.15;color:#fff;}
+    .outcome-cascade{position:absolute;top:50%;z-index:3;pointer-events:none;display:flex;flex-direction:column;gap:6px;
+      opacity:0;transition:opacity .5s;}
+    .outcome-cascade.show{opacity:1;}
+    .outcome-cascade.left{left:2vw;transform:translateY(-50%);align-items:flex-start;}
+    .outcome-cascade.right{right:2vw;transform:translateY(-50%);align-items:flex-end;}
+    .oc-card{border-radius:10px;padding:7px 10px;font-size:10px;font-weight:700;font-family:Unbounded,sans-serif;
+      color:#fff;white-space:nowrap;max-width:30vw;overflow:hidden;text-overflow:ellipsis;
+      border:1px solid rgba(255,255,255,.18);box-shadow:0 4px 12px rgba(0,0,0,.4);}
+    .outcome-cascade.left .oc-card{background:linear-gradient(160deg,rgba(176,80,80,.85),rgba(94,38,38,.9));}
+    .outcome-cascade.right .oc-card{background:linear-gradient(160deg,rgba(74,155,142,.85),rgba(29,74,67,.9));}
+    .oc-card:nth-child(1){transform:scale(1);opacity:1;}
+    .oc-card:nth-child(2){transform:scale(.88);opacity:.78;}
+    .oc-card:nth-child(3){transform:scale(.76);opacity:.56;}
+    .oc-hint{position:absolute;bottom:13%;left:0;right:0;text-align:center;font-size:11px;color:#c8a05a;
+      font-family:Unbounded,sans-serif;letter-spacing:.05em;}
+    .dec-timer{position:absolute;top:7%;left:50%;transform:translateX(-50%);z-index:8;
+      display:flex;flex-direction:column;align-items:center;gap:3px;}
+    .dt-ring2{width:50px;height:50px;position:relative;}
+    .dt-ring2 svg{width:100%;height:100%;transform:rotate(-90deg);}
+    .dt-ring2 .bg{fill:none;stroke:rgba(255,255,255,.1);stroke-width:5;}
+    .dt-ring2 .fg{fill:none;stroke:var(--acc,#c8860a);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .25s linear,stroke .3s;}
+    .dt-n{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      font-family:Unbounded,sans-serif;font-weight:900;font-size:17px;color:#fff;}
+    .dec-timer.urgent .fg{stroke:#ff5d6c;}
+    .dec-timer.urgent .dt-n{color:#ff5d6c;animation:dtP .5s ease-in-out infinite;}
+    @keyframes dtP{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
     .clue-fly2{position:absolute;z-index:60;font-size:12px;color:#46d89b;font-weight:700;pointer-events:none;
       background:rgba(70,216,155,.2);padding:4px 9px;border-radius:8px;border:1px solid #46d89b;}
     `;
@@ -104,10 +147,13 @@
   }
 
   /* раскладываем событие в поток реплик */
+  var _lastRenderedEv=null;
   function pushEvent(evId, instant){
     const ev=CASE.events[evId]; if(!ev) return;
+    // защита от повторного рендера того же события (лента не сбрасывается)
+    if(_lastRenderedEv===evId && _wrap && _wrap.children.length>0) return;
+    _lastRenderedEv=evId;
     CState.ev=evId;
-    // ФИКС наложения: чистим ленту перед новым событием
     if(_wrap) _wrap.innerHTML='';
     _wrap.onclick=null;
     try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}
@@ -138,7 +184,11 @@
     if(ev.dialogue && window.parseDialogue){
       const lines=parseDialogue(ev);
       lines.forEach(l=>{
-        out.push({type:'speech', speaker:l.speaker, text:l.text});
+        if(!l.speaker || l.speaker==='narrator'){
+          out.push({type:'narr', text:l.text}); // безымянная реплика = нарратив
+        } else {
+          out.push({type:'speech', speaker:l.speaker, text:l.text});
+        }
       });
     }
     // 3. дедукция + улика (если у события есть clue)
