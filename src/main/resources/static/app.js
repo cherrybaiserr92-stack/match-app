@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R45';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R46';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -740,9 +740,12 @@ function cAdvance(dir,ev,opt){
 }
 
 function grantClue(clue){
-  if(!clue||!clue.id) return;
+  if(!clue||!clue.id){ var cb0=window._afterClue; window._afterClue=null; if(cb0)cb0(); return; }
   if(!CState.clues) CState.clues=[];
-  if(CState.clues.some(function(c){return c.id===clue.id;})) return; // уже есть
+  if(CState.clues.some(function(c){return c.id===clue.id;})){
+    // улика уже есть — НЕ показываем повторно, но игру ПРОДОЛЖАЕМ
+    var cb=window._afterClue; window._afterClue=null; if(cb)cb(); return;
+  }
   CState.clues.push(clue);
   if(_evCountEl) _evCountEl.textContent=CState.clues.length;
   try{ showClueReveal(clue, window._afterClue||null); window._afterClue=null; }catch(_){}
