@@ -437,7 +437,7 @@ function haptic(kind){
 }
 
 /* ════ КОЛЬЦО ════ */
-const CState={ev:CASE.start,flags:{},evidence:[],step:0};
+const CState={ev:CASE.start,flags:{},evidence:[],clues:[],step:0};
 let _ring=null,_evCountEl=null,_progEl=null;
 let cfCards=[],centerIndex=0,cBusy=false,cActive=null,SPIN_DUR=640;
 const CN=6,CSTEPD=60,CRX=150,CYL=152,CZL=120,CSD=0.42;
@@ -517,8 +517,8 @@ function buildBacks(){
   }
   var _saved=loadCaseState();
   var _startEv=(_saved&&_saved.ev)?_saved.ev:CASE.start;
-  if(_saved){ CState.ev=_saved.ev; CState.flags=_saved.flags||{}; CState.evidence=_saved.evidence||[]; CState.step=_saved.step||0;
-    if(_evCountEl)_evCountEl.textContent=CState.evidence.length; cSetProgress();
+  if(_saved){ CState.ev=_saved.ev; CState.flags=_saved.flags||{}; CState.evidence=_saved.evidence||[]; CState.clues=_saved.clues||[]; CState.step=_saved.step||0;
+    if(_evCountEl)_evCountEl.textContent=(CState.clues?CState.clues.length:0); cSetProgress();
     if(window.toast) toast('Дело продолжается','Ты вернулся туда, где остановился.','\ud83d\udcc2'); }
   cfCards.forEach(function(c,e){
     if(e===centerIndex) setActive(c,CASE.events[_startEv]); else setBack(c);
@@ -581,6 +581,7 @@ function unlockSwipe(){
   App.swipeUnlocked=true;
   vibrate(20); try{Sound.booster();}catch(_){}
   try{removeLockOverlay();}catch(_){}
+  try{ if(window._pendingClue){ grantClue(window._pendingClue); window._pendingClue=null; } }catch(_){}
   if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} }
   else { try{ startDecisionMode(); }catch(_){} }
 }
@@ -727,6 +728,33 @@ function cAdvance(dir,ev,opt){
   else { burnCardBlue(c0,"right",function(){setBack(c0);turn();}); }
 }
 
+function grantClue(clue){
+  if(!clue||!clue.id) return;
+  if(!CState.clues) CState.clues=[];
+  if(CState.clues.some(function(c){return c.id===clue.id;})) return; // уже есть
+  CState.clues.push(clue);
+  if(_evCountEl) _evCountEl.textContent=CState.clues.length;
+  try{ showClueReveal(clue); }catch(_){}
+  try{ saveCaseState&&saveCaseState(); }catch(_){}
+}
+function showClueReveal(clue){
+  // эффектная выдача: улика «ложится» в досье
+  var ov=document.createElement('div'); ov.className='clue-reveal';
+  ov.innerHTML='<div class="cr-card">'+
+    '<div class="cr-ico">'+(clue.icon||'🔍')+'</div>'+
+    '<div class="cr-label">УЛИКА НАЙДЕНА</div>'+
+    '<div class="cr-name">'+esc(clue.name||'')+'</div>'+
+    '<div class="cr-proof">'+esc(clue.proof||'')+'</div>'+
+    '<div class="cr-hint">▸ в досье</div>'+
+  '</div>';
+  document.body.appendChild(ov);
+  try{ Sound.approve&&Sound.approve(); vibrate&&vibrate([10,40,10]); }catch(_){}
+  requestAnimationFrame(function(){ ov.classList.add('show'); });
+  ov.onclick=function(){ ov.classList.add('tofile');
+    setTimeout(function(){ if(ov.parentNode)ov.parentNode.removeChild(ov); },600); };
+  setTimeout(function(){ if(ov.parentNode){ ov.classList.add('tofile');
+    setTimeout(function(){ if(ov.parentNode)ov.parentNode.removeChild(ov); },600);} }, 3400);
+}
 function cAddEvidence(t){
   if(t&&CState.evidence.indexOf(t)<0){ CState.evidence.push(t); try{Sound.approve();}catch(_){} }
   if(_evCountEl) _evCountEl.textContent=CState.evidence.length;
@@ -838,8 +866,10 @@ function initEvPanel(){
     const panel=document.getElementById("ev-panel");
     const list=document.getElementById("ev-list");
     if(!panel||!list)return;
-    list.innerHTML=CState.evidence.length
-      ? CState.evidence.map(function(t){return '<div class="ev-item">'+t+'</div>';}).join("")
+    var cl=CState.clues||[];
+    list.innerHTML=cl.length
+      ? cl.map(function(c){return '<div class="ev-clue"><div class="ec-ico">'+(c.icon||'🔍')+'</div>'+
+          '<div class="ec-body"><div class="ec-name">'+c.name+'</div><div class="ec-proof">'+c.proof+'</div></div></div>';}).join("")
       : '<div class="ev-empty">Улики появятся по ходу расследования.</div>';
     panel.classList.add("open");
   });
@@ -858,7 +888,7 @@ function initEvPanel(){
 function saveCaseState(){
   try{
     var cid=(CAMPAIGN&&CAMPAIGN.cases[_caseIdx])?CAMPAIGN.cases[_caseIdx].id:'case001';
-    lsSet('sdvig_progress',{cid:cid,ev:CState.ev,flags:CState.flags,evidence:CState.evidence,step:CState.step});
+    lsSet('sdvig_progress',{cid:cid,ev:CState.ev,flags:CState.flags,evidence:CState.evidence,clues:CState.clues,step:CState.step});
   }catch(e){}
 }
 function clearCaseState(){ try{localStorage.removeItem('sdvig_progress');}catch(e){} }

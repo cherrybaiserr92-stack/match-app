@@ -232,7 +232,7 @@
   function openMiniGame(ev, card){
     try{ if(window.App) App.currentCard=ev; }catch(_){}
     if(window.openHintGame){
-      // openHintGame по победе вызовет unlockSwipe → Feed.enterDecision()
+      window._pendingClue=ev.clue||null; // улика выдастся при победе
       openHintGame(ev);
     } else {
       enterDecisionMode(); // фолбэк
