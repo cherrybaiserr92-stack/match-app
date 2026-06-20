@@ -1,82 +1,31 @@
 #!/usr/bin/env bash
-# СДВИГ R41 — КРИТФИКС: улика перекрывала карту решения (z-index конфликт + порядок)
+# СДВИГ R42 — аватары: больше квадрат + точный кроп на лицо
 set -e
-
-echo ""; echo "══ 1/2  app.js — карта решения ПОСЛЕ закрытия улики ══"
+echo ""; echo "══ feed.js — аватар больше и кроп на лицо ══════════"
 python3 - << 'PYEOF'
-path="src/main/resources/static/app.js"
+path="src/main/resources/static/games/feed.js"
 with open(path,encoding="utf-8") as f: txt=f.read()
 n=0
 
-# showClueReveal принимает onClose-колбэк
-old_sig="function showClueReveal(clue){"
-new_sig="function showClueReveal(clue, onClose){"
-if old_sig in txt:
-    txt=txt.replace(old_sig,new_sig,1); n+=1; print("  + showClueReveal принимает onClose")
-
-# при закрытии (тап) — вызвать onClose
-old_tap=("  ov.onclick=function(){ ov.classList.add('tofile');\n"
-         "    setTimeout(function(){ if(ov.parentNode)ov.parentNode.removeChild(ov); },600); };")
-new_tap=("  var _closed=false;\n"
-         "  function _close(){ if(_closed)return; _closed=true; ov.classList.add('tofile');\n"
-         "    setTimeout(function(){ if(ov.parentNode)ov.parentNode.removeChild(ov); if(onClose)onClose(); },600); }\n"
-         "  ov.onclick=_close;")
-if old_tap in txt:
-    txt=txt.replace(old_tap,new_tap,1); n+=1; print("  + тап по улике вызывает onClose")
-
-# авто-закрытие тоже через _close
-old_auto=("  setTimeout(function(){ if(ov.parentNode){ ov.classList.add('tofile');\n"
-          "    setTimeout(function(){ if(ov.parentNode)ov.parentNode.removeChild(ov); },600);} }, 3400);")
-new_auto="  setTimeout(_close, 3000);"
-if old_auto in txt:
-    txt=txt.replace(old_auto,new_auto,1); n+=1; print("  + авто-закрытие улики через onClose (3с)")
-
-# grantClue передаёт onClose дальше
-old_grant="  try{ showClueReveal(clue); }catch(_){}"
-new_grant="  try{ showClueReveal(clue, window._afterClue||null); window._afterClue=null; }catch(_){}"
-if old_grant in txt:
-    txt=txt.replace(old_grant,new_grant,1); n+=1; print("  + grantClue прокидывает _afterClue")
-
-# unlockSwipe: enterDecision вызываем ПОСЛЕ закрытия улики, не сразу
-old_unlock=("  try{ if(window._pendingClue){ grantClue(window._pendingClue); window._pendingClue=null; } }catch(_){}\n"
-            "  if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} }\n"
-            "  else { try{ startDecisionMode(); }catch(_){} }")
-new_unlock=("  var _goDecision=function(){\n"
-            "    if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} }\n"
-            "    else { try{ startDecisionMode(); }catch(_){} }\n"
-            "  };\n"
-            "  if(window._pendingClue){\n"
-            "    // показываем улику, а карту решения — ТОЛЬКО после её закрытия\n"
-            "    window._afterClue=_goDecision;\n"
-            "    try{ grantClue(window._pendingClue); }catch(_){ _goDecision(); }\n"
-            "    window._pendingClue=null;\n"
-            "  } else {\n"
-            "    _goDecision();\n"
-            "  }")
-if old_unlock in txt:
-    txt=txt.replace(old_unlock,new_unlock,1); n+=1; print("  + карта решения ПОСЛЕ закрытия улики (нет перекрытия)")
-
-with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ app.js: %d"%n)
-PYEOF
-
-
-echo ""; echo "══ 2/2  clue-reveal z-index выше + не застревает ═════"
-python3 - << 'PYEOF'
-path="src/main/resources/static/card-design.css"
-with open(path,encoding="utf-8") as f: txt=f.read()
-n=0
-# поднимаем z-index оверлея улики чтобы точно был сверху (над всем)
-old=".clue-reveal{position:fixed;inset:0;z-index:80;"
-new=".clue-reveal{position:fixed;inset:0;z-index:200;"
+# Спрайт 800×1200, голова в Y 113..330 (~18% высоты), центр по X.
+# Для аватара 52×52: масштабируем так, чтобы голова заняла квадрат.
+# background-size: ширина 200% (голова ~центр), position по Y чтобы показать верх лица.
+old=".m2-av{width:44px;height:44px;border-radius:12px;flex-shrink:0;overflow:hidden;border:2px solid;position:relative;\n      background-size:160% auto;background-position:center top;transition:all .3s;background-repeat:no-repeat;}"
+new=".m2-av{width:54px;height:54px;border-radius:13px;flex-shrink:0;overflow:hidden;border:2px solid;position:relative;\n      background-size:200% auto;background-position:50% 8%;transition:all .3s;background-repeat:no-repeat;}"
 if old in txt:
-    txt=txt.replace(old,new,1); n+=1; print("  + clue-reveal z-index 200 (над картой решения)")
-with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ card-design.css: %d"%n)
-PYEOF
+    txt=txt.replace(old,new,1); n+=1; print("  + аватар 54px, кроп на лицо (200% ширина, Y 8%)")
 
+# деуцкия-аватар (мозг) тоже крупнее
+old_d=".msg2.deduce .m2-av{border-color:#46d89b;color:#46d89b;background:rgba(70,216,155,.1);\n      display:flex;align-items:center;justify-content:center;font-size:20px;}"
+new_d=".msg2.deduce .m2-av{border-color:#46d89b;color:#46d89b;background:rgba(70,216,155,.1);\n      display:flex;align-items:center;justify-content:center;font-size:24px;}"
+if old_d in txt:
+    txt=txt.replace(old_d,new_d,1); n+=1; print("  + аватар дедукции крупнее")
+
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ feed.js: %d"%n)
+PYEOF
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R41 — улика больше не блокирует карту решения"
-echo "   git add -A && git commit -m 'R41: fix clue overlay blocking decision card' && git push"
+echo "✅  R42 — аватары увеличены и кропнуты на лицо"
+echo "   git add -A && git commit -m 'R42: bigger avatars, face crop' && git push"
 echo "═══════════════════════════════════════════════════════"
