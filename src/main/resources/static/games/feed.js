@@ -11,6 +11,8 @@
   'use strict';
 
   let _wrap=null, _busy=false, _decision=false, _decTimer=null;
+  var _history=[];  // история показанных событий (вся глава)
+  var _builtFor=null;  // для какого CState.ev построена лента
 
   const NAMES={shift:'Сдвиг',recruit:'Рекрут',kurator:'Куратор',arundel:'Аранделл',
     miller:'Миллер',hayes:'Хейс',romero:'Ромеро',conroy:'Конрой',jiang:'Цзян',
@@ -26,7 +28,7 @@
     init(){ buildShell(); renderFromState(); },
     show(evId){ pushEvent(evId); },
     enterDecision(){ enterDecisionMode(); },
-    reset(){ _lastRenderedEv=null; if(_wrap)_wrap.innerHTML=''; _busy=false; _decision=false; clearInterval(_decTimer); }
+    reset(){ _lastRenderedEv=null; _history=[]; _builtFor=null; if(_wrap)_wrap.innerHTML=''; _busy=false; _decision=false; clearInterval(_decTimer); }
   };
 
   function buildShell(){
@@ -135,6 +137,11 @@
     .dec-timer.urgent .fg{stroke:#ff5d6c;}
     .dec-timer.urgent .dt-n{color:#ff5d6c;animation:dtP .5s ease-in-out infinite;}
     @keyframes dtP{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+    .feed2-sep{display:flex;align-items:center;gap:10px;margin:6px 2px;opacity:.5;}
+    .feed2-sep::before,.feed2-sep::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(200,134,10,.4),transparent);}
+    .feed2-sep span{font-family:Unbounded,sans-serif;font-size:9px;letter-spacing:.12em;color:#c8a05a;text-transform:uppercase;white-space:nowrap;}
+    .msg2.m2-past{opacity:.62;}
+    .msg2.m2-past .m2-av{filter:grayscale(.3) brightness(.85);}
     .clue-fly2{position:absolute;z-index:60;font-size:12px;color:#46d89b;font-weight:700;pointer-events:none;
       background:rgba(70,216,155,.2);padding:4px 9px;border-radius:8px;border:1px solid #46d89b;}
     `;
@@ -142,22 +149,69 @@
   }
 
   function renderFromState(){
-    if(!_wrap) return; _wrap.innerHTML='';
-    pushEvent(CState.ev||CASE.start, true);
+    if(!_wrap) return;
+    // если лента уже построена для этого события — не пересоздаём (не мигает)
+    if(_builtFor===CState.ev && _wrap.children.length>0) return;
+    _builtFor=CState.ev;
+    _wrap.innerHTML=''; _lastRenderedEv=null;
+    // восстанавливаем всю историю кроме последнего (его покажем интерактивно)
+    var hist=_history.slice(); var cur=CState.ev||CASE.start;
+    if(hist.length===0 || hist[hist.length-1]!==cur){
+      // нет истории — начинаем с текущего
+      pushEvent(cur, true);
+    } else {
+      // восстанавливаем прошлые события статично, последнее — интерактивно
+      for(var i=0;i<hist.length-1;i++){ renderStatic(hist[i]); }
+      _lastRenderedEv=null; pushEvent(cur, true);
+    }
+  }
+  // статичный рендер прошлого события (вся реплики сразу, без печати)
+  function renderStatic(evId){
+    var ev=CASE.events[evId]; if(!ev) return;
+    if(ev.badge && _wrap.children.length>0){
+      var sep=document.createElement('div'); sep.className='feed2-sep';
+      sep.innerHTML='<span>'+esc(ev.badge)+'</span>'; _wrap.appendChild(sep);
+    }
+    var msgs=buildMessages(ev);
+    msgs.forEach(function(m){ addMessageStatic(m); });
+  }
+  // добавить сообщение без анимации печати (для истории)
+  function addMessageStatic(m){
+    var el=document.createElement('div');
+    if(m.type==='narr'){ el.className='msg2 narr m2-past';
+      el.innerHTML='<div class="m2-narr">'+renderClues(m.text)+'</div>'; }
+    else if(m.type==='deduce'){ el.className='msg2 deduce m2-past';
+      el.innerHTML='<div class="m2-av">🧠</div><div class="m2-body"><div class="m2-head"><span class="m2-nm">Дедукция</span></div><div class="m2-bubble">'+renderClues(m.text)+'</div></div>'; }
+    else { var spk=m.speaker||'narrator'; var cls=(spk==='shift')?'shift':(spk==='recruit')?'recruit':'other';
+      el.className='msg2 '+cls+' m2-past';
+      el.innerHTML='<div class="m2-av" style="background-image:url('+avatar(spk)+')"></div><div class="m2-body"><div class="m2-head"><span class="m2-nm">'+(NAMES[spk]||spk)+'</span></div><div class="m2-bubble">'+renderClues(m.text)+'</div></div>'; }
+    _wrap.appendChild(el);
+    var b=el.querySelector('.m2-bubble,.m2-narr'); if(b) bindClues(b);
   }
 
   /* раскладываем событие в поток реплик */
   var _lastRenderedEv=null;
   function pushEvent(evId, instant){
     const ev=CASE.events[evId]; if(!ev) return;
-    // защита от повторного рендера того же события (лента не сбрасывается)
+    // защита от повторного рендера того же события
     if(_lastRenderedEv===evId && _wrap && _wrap.children.length>0) return;
     _lastRenderedEv=evId;
     CState.ev=evId;
-    if(_wrap) _wrap.innerHTML='';
+    // добавляем в историю (не дублируя)
+    if(_history.indexOf(evId)<0) _history.push(evId);
+    // убираем прошлую кнопку/подсказку, но НЕ стираем ленту (история копится)
+    var oldc=_wrap.querySelector('.feed2-next,.feed2-find'); if(oldc)oldc.remove();
     _wrap.onclick=null;
+    // прошлые сообщения тускнеют
+    _wrap.querySelectorAll('.msg2').forEach(function(m){ m.classList.add('m2-past'); m.classList.remove('active'); });
     try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}
 
+    // разделитель главы перед новым событием (кроме первого)
+    if(_wrap.children.length>0 && ev.badge){
+      var sep=document.createElement('div'); sep.className='feed2-sep';
+      sep.innerHTML='<span>'+esc(ev.badge)+'</span>';
+      _wrap.appendChild(sep);
+    }
     const msgs=buildMessages(ev);
     let mi=0;
 

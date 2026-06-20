@@ -1,120 +1,169 @@
 #!/usr/bin/env bash
-# СДВИГ R43 — настоящие развилки в case001 (флаги влияют на финал, разные сцены)
+# СДВИГ R44 — накопительная лента (история главы), фикс застревания, защита от пересоздания
 set -e
-echo ""; echo "══ case001 — развилки с флагами и влиянием на финал ═"
+
+echo ""; echo "══ 1/3  feed.js — НАКОПИТЕЛЬНАЯ лента (история) ════"
 python3 - << 'PYEOF'
-import json
-path="src/main/resources/static/scenarios/case001.json"
-d=json.load(open(path,encoding='utf-8'))
-ev=d['events']
+path="src/main/resources/static/games/feed.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
 
-# Расширяем truth — теперь финал зависит от стиля расследования
-d['truth']={'method':'trick','watchman':'bribed','mastermind':'curator','approach':'sharp'}
+# Храним историю показанных событий
+if "var _history=[]" not in txt:
+    txt=txt.replace("  let _wrap=null, _busy=false, _decision=false, _decTimer=null;",
+        "  let _wrap=null, _busy=false, _decision=false, _decTimer=null;\n  var _history=[];  // история показанных событий (вся глава)\n  var _builtFor=null;  // для какого CState.ev построена лента")
+    n+=1; print("  + хранилище истории _history")
 
-# ── РАЗВИЛКА 1: вход в музей (e0) — стиль задаёт флаг + РАЗНЫЕ сцены ──
-ev['e0']['left']={'label':'Войти тихо','set':{'approach':'sharp'},
-    'evidence':'Ты вошёл первым. В тишине слышен капёж — и тонкий запах масла у дальней стены.','to':'eL2a'}
-ev['e0']['right']={'label':'За Сдвигом','set':{'approach':'trust'},
-    'evidence':'Сдвиг шёл впереди. «Смотри на пол, рекрут. Призраки не оставляют луж».','to':'eL2b'}
+# pushEvent: НЕ чистим ленту — добавляем событие к истории
+old=("  function pushEvent(evId, instant){\n"
+     "    const ev=CASE.events[evId]; if(!ev) return;\n"
+     "    // защита от повторного рендера того же события (лента не сбрасывается)\n"
+     "    if(_lastRenderedEv===evId && _wrap && _wrap.children.length>0) return;\n"
+     "    _lastRenderedEv=evId;\n"
+     "    CState.ev=evId;\n"
+     "    if(_wrap) _wrap.innerHTML='';\n"
+     "    _wrap.onclick=null;\n"
+     "    try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}")
+new=("  function pushEvent(evId, instant){\n"
+     "    const ev=CASE.events[evId]; if(!ev) return;\n"
+     "    // защита от повторного рендера того же события\n"
+     "    if(_lastRenderedEv===evId && _wrap && _wrap.children.length>0) return;\n"
+     "    _lastRenderedEv=evId;\n"
+     "    CState.ev=evId;\n"
+     "    // добавляем в историю (не дублируя)\n"
+     "    if(_history.indexOf(evId)<0) _history.push(evId);\n"
+     "    // убираем прошлую кнопку/подсказку, но НЕ стираем ленту (история копится)\n"
+     "    var oldc=_wrap.querySelector('.feed2-next,.feed2-find'); if(oldc)oldc.remove();\n"
+     "    _wrap.onclick=null;\n"
+     "    // прошлые сообщения тускнеют\n"
+     "    _wrap.querySelectorAll('.msg2').forEach(function(m){ m.classList.add('m2-past'); m.classList.remove('active'); });\n"
+     "    try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}")
+if old in txt:
+    txt=txt.replace(old,new,1); n+=1; print("  + события КОПЯТСЯ в ленте (история главы)")
 
-# Ветка A (тихо) — своя сцена осмотра
-ev['eL2a']={'t':'evidence','badge':'Тихо','title':'Капля у стены',
-    'text':'Ты двигался один. У стены — масляное пятно и царапина на паркете, будто что-то тяжёлое тащили.',
-    'clue':{'id':'oil_trace','name':'Машинное масло','icon':'⚙️','proof':'Следы масла и борозда на полу. Что-то тяжёлое волокли к стене.'},
-    'left':{'label':'К портьере','to':'eL2c2'},'right':{'label':'К щитовой','to':'eL2c2'}}
-# Ветка B (за Сдвигом) — своя сцена
-ev['eL2b']={'t':'evidence','badge':'Вместе','title':'Указка Сдвига',
-    'text':'Сдвиг присел над лужей. «Масло. Театральное. Кто-то готовил сцену». Он кивнул на портьеру.',
-    'clue':{'id':'oil_trace','name':'Машинное масло','icon':'⚙️','proof':'Следы масла и борозда на полу. Что-то тяжёлое волокли к стене.'},
-    'left':{'label':'К портьере','to':'eL2c2'},'right':{'label':'Осмотреть зал','to':'eL2c2'}}
+# разделитель события (тонкая линия с бейджем) перед новым событием
+old_msgs="    const msgs=buildMessages(ev);\n    let mi=0;"
+new_msgs=("    // разделитель главы перед новым событием (кроме первого)\n"
+          "    if(_wrap.children.length>0 && ev.badge){\n"
+          "      var sep=document.createElement('div'); sep.className='feed2-sep';\n"
+          "      sep.innerHTML='<span>'+esc(ev.badge)+'</span>';\n"
+          "      _wrap.appendChild(sep);\n"
+          "    }\n"
+          "    const msgs=buildMessages(ev);\n    let mi=0;")
+if old_msgs in txt:
+    txt=txt.replace(old_msgs,new_msgs,1); n+=1; print("  + разделитель между событиями")
 
-# ── eL2c2, eL2c3 ведут дальше как было (общий ствол расследования) ──
-ev['eL2c2']['left']={'label':'Дёрнуть штору','to':'eL2c3'}
-ev['eL2c2']['right']={'label':'Заглянуть за неё','to':'eL2c3'}
-ev['eL2c3']['left']={'label':'Резать провод','to':'eShift1'}
-ev['eL2c3']['right']={'label':'Сфотографировать','to':'eShift1'}
-
-# ── РАЗВИЛКА 2 (eShift1): как исчез — метод (ключевой флаг method) ──
-ev['eShift1']['a']={'label':'◄ ПРИЗРАК','vtext':'Город прав: дом проклят, человек растворился.',
-    'set':{'method':'ghost'},'bad':True,'to':'eL2c4'}
-ev['eShift1']['b']={'label':'ТРЮК ►','vtext':'Люк, масло, реле. Номер иллюзиониста — человека опустили вниз и увели.',
-    'set':{'method':'trick'},'to':'eL2c4'}
-
-# ── РАЗВИЛКА 3: допрос Миллера (eL3c1) — стиль + РАЗНЫЕ сцены ──
-ev['eL3c1']['left']={'label':'Надавить','set':{'watchman':'bribed','pressure':'hard'},
-    'evidence':'Ты повысил голос. Старик сжался и выдал главное — но замолчал о деталях.','to':'eL3hard'}
-ev['eL3c1']['right']={'label':'По-человечески','set':{'watchman':'bribed','pressure':'soft'},
-    'evidence':'Ты сел рядом. Миллер выдохнул — и рассказал больше, чем собирался.','to':'eL3soft'}
-
-# Ветка жёсткая — быстрее, но меньше деталей
-ev['eL3hard']={'t':'witness','badge':'Нажим','title':'Сломленный',
-    'text':'Миллер трясётся. «Да! Заплатили! Велели вырубить свет на пятнадцать минут!» Больше из него не вытянуть — закрылся.',
-    'left':{'label':'Дальше','to':'eL3c3'},'right':{'label':'Дальше','to':'eL3c3'}}
-# Ветка мягкая — больше узнаёшь (бонус-улика)
-ev['eL3soft']={'t':'witness','badge':'Доверие','title':'Исповедь',
-    'text':'Миллер говорит тихо. «Голос по телефону… механический. И ещё — машина у чёрного хода. Фургон без окон». Он дал тебе деталь, которой не было в деле.',
-    'clue':{'id':'van','name':'Фургон без окон','icon':'🚐','proof':'У чёрного хода стоял фургон без окон. На нём вывезли директора.'},
-    'left':{'label':'Дальше','to':'eL3c3'},'right':{'label':'Дальше','to':'eL3c3'}}
-
-# eL3c3 → eShift2 (общий ствол)
-ev['eL3c3']['left']={'label':'Забрать деньги','to':'eShift2'}
-ev['eL3c3']['right']={'label':'Оставить улику','to':'eShift2'}
-ev['eShift2']['a']={'label':'◄ СЛУЧАЙ','vtext':'Может, старик сам взял из кассы.','set':{'watchman':'honest'},'bad':True,'to':'eL3c4'}
-ev['eShift2']['b']={'label':'ПОДКУП ►','vtext':'Свежие купюры, чужой голос по телефону. Его купили.','set':{'watchman':'bribed'},'to':'eL3c4'}
-
-# eL3c4 → eL4c1 (выход на Куратора)
-ev['eL3c4']['left']={'label':'В кабинет','to':'eL4c1'}
-ev['eL3c4']['right']={'label':'В кабинет','to':'eL4c1'}
-ev['eL4c1']['left']={'label':'Нажать play','to':'eL4c2'}
-ev['eL4c1']['right']={'label':'Осмотреть стол','to':'eL4c2'}
-ev['eL4c2']['left']={'label':'Слушать','to':'eL4c3'}
-ev['eL4c2']['right']={'label':'Слушать','to':'eL4c3'}
-ev['eL4c3']['left']={'label':'Узнать почерк','to':'eShift3'}
-ev['eL4c3']['right']={'label':'Узнать почерк','to':'eShift3'}
-
-# ── РАЗВИЛКА 4 (eShift3): чей почерк — mastermind ──
-ev['eShift3']['a']={'label':'◄ ОДИНОЧКА','vtext':'Может, мелкий вор-одиночка.','set':{'mastermind':'thief'},'bad':True,'to':'eAccuse'}
-ev['eShift3']['b']={'label':'КУРАТОР ►','vtext':'Театральность, инсценировка, голос из машины — почерк Куратора. Чикаго, пять лет назад.','set':{'mastermind':'curator'},'to':'eAccuse'}
-
-# ── ФИНАЛ (eAccuse): последний выбор — стиль развязки (approach) ──
-ev['eAccuse']['shift']=True
-ev['eAccuse']['intro']='Старый город. Где-то там Куратор готовит «вернисаж». Как пойдёшь?'
-ev['eAccuse']['a']={'label':'◄ ПО УСТАВУ','vtext':'Вызвать подкрепление, оцепить квартал. Дольше — но надёжнее.',
-    'set':{'approach':'trust'},'to':'__resolve__'}
-ev['eAccuse']['b']={'label':'САМИ ►','vtext':'Времени нет. Вдвоём, сейчас. В духе старой школы.',
-    'set':{'approach':'sharp'},'to':'__resolve__'}
-ev['eAccuse'].pop('left',None); ev['eAccuse'].pop('right',None)
-
-# ── КОНЦОВКИ под флаги ──
-d['endings']={
-  'win':{'kind':'win','mark':'★','verdict':'ДЕЛО РАСКРЫТО',
-    'text':'Ты прочёл сцену верно: трюк, подкупленный сторож, почерк Куратора. И ты не колебался. Сдвиг кивнул — впервые без усмешки. «Теперь ты детектив. Старый город ждёт». Директор будет жив.'},
-  'partial':{'kind':'partial','mark':'☆','verdict':'СЛЕД ВЗЯТ',
-    'text':'Не всё сошлось, но главного хватило: Куратор в городе, директор жив, и у вас есть адрес. «Сойдёт для первого раза, — буркнул Сдвиг. — Но в следующий раз думай быстрее».'},
-  'fail':{'kind':'fail','mark':'✗','verdict':'СЛЕД ПОТЕРЯН',
-    'text':'Ты пошёл не по той нити. Пока вы спорили о призраках, фургон растворился в Старом городе. «Призраков нет, рекрут, — тихо сказал Сдвиг. — Есть только те, кого мы не успели найти». Директор пропал. Пока.'}
-}
-
-json.dump(d,open(path,'w',encoding='utf-8'),ensure_ascii=False,indent=2)
-
-# Проверка ветвления
-print("✓ Развилки созданы. Проверка переходов:")
-forks=0
-for k,e in ev.items():
-    if e.get('shift'):
-        a,b=e.get('a',{}).get('to'),e.get('b',{}).get('to')
-        if a!=b: forks+=1
-    elif e.get('left') and not e.get('linear'):
-        l,r=e.get('left',{}).get('to'),e.get('right',{}).get('to')
-        if l!=r: forks+=1
-# считаем сцены-ветки
-branches=[k for k in ev if k in ('eL2a','eL2b','eL3hard','eL3soft')]
-print(f"  Ветки-сцены: {branches}")
-print(f"  truth-флаги для финала: {list(d['truth'].keys())}")
-print(f"  Концовки: {list(d['endings'].keys())}")
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ feed.js: %d"%n)
 PYEOF
+
+
+echo ""; echo "══ 2/3  feed.js — init восстанавливает ВСЮ историю ═"
+python3 - << 'PYEOF'
+path="src/main/resources/static/games/feed.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
+
+# renderFromState: восстанавливаем всю историю, не только текущее
+old=("  function renderFromState(){\n"
+     "    if(!_wrap) return; _wrap.innerHTML='';\n"
+     "    pushEvent(CState.ev||CASE.start, true);\n"
+     "  }")
+new=("  function renderFromState(){\n"
+     "    if(!_wrap) return;\n"
+     "    // если лента уже построена для этого события — не пересоздаём (не мигает)\n"
+     "    if(_builtFor===CState.ev && _wrap.children.length>0) return;\n"
+     "    _builtFor=CState.ev;\n"
+     "    _wrap.innerHTML=''; _lastRenderedEv=null;\n"
+     "    // восстанавливаем всю историю кроме последнего (его покажем интерактивно)\n"
+     "    var hist=_history.slice(); var cur=CState.ev||CASE.start;\n"
+     "    if(hist.length===0 || hist[hist.length-1]!==cur){\n"
+     "      // нет истории — начинаем с текущего\n"
+     "      pushEvent(cur, true);\n"
+     "    } else {\n"
+     "      // восстанавливаем прошлые события статично, последнее — интерактивно\n"
+     "      for(var i=0;i<hist.length-1;i++){ renderStatic(hist[i]); }\n"
+     "      _lastRenderedEv=null; pushEvent(cur, true);\n"
+     "    }\n"
+     "  }\n"
+     "  // статичный рендер прошлого события (вся реплики сразу, без печати)\n"
+     "  function renderStatic(evId){\n"
+     "    var ev=CASE.events[evId]; if(!ev) return;\n"
+     "    if(ev.badge && _wrap.children.length>0){\n"
+     "      var sep=document.createElement('div'); sep.className='feed2-sep';\n"
+     "      sep.innerHTML='<span>'+esc(ev.badge)+'</span>'; _wrap.appendChild(sep);\n"
+     "    }\n"
+     "    var msgs=buildMessages(ev);\n"
+     "    msgs.forEach(function(m){ addMessageStatic(m); });\n"
+     "  }\n"
+     "  // добавить сообщение без анимации печати (для истории)\n"
+     "  function addMessageStatic(m){\n"
+     "    var el=document.createElement('div');\n"
+     "    if(m.type==='narr'){ el.className='msg2 narr m2-past';\n"
+     "      el.innerHTML='<div class=\"m2-narr\">'+renderClues(m.text)+'</div>'; }\n"
+     "    else if(m.type==='deduce'){ el.className='msg2 deduce m2-past';\n"
+     "      el.innerHTML='<div class=\"m2-av\">🧠</div><div class=\"m2-body\"><div class=\"m2-head\"><span class=\"m2-nm\">Дедукция</span></div><div class=\"m2-bubble\">'+renderClues(m.text)+'</div></div>'; }\n"
+     "    else { var spk=m.speaker||'narrator'; var cls=(spk==='shift')?'shift':(spk==='recruit')?'recruit':'other';\n"
+     "      el.className='msg2 '+cls+' m2-past';\n"
+     "      el.innerHTML='<div class=\"m2-av\" style=\"background-image:url('+avatar(spk)+')\"></div><div class=\"m2-body\"><div class=\"m2-head\"><span class=\"m2-nm\">'+(NAMES[spk]||spk)+'</span></div><div class=\"m2-bubble\">'+renderClues(m.text)+'</div></div>'; }\n"
+     "    _wrap.appendChild(el);\n"
+     "    var b=el.querySelector('.m2-bubble,.m2-narr'); if(b) bindClues(b);\n"
+     "  }")
+if old in txt:
+    txt=txt.replace(old,new,1); n+=1; print("  + init восстанавливает ВСЮ историю главы")
+
+# reset чистит историю
+txt=txt.replace("reset(){ _lastRenderedEv=null; if(_wrap)_wrap.innerHTML='';",
+                "reset(){ _lastRenderedEv=null; _history=[]; _builtFor=null; if(_wrap)_wrap.innerHTML='';")
+
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ feed.js: %d"%n)
+PYEOF
+
+
+echo ""; echo "══ 3/3  CSS — разделитель + тусклые прошлые реплики ═"
+python3 - << 'PYEOF'
+path="src/main/resources/static/games/feed.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
+if ".feed2-sep" not in txt:
+    anchor="    .clue-fly2{"
+    css=("""    .feed2-sep{display:flex;align-items:center;gap:10px;margin:6px 2px;opacity:.5;}
+    .feed2-sep::before,.feed2-sep::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(200,134,10,.4),transparent);}
+    .feed2-sep span{font-family:Unbounded,sans-serif;font-size:9px;letter-spacing:.12em;color:#c8a05a;text-transform:uppercase;white-space:nowrap;}
+    .msg2.m2-past{opacity:.62;}
+    .msg2.m2-past .m2-av{filter:grayscale(.3) brightness(.85);}
+""")
+    txt=txt.replace(anchor,css+anchor,1)
+    with open(path,"w",encoding="utf-8") as f: f.write(txt)
+    print("  + CSS разделителя и тусклых прошлых реплик")
+PYEOF
+
+
+echo ""; echo "══ штамп версии R44 (видно живую версию) ══════════"
+python3 - << 'PYEOF2'
+path="src/main/resources/static/app.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
+# выводим версию в консоль и на экран при старте
+if "SDVIG_BUILD" not in txt:
+    txt="window.SDVIG_BUILD='R44';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');\n"+txt
+    with open(path,"w",encoding="utf-8") as f: f.write(txt)
+    print("  + штамп R44 (в консоли F12 видно версию)")
+PYEOF2
+
+# маленький штамп в углу шапки
+python3 - << 'PYEOF3'
+import re
+path="src/main/resources/static/index.html"
+with open(path,encoding="utf-8") as f: txt=f.read()
+if "build-tag" not in txt:
+    # добавляем после <body>
+    txt=re.sub(r'(<body[^>]*>)', r'\1\n<div id="build-tag" style="position:fixed;bottom:2px;right:4px;z-index:9999;font-size:8px;color:rgba(200,160,90,.4);pointer-events:none;font-family:monospace">R44</div>', txt, count=1)
+    with open(path,"w",encoding="utf-8") as f: f.write(txt)
+    print("  + штамп R44 в углу экрана")
+PYEOF3
+
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R43 — настоящие развилки + флаги влияют на финал"
-echo "   git add -A && git commit -m 'R43: real branching with flags affecting ending (case001)' && git push"
+echo "✅  R44 — лента копит историю главы (видно с начала)"
+echo "   git add -A && git commit -m 'R44: accumulative feed - full chapter history visible' && git push"
 echo "═══════════════════════════════════════════════════════"
