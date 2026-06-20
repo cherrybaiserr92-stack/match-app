@@ -1,374 +1,376 @@
 /* ═══════════════════════════════════════════════════════════
-   СДВИГ · feed.js — лента карт (замена 3D-карусели)
-   Фаза расследования: вертикальная лента реплик/событий.
-   Фаза решения (после мини-игры): активная карта по центру +
-   каскады мини-карточек возможных исходов слева/справа.
-
-   Использует существующие из app.js:
-   CASE, CState, fill(), cApplyOption(), computeEnding(),
-   showEnding(), saveCaseState(), openHintGame(), showChar(),
-   showSpeech(), updateCaseBg(), Sound, vibrate, missionFor()
+   СДВИГ · feed.js v2 — ПРОКАЧАННАЯ ЛЕНТА
+   Поток реплик вместо карточек-коробок. Фишки сверх конкурентов:
+   • живые аватары (говорящий подсвечен)
+   • голос дедукции (выводы Сдвига особым стилем)
+   • улики кликабельны прямо в тексте → летят в досье
+   • теги настроения (подтекст реплик)
+   Сохраняет API: Feed.init / show / enterDecision / reset
 ═══════════════════════════════════════════════════════════ */
 (function(){
   'use strict';
 
   let _wrap=null, _busy=false, _decision=false, _decTimer=null;
 
+  const NAMES={shift:'Сдвиг',recruit:'Рекрут',kurator:'Куратор',arundel:'Аранделл',
+    miller:'Миллер',hayes:'Хейс',romero:'Ромеро',conroy:'Конрой',jiang:'Цзян',
+    purcell:'Пёрселл',danny:'Дэнни',guests:'Гости'};
+  const CHARV=(window.CHAR_VER||'3');
+  function avatar(id){ return id&&window.CHARS&&CHARS[id]?CHARS[id].src+'?v='+CHARV:''; }
+
   window.Feed={
-    /* строит ленту с нуля для текущего дела */
     init(){ buildShell(); renderFromState(); },
-    /* показать конкретное событие (добавить в ленту) */
-    show(evId){ pushCard(evId); },
-    /* перейти к решению по текущей карте (вызывается после мини-игры) */
+    show(evId){ pushEvent(evId); },
     enterDecision(){ enterDecisionMode(); },
     reset(){ if(_wrap)_wrap.innerHTML=''; _busy=false; _decision=false; clearInterval(_decTimer); }
   };
 
-  /* ── оболочка ленты внутри #stage ── */
   function buildShell(){
     const stage=document.getElementById('stage'); if(!stage) return;
-    stage.innerHTML='<div class="feed" id="feed"></div>';
-    _wrap=document.getElementById('feed');
+    stage.innerHTML='<div class="feed2" id="feed2"></div>';
+    _wrap=document.getElementById('feed2');
     injectCSS();
   }
 
   function injectCSS(){
-    if(document.getElementById('feed-css')) return;
-    const s=document.createElement('style'); s.id='feed-css';
+    if(document.getElementById('feed2-css')) return;
+    const s=document.createElement('style'); s.id='feed2-css';
     s.textContent=`
-    .feed{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
-      display:flex;flex-direction:column;gap:14px;padding:14px 16px 30vh;scroll-behavior:smooth;}
-    .feed::-webkit-scrollbar{width:0;}
-    /* карта-реплика в ленте */
-    .fcard{position:relative;border-radius:18px;overflow:hidden;flex:0 0 auto;
-      background:linear-gradient(160deg,rgba(26,22,16,.96),rgba(12,10,7,.97));
-      border:1px solid rgba(200,134,10,.32);box-shadow:0 8px 24px rgba(0,0,0,.5);
-      opacity:0;transform:translateY(24px);animation:fcIn .42s cubic-bezier(.25,1.1,.4,1) forwards;}
-    @keyframes fcIn{to{opacity:1;transform:none}}
-    .fcard .fc-pad{padding:16px 17px;}
-    .fc-badge{display:inline-block;font-family:Unbounded,sans-serif;font-weight:700;font-size:10px;
-      letter-spacing:.12em;color:var(--acc-2,#ffcf6b);padding:5px 11px;border-radius:8px;
-      background:rgba(200,134,10,.16);border:1px solid rgba(200,134,10,.4);margin-bottom:10px;}
-    .fc-title{font-family:Unbounded,sans-serif;font-weight:800;font-size:19px;line-height:1.14;
-      color:#fff;margin-bottom:9px;}
-    .fc-text{font-size:14px;line-height:1.5;color:#ded6c4;}
-    .fc-dlg{margin-top:10px;padding:9px 12px;border-radius:10px;font-size:12.5px;line-height:1.45;
-      color:#e7c98a;font-style:italic;background:rgba(200,134,10,.07);border-left:3px solid var(--acc,#c8860a);}
-    .fc-next{margin-top:14px;width:100%;padding:13px;border:none;border-radius:12px;cursor:pointer;
-      background:linear-gradient(180deg,#ffdf95,var(--acc,#c8860a));color:#241701;
-      font-family:Unbounded,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;}
-    .fc-next:active{filter:brightness(.93);}
-    .fc-find{margin-top:14px;width:100%;padding:14px;border:none;border-radius:12px;cursor:pointer;
-      background:linear-gradient(180deg,#ffe09a,var(--acc,#c8860a));color:#241701;
-      font-family:Unbounded,sans-serif;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;
-      box-shadow:0 6px 18px rgba(200,134,10,.32);}
-    .fcard.dim{opacity:.4;}
-    .fcard.past{opacity:.55;}
-    .fc-caret{display:inline-block;width:7px;color:var(--acc-2,#ffcf6b);animation:fcCaret .7s steps(1) infinite;}
-    @keyframes fcCaret{0%,50%{opacity:1}50.01%,100%{opacity:0}}
-    .fc-taphint{margin-top:14px;text-align:center;font-size:11px;color:#c8a05a;letter-spacing:.05em;
-      font-family:Unbounded,sans-serif;opacity:.7;animation:fcTap 1.5s ease-in-out infinite;}
-    @keyframes fcTap{0%,100%{opacity:.4}50%{opacity:.8}}
+    .feed2{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+      display:flex;flex-direction:column;gap:14px;padding:16px 14px 32vh;scroll-behavior:smooth;}
+    .feed2::-webkit-scrollbar{width:0;}
+    .msg2{display:flex;gap:11px;opacity:0;transform:translateY(14px);animation:m2In .5s cubic-bezier(.2,1,.3,1) forwards;}
+    @keyframes m2In{to{opacity:1;transform:none}}
+    .m2-av{width:42px;height:42px;border-radius:12px;flex-shrink:0;overflow:hidden;border:2px solid;position:relative;
+      background-size:cover;background-position:center top;transition:all .3s;}
+    .m2-ring{position:absolute;inset:-2px;border-radius:12px;opacity:0;transition:opacity .3s;}
+    .msg2.active .m2-av{transform:scale(1.05);}
+    .msg2.active .m2-ring{opacity:1;box-shadow:0 0 0 2px currentColor,0 0 16px currentColor;}
+    .m2-body{flex:1;min-width:0;}
+    .m2-head{display:flex;align-items:center;gap:7px;margin-bottom:4px;}
+    .m2-nm{font-family:Unbounded,sans-serif;font-weight:700;font-size:12px;letter-spacing:.02em;}
+    .m2-mood{font-size:9px;padding:2px 7px;border-radius:6px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;}
+    .m2-bubble{font-size:14px;line-height:1.5;padding:11px 14px;border-radius:14px;border-top-left-radius:4px;
+      background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);}
+    .m2-caret{display:inline-block;width:7px;color:var(--acc-2,#ffcf6b);animation:m2Caret .7s steps(1) infinite;}
+    @keyframes m2Caret{0%,50%{opacity:1}50.01%,100%{opacity:0}}
 
-    /* ── ФАЗА РЕШЕНИЯ ── */
-    .feed.decision{overflow:hidden;}
-    .decision-stage{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
-      background:radial-gradient(70% 60% at 50% 45%,rgba(10,14,22,.5),rgba(6,8,13,.85));}
-    .dec-card{position:relative;width:min(72vw,290px);border-radius:18px;overflow:hidden;z-index:5;
-      background:linear-gradient(160deg,rgba(28,23,16,.99),rgba(13,11,8,.99));
-      border:1.5px solid var(--acc,#c8860a);box-shadow:0 16px 44px rgba(0,0,0,.6),0 0 28px rgba(200,134,10,.2);
-      animation:decTension 2.8s ease-in-out infinite;}
-    @keyframes decTension{
-      0%,100%{transform:rotate(0) translate(0,0)}
-      25%{transform:rotate(-.3deg) translate(-1.5px,1px)}
-      50%{transform:rotate(.3deg) translate(1.5px,-1.5px)}
-      75%{transform:rotate(-.15deg) translate(-1px,0)}}
-    .dec-card.swipe-left{animation:decFlyL .5s ease-in forwards;}
-    .dec-card.swipe-right{animation:decFlyR .5s ease-in forwards;}
-    @keyframes decFlyL{to{transform:translateX(-140%) rotate(-18deg);opacity:0}}
-    @keyframes decFlyR{to{transform:translateX(140%) rotate(18deg);opacity:0}}
+    .msg2.shift .m2-av{border-color:#ffcf6b;color:#ffcf6b;}
+    .msg2.shift .m2-nm{color:#ffcf6b;}
+    .msg2.shift .m2-bubble{background:linear-gradient(135deg,rgba(255,207,107,.1),rgba(200,134,10,.04));border-color:rgba(255,207,107,.2);}
+    .msg2.recruit .m2-av{border-color:#6bb6ff;color:#6bb6ff;}
+    .msg2.recruit .m2-nm{color:#6bb6ff;}
+    .msg2.recruit .m2-bubble{background:linear-gradient(135deg,rgba(107,182,255,.1),rgba(60,120,200,.04));border-color:rgba(107,182,255,.2);}
+    .msg2.other .m2-av{border-color:#d88c6b;color:#d88c6b;}
+    .msg2.other .m2-nm{color:#d88c6b;}
 
-    /* каскады исходов по бокам */
-    .outcome-cascade{position:absolute;top:50%;z-index:3;pointer-events:none;
-      display:flex;flex-direction:column;gap:6px;opacity:0;transition:opacity .5s;}
-    .outcome-cascade.show{opacity:1;}
-    .outcome-cascade.left{left:2vw;transform:translateY(-50%);align-items:flex-start;}
-    .outcome-cascade.right{right:2vw;transform:translateY(-50%);align-items:flex-end;}
-    .oc-card{border-radius:10px;padding:7px 10px;font-size:10px;font-weight:700;font-family:Unbounded,sans-serif;
-      letter-spacing:.02em;color:#fff;white-space:nowrap;max-width:30vw;overflow:hidden;text-overflow:ellipsis;
-      border:1px solid rgba(255,255,255,.18);box-shadow:0 4px 12px rgba(0,0,0,.4);}
-    .outcome-cascade.left .oc-card{background:linear-gradient(160deg,rgba(176,80,80,.85),rgba(94,38,38,.9));transform-origin:left center;}
-    .outcome-cascade.right .oc-card{background:linear-gradient(160deg,rgba(74,155,142,.85),rgba(29,74,67,.9));transform-origin:right center;}
-    /* каскад: каждая следующая меньше и бледнее */
-    .oc-card:nth-child(1){transform:scale(1);opacity:1;}
-    .oc-card:nth-child(2){transform:scale(.88);opacity:.78;}
-    .oc-card:nth-child(3){transform:scale(.76);opacity:.56;}
-    .oc-card:nth-child(4){transform:scale(.66);opacity:.4;}
-    .oc-hint{position:absolute;bottom:14%;left:0;right:0;text-align:center;font-size:11px;color:#c8a05a;
-      font-family:Unbounded,sans-serif;letter-spacing:.05em;}
-    /* таймер решения */
-    .dec-timer{position:absolute;top:8%;left:50%;transform:translateX(-50%);z-index:8;
-      display:flex;flex-direction:column;align-items:center;gap:3px;}
-    .dt-ring2{width:50px;height:50px;position:relative;}
-    .dt-ring2 svg{width:100%;height:100%;transform:rotate(-90deg);}
-    .dt-ring2 .bg{fill:none;stroke:rgba(255,255,255,.1);stroke-width:5;}
-    .dt-ring2 .fg{fill:none;stroke:var(--acc,#c8860a);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .25s linear,stroke .3s;}
-    .dt-n{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-      font-family:Unbounded,sans-serif;font-weight:900;font-size:17px;color:#fff;}
-    .dec-timer.urgent .fg{stroke:#ff5d6c;}
-    .dec-timer.urgent .dt-n{color:#ff5d6c;animation:dtP .5s ease-in-out infinite;}
-    @keyframes dtP{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+    .msg2.narr{padding-left:6px;}
+    .msg2.narr .m2-narr{font-style:italic;color:#9aa090;font-size:13px;line-height:1.55;padding:8px 0 8px 14px;
+      border-left:2px solid rgba(200,134,10,.3);}
+
+    .msg2.deduce .m2-bubble{background:linear-gradient(135deg,rgba(70,216,155,.12),rgba(40,150,110,.05));
+      border:1px solid rgba(70,216,155,.3);border-left:3px solid #46d89b;}
+    .msg2.deduce .m2-nm{color:#46d89b;}
+    .msg2.deduce .m2-av{border-color:#46d89b;color:#46d89b;background:rgba(70,216,155,.1);
+      display:flex;align-items:center;justify-content:center;font-size:20px;}
+
+    .m2-clue{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;margin:0 2px;border-radius:7px;
+      background:rgba(70,216,155,.16);border:1px solid rgba(70,216,155,.4);color:#46d89b;
+      font-weight:600;cursor:pointer;font-size:13px;transition:all .2s;white-space:nowrap;}
+    .m2-clue:active{transform:scale(.94);}
+    .m2-clue.collected{background:rgba(70,216,155,.3);opacity:.8;}
+    .m2-clue::before{content:'🔍';font-size:10px;}
+
+    .feed2-next{align-self:center;margin-top:6px;font-size:11px;color:#c8a05a;font-family:Unbounded,sans-serif;
+      letter-spacing:.05em;opacity:.7;animation:f2tap 1.5s ease-in-out infinite;padding:8px;cursor:pointer;}
+    @keyframes f2tap{0%,100%{opacity:.4}50%{opacity:.8}}
+    .feed2-find{align-self:center;margin-top:8px;padding:13px 28px;border:none;border-radius:13px;cursor:pointer;
+      background:linear-gradient(180deg,#ffe09a,#c8860a);color:#241701;font-family:Unbounded,sans-serif;
+      font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(200,134,10,.32);}
+    .clue-fly2{position:absolute;z-index:60;font-size:12px;color:#46d89b;font-weight:700;pointer-events:none;
+      background:rgba(70,216,155,.2);padding:4px 9px;border-radius:8px;border:1px solid #46d89b;}
     `;
     document.head.appendChild(s);
   }
 
-  /* ── восстановление/старт ленты ── */
   function renderFromState(){
-    if(!_wrap) return;
-    _wrap.innerHTML='';
-    pushCard(CState.ev||CASE.start, true);
+    if(!_wrap) return; _wrap.innerHTML='';
+    pushEvent(CState.ev||CASE.start, true);
   }
 
-  /* добавляем карту события в ленту */
-  function pushCard(evId, instant){
+  /* раскладываем событие в поток реплик */
+  function pushEvent(evId, instant){
     const ev=CASE.events[evId]; if(!ev) return;
     CState.ev=evId;
-    // прошлые карты — приглушаем
-    Array.from(_wrap.querySelectorAll('.fcard')).forEach(c=>c.classList.add('past'));
-
-    const card=document.createElement('div');
-    card.className='fcard'; card._ev=ev; card._id=evId;
-    card.innerHTML=cardInner(ev);
-    _wrap.appendChild(card);
-
     try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}
-    // прямая речь → диалоговая система (typewriter). В карточке только нарратив.
-    try{
-      if(window.showChar) showChar(ev.speaker||null);
-      card._afterType=function(){
-        if(window.Dialogue && window.parseDialogue && ev.dialogue){
-          var _lines=parseDialogue(ev);
-          if(_lines.length){ Dialogue.play(_lines); }
-        }
-      };
-    }catch(_){}
 
-    // прокрутка к новой карте
-    setTimeout(()=>{ card.scrollIntoView({behavior:instant?'auto':'smooth', block:'center'}); }, 60);
+    const msgs=buildMessages(ev);
+    let mi=0;
 
-    typeCardText(card);
-    bindCard(card, ev, evId);
+    // показываем реплики по одной, тап продвигает
+    function next(){
+      if(mi<msgs.length){
+        addMessage(msgs[mi], ()=>{}); mi++;
+        scrollEnd();
+        showContinue(ev, evId, next, mi>=msgs.length);
+      }
+    }
+    next();
     try{ if(window.saveCaseState) saveCaseState(); }catch(_){}
   }
 
-  function cardInner(ev){
-    let body='<div class="fc-pad">'+
-      '<span class="fc-badge">'+(ev.badge||'')+'</span>'+
-      '<div class="fc-title">'+(ev.title||'')+'</div>'+
-      '<div class="fc-text" data-full="'+escAttr(fillSafe(ev.text))+'"></div>';
-    if(ev.linear){
-      // линейная карта: продвижение ТАПОМ по карте, без кнопки
-      body+='<div class="fc-taphint" data-act="next">▸ нажми, чтобы продолжить</div>';
-    } else {
-      body+='<button class="fc-find" data-act="find">🔍 Найти улики</button>';
+  /* событие → массив сообщений */
+  function buildMessages(ev){
+    const out=[];
+    // 1. нарратив (text) — если есть
+    if(ev.text && ev.text.trim()){
+      out.push({type:'narr', text:ev.text});
     }
-    body+='</div>';
-    return body;
+    // 2. прямая речь (dialogue может быть многострочной)
+    if(ev.dialogue && window.parseDialogue){
+      const lines=parseDialogue(ev);
+      lines.forEach(l=>{
+        out.push({type:'speech', speaker:l.speaker, text:l.text});
+      });
+    }
+    // 3. дедукция + улика (если у события есть clue)
+    if(ev.clue){
+      out.push({type:'deduce', clue:ev.clue,
+        text:ev.clue.proof.replace(ev.clue.name, '{'+ev.clue.name+'|'+ev.clue.name+'}')});
+    }
+    return out;
   }
-  function escAttr(s){ return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
-  function fillSafe(t){ try{ return window.fill?fill(t,CState.flags):t; }catch(_){ return t||''; } }
 
-  function typeCardText(card){
-    var el=card.querySelector('.fc-text'); if(!el) return;
-    var full=el.getAttribute('data-full')||''; el._full=full; el._typing=true;
-    var i=0; el.innerHTML='<span class="fc-caret">▌</span>';
+  /* добавить одно сообщение в ленту */
+  function addMessage(m, done){
+    _wrap.querySelectorAll('.msg2').forEach(x=>x.classList.remove('active'));
+    const el=document.createElement('div');
+    if(m.type==='narr'){
+      el.className='msg2 narr active';
+      el.innerHTML='<div class="m2-narr"></div>';
+      _wrap.appendChild(el);
+      typeInto(el.querySelector('.m2-narr'), m.text, done);
+    } else if(m.type==='deduce'){
+      el.className='msg2 deduce active';
+      el.innerHTML='<div class="m2-av"><span class="m2-ring"></span>🧠</div>'+
+        '<div class="m2-body"><div class="m2-head"><span class="m2-nm">Дедукция</span></div>'+
+        '<div class="m2-bubble"></div></div>';
+      _wrap.appendChild(el);
+      const b=el.querySelector('.m2-bubble');
+      typeInto(b, m.text, ()=>{ bindClues(b); done&&done(); }, true);
+    } else {
+      const spk=m.speaker||'narrator';
+      const cls=(spk==='shift')?'shift':(spk==='recruit')?'recruit':'other';
+      el.className='msg2 '+cls+' active';
+      const av=avatar(spk);
+      const moodHtml=m.mood?'<span class="m2-mood" style="background:'+m.moodc+'22;color:'+m.moodc+';border:1px solid '+m.moodc+'55">'+m.mood+'</span>':'';
+      el.innerHTML='<div class="m2-av" style="background-image:url('+av+')"><span class="m2-ring"></span></div>'+
+        '<div class="m2-body"><div class="m2-head"><span class="m2-nm">'+(NAMES[spk]||spk)+'</span>'+moodHtml+'</div>'+
+        '<div class="m2-bubble"></div></div>';
+      _wrap.appendChild(el);
+      typeInto(el.querySelector('.m2-bubble'), m.text, done);
+      // спрайт говорящего сбоку
+      try{ if(window.showChar && spk!=='narrator') showChar(spk); }catch(_){}
+    }
+  }
+
+  /* печать текста с поддержкой {улики} */
+  function typeInto(el, text, done, hasClues){
+    el._full=text; el._typing=true;
+    const plain=text.replace(/\{([^|]+)\|([^}]+)\}/g,'$1'); // для печати без разметки
+    let i=0; el.innerHTML='<span class="m2-caret">▌</span>';
     clearInterval(el._tt);
-    el._tt=setInterval(function(){
+    el._tt=setInterval(()=>{
       i++;
-      if(i>=full.length){ clearInterval(el._tt); el._typing=false; el.textContent=full;
-        if(card._afterType){ var f=card._afterType; card._afterType=null; setTimeout(f,250); } return; }
-      el.innerHTML=full.slice(0,i).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'<span class="fc-caret">▌</span>';
+      if(i>=plain.length){
+        clearInterval(el._tt); el._typing=false;
+        el.innerHTML=renderClues(text);
+        if(hasClues) bindClues(el);
+        done&&done(); return;
+      }
+      el.innerHTML=esc(plain.slice(0,i))+'<span class="m2-caret">▌</span>';
     }, 16);
   }
-  function finishCardText(card){
-    var el=card.querySelector('.fc-text'); if(!el||!el._typing) return false;
-    clearInterval(el._tt); el._typing=false; el.textContent=el._full||'';
-    if(card._afterType){ var f=card._afterType; card._afterType=null; setTimeout(f,200); }
-    return true;
-  }
-  function bindCard(card, ev, evId){
-    const act = ev.linear ? 'next' : 'find';
-    // тап по всей карте
-    card.onclick=(e)=>{
-      if(_busy) return;
-      // если идёт диалог — пусть им управляет Dialogue
-      if(window.Dialogue && Dialogue.isActive()) return;
-      // 1) если текст ещё печатается — дописать
-      if(finishCardText(card)){ try{Sound.tap&&Sound.tap();}catch(_){} return; }
-      // 2) иначе действие карты
-      try{Sound.tap&&Sound.tap();}catch(_){}
-      if(act==='next'){ advanceLinear(ev); }
-      else if(act==='find'){
-        // на карте-решении «Найти улики» — только по кнопке, не по всей карте
-        const btn=e.target.closest&&e.target.closest('.fc-find');
-        if(btn){ openMiniGame(ev, card); }
-      }
-    };
+  function finishType(el){
+    if(!el||!el._typing) return false;
+    clearInterval(el._tt); el._typing=false;
+    el.innerHTML=renderClues(el._full); bindClues(el); return true;
   }
 
-  /* линейная карта → следующая */
-  function advanceLinear(ev){
-    _busy=true; CState.step=(CState.step||0)+1;
-    try{ if(window.cSetProgress) cSetProgress(); }catch(_){}
-    const nextId=ev.next;
-    setTimeout(()=>{
-      _busy=false;
-      if(!nextId||nextId==='__resolve__'){ finish(); }
-      else pushCard(nextId);
-    }, 180);
+  function renderClues(text){
+    return esc(text).replace(/\{([^|]+)\|([^}]+)\}/g,(m,disp,name)=>
+      '<span class="m2-clue" data-clue="'+escAttr(name)+'">'+esc(disp)+'</span>');
+  }
+  function bindClues(container){
+    container.querySelectorAll('.m2-clue').forEach(tag=>{
+      tag.onclick=(e)=>{ e.stopPropagation(); grabClue(tag); };
+    });
+  }
+  function grabClue(tag){
+    if(tag.classList.contains('collected')) return;
+    tag.classList.add('collected');
+    const name=tag.getAttribute('data-clue');
+    // ищем clue-объект текущего события
+    const ev=CASE.events[CState.ev];
+    const clue=(ev&&ev.clue&&ev.clue.name===name)?ev.clue:{id:name,name:name,icon:'🔍',proof:''};
+    try{ if(window.grantClue) grantClue(clue); }catch(_){}
+    flyToDossier(tag, name);
+  }
+  function flyToDossier(tag, name){
+    const stage=document.getElementById('stage'); if(!stage) return;
+    const r=tag.getBoundingClientRect(), sr=stage.getBoundingClientRect();
+    const fly=document.createElement('div'); fly.className='clue-fly2';
+    fly.textContent='🔍 '+name;
+    fly.style.left=(r.left-sr.left)+'px'; fly.style.top=(r.top-sr.top)+'px';
+    stage.appendChild(fly);
+    requestAnimationFrame(()=>{
+      fly.style.transition='all .7s cubic-bezier(.5,0,.7,1)';
+      fly.style.left='14px'; fly.style.top='10px'; fly.style.opacity='0'; fly.style.transform='scale(.5)';
+    });
+    setTimeout(()=>fly.remove(),720);
+    try{ Sound.approve&&Sound.approve(); vibrate&&vibrate(12); }catch(_){}
   }
 
-  /* запуск мини-игры через куб (openHintGame в app.js) */
-  function openMiniGame(ev, card){
-    try{ if(window.App) App.currentCard=ev; }catch(_){}
-    if(window.openHintGame){
-      window._pendingClue=ev.clue||null; // улика выдастся при победе
-      openHintGame(ev);
+  /* кнопка/подсказка продолжения после всех реплик события */
+  function showContinue(ev, evId, nextMsg, allShown){
+    // убираем старую кнопку
+    const old=_wrap.querySelector('.feed2-next,.feed2-find'); if(old)old.remove();
+    if(!allShown){
+      const hint=document.createElement('div'); hint.className='feed2-next';
+      hint.textContent='▸ тап — далее';
+      hint.onclick=()=>{ if(finishCurrentTyping())return; hint.remove(); nextMsg(); };
+      _wrap.appendChild(hint);
+      // тап по ленте тоже продвигает
+      _wrap.onclick=(e)=>{
+        if(e.target.closest('.m2-clue')) return;
+        if(finishCurrentTyping()) return;
+        const h=_wrap.querySelector('.feed2-next'); if(h){ h.remove(); nextMsg(); }
+      };
     } else {
-      enterDecisionMode(); // фолбэк
+      // все реплики показаны — следующий шаг (решение или линейный переход)
+      _wrap.onclick=null;
+      if(ev.linear){
+        const hint=document.createElement('div'); hint.className='feed2-next';
+        hint.textContent='▸ тап — продолжить';
+        hint.onclick=()=>{ advanceLinear(ev); };
+        _wrap.appendChild(hint);
+        _wrap.onclick=(e)=>{ if(!e.target.closest('.m2-clue')) advanceLinear(ev); };
+      } else {
+        const btn=document.createElement('button'); btn.className='feed2-find';
+        btn.textContent='🔍 Найти улики';
+        btn.onclick=()=>{ openMiniGame(ev); };
+        _wrap.appendChild(btn);
+      }
     }
+    scrollEnd();
   }
 
-  /* ── ФАЗА РЕШЕНИЯ ── */
+  function finishCurrentTyping(){
+    const last=_wrap.querySelector('.msg2.active');
+    if(!last) return false;
+    const el=last.querySelector('.m2-bubble,.m2-narr');
+    return finishType(el);
+  }
+
+  function advanceLinear(ev){
+    if(_busy) return; _busy=true;
+    CState.step=(CState.step||0)+1;
+    try{ if(window.cSetProgress) cSetProgress(); }catch(_){}
+    const nx=ev.next;
+    setTimeout(()=>{ _busy=false;
+      if(!nx||nx==='__resolve__'){ finish(); } else pushEvent(nx);
+    }, 160);
+  }
+
+  function openMiniGame(ev){
+    try{ if(window.App) App.currentCard=ev; }catch(_){}
+    if(window.openHintGame){ window._pendingClue=ev.clue||null; openHintGame(ev); }
+    else enterDecisionMode();
+  }
+
+  function scrollEnd(){ setTimeout(()=>{ if(_wrap)_wrap.scrollTop=_wrap.scrollHeight; }, 40); }
+
+  /* ── ФАЗА РЕШЕНИЯ (как было — каскады исходов) ── */
   function enterDecisionMode(){
     const ev=CState.ev?CASE.events[CState.ev]:null; if(!ev) return;
     if(ev.linear){ advanceLinear(ev); return; }
     _decision=true;
-    _wrap.classList.add('decision');
-
-    // считаем исходы по сторонам
-    const opts = ev.shift
-      ? {left:ev.a, right:ev.b}
-      : {left:ev.left, right:ev.right};
-    const leftOutcomes  = collectOutcomes(opts.left);
-    const rightOutcomes = collectOutcomes(opts.right);
-
-    const stage=document.createElement('div'); stage.className='decision-stage'; stage.id='dec-stage';
-    stage.innerHTML=
-      cascadeHtml('left', leftOutcomes)+
+    const opts=ev.shift?{left:ev.a,right:ev.b}:{left:ev.left,right:ev.right};
+    const stage=document.getElementById('stage');
+    const dec=document.createElement('div'); dec.className='decision-stage'; dec.id='dec-stage';
+    dec.innerHTML=cascadeHtml('left',collectOutcomes(opts.left))+
       '<div class="dec-card" id="dec-card">'+decCardInner(ev)+'</div>'+
-      cascadeHtml('right', rightOutcomes)+
-      '<div class="dec-timer" id="dec-timer">'+
-        '<div class="dt-ring2"><svg viewBox="0 0 50 50"><circle class="bg" cx="25" cy="25" r="21"/><circle class="fg" id="dec-fg" cx="25" cy="25" r="21"/></svg>'+
-        '<div class="dt-n" id="dec-n">15</div></div></div>'+
-      '<div class="oc-hint">← свайп решает →</div>';
-    document.getElementById('stage').appendChild(stage);
-
-    // показываем каскады
-    requestAnimationFrame(()=>{ stage.querySelectorAll('.outcome-cascade').forEach(c=>c.classList.add('show')); });
-
-    bindDecisionSwipe(ev, stage);
-    startDecTimer();
+      cascadeHtml('right',collectOutcomes(opts.right))+
+      '<div class="dec-timer" id="dec-timer"><div class="dt-ring2"><svg viewBox="0 0 50 50">'+
+      '<circle class="bg" cx="25" cy="25" r="21"/><circle class="fg" id="dec-fg" cx="25" cy="25" r="21"/></svg>'+
+      '<div class="dt-n" id="dec-n">15</div></div></div><div class="oc-hint">← свайп решает →</div>';
+    stage.appendChild(dec);
+    requestAnimationFrame(()=>dec.querySelectorAll('.outcome-cascade').forEach(c=>c.classList.add('show')));
+    bindDecisionSwipe(ev); startDecTimer();
   }
-
-  /* собираем "исходы": куда ведёт эта ветка (заголовок целевого события) */
   function collectOutcomes(opt){
-    if(!opt) return [];
-    const out=[];
-    const toId=opt.to;
-    if(toId && toId!=='__resolve__' && CASE.events[toId]){
-      out.push(CASE.events[toId].badge||CASE.events[toId].title||'…');
-      // заглядываем на шаг глубже — следующие возможные ветки
-      const nx=CASE.events[toId];
-      ['left','right','a','b'].forEach(s=>{ if(nx[s]&&nx[s].to&&CASE.events[nx[s].to]){
-        const t=CASE.events[nx[s].to]; const lbl=t.badge||t.title; if(lbl&&out.indexOf(lbl)<0&&out.length<4)out.push(lbl);
-      }});
-    } else if(toId==='__resolve__'){
-      out.push('Развязка');
-    }
+    if(!opt) return []; const out=[]; const toId=opt.to;
+    if(toId&&toId!=='__resolve__'&&CASE.events[toId]) out.push(CASE.events[toId].badge||CASE.events[toId].title||'…');
+    else if(toId==='__resolve__') out.push('Развязка');
     return out.slice(0,4);
   }
-  function cascadeHtml(side, outcomes){
+  function cascadeHtml(side,outcomes){
     if(!outcomes.length) outcomes=[side==='left'?'влево':'вправо'];
-    return '<div class="outcome-cascade '+side+'">'+
-      outcomes.map(o=>'<div class="oc-card">'+esc(o)+'</div>').join('')+'</div>';
+    return '<div class="outcome-cascade '+side+'">'+outcomes.map(o=>'<div class="oc-card">'+esc(o)+'</div>').join('')+'</div>';
   }
   function decCardInner(ev){
-    if(ev.shift){
-      return '<div class="fc-pad"><span class="fc-badge">'+(ev.badge||'СДВИГ')+'</span>'+
-        '<div class="fc-title">'+(ev.title||'')+'</div>'+
-        '<div class="fc-text">'+fillSafe(ev.intro||ev.text)+'</div>'+
-        '<div style="margin-top:12px;display:flex;gap:8px;font-size:11px">'+
-          '<div style="flex:1;padding:8px;border-radius:8px;background:rgba(176,80,80,.2);border:1px solid rgba(176,80,80,.4);color:#ff9d85;text-align:center">◄ '+esc((ev.a&&ev.a.label||'').replace(/^◄\s*/,''))+'</div>'+
-          '<div style="flex:1;padding:8px;border-radius:8px;background:rgba(74,155,142,.2);border:1px solid rgba(74,155,142,.4);color:#9fe0ff;text-align:center">'+esc((ev.b&&ev.b.label||'').replace(/\s*►$/,''))+' ►</div>'+
-        '</div></div>';
-    }
+    const lL=ev.shift?(ev.a&&ev.a.label||''):(ev.left&&ev.left.label||'');
+    const rL=ev.shift?(ev.b&&ev.b.label||''):(ev.right&&ev.right.label||'');
     return '<div class="fc-pad"><span class="fc-badge">'+(ev.badge||'')+'</span>'+
       '<div class="fc-title">'+(ev.title||'')+'</div>'+
-      '<div class="fc-text">'+fillSafe(ev.text)+'</div>'+
       '<div style="margin-top:12px;display:flex;gap:8px;font-size:11px">'+
-        '<div style="flex:1;padding:8px;border-radius:8px;background:rgba(176,80,80,.2);border:1px solid rgba(176,80,80,.4);color:#ff9d85;text-align:center">◄ '+esc((ev.left&&ev.left.label||'').replace(/^◄\s*/,''))+'</div>'+
-        '<div style="flex:1;padding:8px;border-radius:8px;background:rgba(74,155,142,.2);border:1px solid rgba(74,155,142,.4);color:#9fe0ff;text-align:center">'+esc((ev.right&&ev.right.label||'').replace(/\s*►$/,''))+' ►</div>'+
+      '<div style="flex:1;padding:8px;border-radius:8px;background:rgba(176,80,80,.2);border:1px solid rgba(176,80,80,.4);color:#ff9d85;text-align:center">◄ '+esc(lL.replace(/^◄\s*/,''))+'</div>'+
+      '<div style="flex:1;padding:8px;border-radius:8px;background:rgba(74,155,142,.2);border:1px solid rgba(74,155,142,.4);color:#9fe0ff;text-align:center">'+esc(rL.replace(/\s*►$/,''))+' ►</div>'+
       '</div></div>';
   }
-
-  /* свайп карты-решения */
-  function bindDecisionSwipe(ev, stage){
+  function bindDecisionSwipe(ev){
     const card=document.getElementById('dec-card'); if(!card) return;
-    let sx=0,sy=0,down=false;
-    card.addEventListener('pointerdown',e=>{ down=true; sx=e.clientX; sy=e.clientY; card.setPointerCapture&&card.setPointerCapture(e.pointerId); });
-    card.addEventListener('pointermove',e=>{ if(!down)return; const dx=e.clientX-sx;
-      card.style.transform='translateX('+dx*0.5+'px) rotate('+dx*0.02+'deg)'; });
-    card.addEventListener('pointerup',e=>{ if(!down)return; down=false; const dx=e.clientX-sx;
-      if(Math.abs(dx)>60){ commitDecision(ev, dx<0?'left':'right'); }
-      else card.style.transform=''; });
+    let sx=0,down=false;
+    card.addEventListener('pointerdown',e=>{down=true;sx=e.clientX;card.setPointerCapture&&card.setPointerCapture(e.pointerId);});
+    card.addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-sx;card.style.transform='translateX('+dx*.5+'px) rotate('+dx*.02+'deg)';});
+    card.addEventListener('pointerup',e=>{if(!down)return;down=false;const dx=e.clientX-sx;
+      if(Math.abs(dx)>60)commitDecision(ev,dx<0?'left':'right');else card.style.transform='';});
   }
-  function commitDecision(ev, dir){
-    if(_busy) return; _busy=true;
-    clearInterval(_decTimer);
+  function commitDecision(ev,dir){
+    if(_busy)return;_busy=true;clearInterval(_decTimer);
     const card=document.getElementById('dec-card');
-    const opt = ev.shift ? (dir==='left'?ev.a:ev.b) : (dir==='left'?ev.left:ev.right);
-    try{ if(window.cApplyOption) cApplyOption(opt); }catch(_){}
-    try{ Sound.burn&&Sound.burn(); Sound.swipe&&Sound.swipe(dir); vibrate&&vibrate(20); }catch(_){}
-    if(card) card.classList.add(dir==='left'?'swipe-left':'swipe-right');
+    const opt=ev.shift?(dir==='left'?ev.a:ev.b):(dir==='left'?ev.left:ev.right);
+    try{if(window.cApplyOption)cApplyOption(opt);}catch(_){}
+    try{Sound.burn&&Sound.burn();vibrate&&vibrate(20);}catch(_){}
+    if(card)card.classList.add(dir==='left'?'swipe-left':'swipe-right');
     CState.step=(CState.step||0)+1;
-    try{ if(window.cSetProgress) cSetProgress(); }catch(_){}
+    try{if(window.cSetProgress)cSetProgress();}catch(_){}
     setTimeout(()=>{
-      const st=document.getElementById('dec-stage'); if(st)st.remove();
-      _wrap.classList.remove('decision'); _decision=false; _busy=false;
-      try{ if(window.hideChar) hideChar(); }catch(_){}
-      if(opt.to==='__resolve__'||!opt.to){ finish(); }
-      else pushCard(opt.to);
-    }, 520);
+      const st=document.getElementById('dec-stage');if(st)st.remove();
+      _decision=false;_busy=false;
+      try{if(window.hideChar)hideChar();}catch(_){}
+      if(opt.to==='__resolve__'||!opt.to){finish();}else pushEvent(opt.to);
+    },520);
   }
-
-  /* таймер решения */
   function startDecTimer(){
-    let left=15; const total=15;
-    const fg=document.getElementById('dec-fg'); const num=document.getElementById('dec-n');
-    const timer=document.getElementById('dec-timer');
-    const R=21,C=2*Math.PI*R;
-    if(fg){ fg.style.strokeDasharray=C; fg.style.strokeDashoffset=0; }
+    let left=15;const total=15;
+    const fg=document.getElementById('dec-fg'),num=document.getElementById('dec-n'),timer=document.getElementById('dec-timer');
+    const R=21,C=2*Math.PI*R;if(fg){fg.style.strokeDasharray=C;fg.style.strokeDashoffset=0;}
     clearInterval(_decTimer);
-    _decTimer=setInterval(()=>{
-      left--;
-      if(num)num.textContent=Math.max(0,left);
+    _decTimer=setInterval(()=>{left--;if(num)num.textContent=Math.max(0,left);
       if(fg)fg.style.strokeDashoffset=C*(1-left/total);
-      if(left<=5&&timer){ timer.classList.add('urgent'); try{Sound.tap&&Sound.tap();}catch(_){} }
-      if(left<=0){ clearInterval(_decTimer);
-        if(window.toast)toast('Время вышло','Сдвиг: «Промедление — тоже выбор».','⏱');
-        if(num)num.textContent='!';
-      }
+      if(left<=5&&timer){timer.classList.add('urgent');try{Sound.tap&&Sound.tap();}catch(_){}}
+      if(left<=0){clearInterval(_decTimer);if(window.toast)toast('Время вышло','Сдвиг: «Промедление — тоже выбор».','⏱');if(num)num.textContent='!';}
     },1000);
   }
 
   function finish(){
-    try{
-      const r=window.computeEnding?computeEnding(CState.flags):{kind:'win',verdict:'ФИНАЛ',text:''};
+    try{ const r=window.computeEnding?computeEnding(CState.flags):{kind:'win'};
       if(window.showEnding) showEnding(r);
     }catch(e){ console.error('finish',e); }
   }
 
   function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function escAttr(s){ return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 })();
 
