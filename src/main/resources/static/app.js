@@ -582,9 +582,18 @@ function unlockSwipe(){
   App.swipeUnlocked=true;
   vibrate(20); try{Sound.booster();}catch(_){}
   try{removeLockOverlay();}catch(_){}
-  try{ if(window._pendingClue){ grantClue(window._pendingClue); window._pendingClue=null; } }catch(_){}
-  if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} }
-  else { try{ startDecisionMode(); }catch(_){} }
+  var _goDecision=function(){
+    if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} }
+    else { try{ startDecisionMode(); }catch(_){} }
+  };
+  if(window._pendingClue){
+    // показываем улику, а карту решения — ТОЛЬКО после её закрытия
+    window._afterClue=_goDecision;
+    try{ grantClue(window._pendingClue); }catch(_){ _goDecision(); }
+    window._pendingClue=null;
+  } else {
+    _goDecision();
+  }
 }
 
 var _decTimer=null,_decLeft=0;
@@ -735,10 +744,10 @@ function grantClue(clue){
   if(CState.clues.some(function(c){return c.id===clue.id;})) return; // уже есть
   CState.clues.push(clue);
   if(_evCountEl) _evCountEl.textContent=CState.clues.length;
-  try{ showClueReveal(clue); }catch(_){}
+  try{ showClueReveal(clue, window._afterClue||null); window._afterClue=null; }catch(_){}
   try{ saveCaseState&&saveCaseState(); }catch(_){}
 }
-function showClueReveal(clue){
+function showClueReveal(clue, onClose){
   // эффектная выдача: улика «ложится» в досье
   var ov=document.createElement('div'); ov.className='clue-reveal';
   ov.innerHTML='<div class="cr-card">'+
@@ -751,10 +760,11 @@ function showClueReveal(clue){
   document.body.appendChild(ov);
   try{ Sound.approve&&Sound.approve(); vibrate&&vibrate([10,40,10]); }catch(_){}
   requestAnimationFrame(function(){ ov.classList.add('show'); });
-  ov.onclick=function(){ ov.classList.add('tofile');
-    setTimeout(function(){ if(ov.parentNode)ov.parentNode.removeChild(ov); },600); };
-  setTimeout(function(){ if(ov.parentNode){ ov.classList.add('tofile');
-    setTimeout(function(){ if(ov.parentNode)ov.parentNode.removeChild(ov); },600);} }, 3400);
+  var _closed=false;
+  function _close(){ if(_closed)return; _closed=true; ov.classList.add('tofile');
+    setTimeout(function(){ if(ov.parentNode)ov.parentNode.removeChild(ov); if(onClose)onClose(); },600); }
+  ov.onclick=_close;
+  setTimeout(_close, 3000);
 }
 function cAddEvidence(t){
   if(t&&CState.evidence.indexOf(t)<0){ CState.evidence.push(t); try{Sound.approve();}catch(_){} }

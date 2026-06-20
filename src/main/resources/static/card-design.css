@@ -939,7 +939,7 @@
 /* R36 */
 
 /* ════ R36 — улика = карточка знания ════ */
-.clue-reveal{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
+.clue-reveal{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
   background:rgba(6,8,13,.7);opacity:0;transition:opacity .4s;pointer-events:none;}
 .clue-reveal.show{opacity:1;pointer-events:auto;}
 .cr-card{width:min(78vw,320px);border-radius:18px;padding:24px 22px;text-align:center;
