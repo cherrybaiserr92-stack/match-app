@@ -28,6 +28,7 @@
     init(){ buildShell(); renderFromState(); },
     show(evId){ pushEvent(evId); },
     enterDecision(){ enterDecisionMode(); },
+    pushReaction(dialogueStr, done){ showReaction(dialogueStr, done); },
     reset(){ _lastRenderedEv=null; _history=[]; _builtFor=null; if(_wrap)_wrap.innerHTML=''; _busy=false; _decision=false; clearInterval(_decTimer); }
   };
 
@@ -95,6 +96,10 @@
     .feed2-next{align-self:center;margin-top:6px;font-size:11px;color:#c8a05a;font-family:Unbounded,sans-serif;
       letter-spacing:.05em;opacity:.7;animation:f2tap 1.5s ease-in-out infinite;padding:8px;cursor:pointer;}
     @keyframes f2tap{0%,100%{opacity:.4}50%{opacity:.8}}
+    .feed2-hint{align-self:center;max-width:88%;margin:4px auto;padding:10px 14px;border-radius:12px;
+      background:rgba(255,207,107,.1);border:1px solid rgba(255,207,107,.28);color:#ffd98a;
+      font-size:12.5px;line-height:1.45;display:flex;gap:8px;align-items:flex-start;font-style:italic;}
+    .feed2-hint .fh-ico{font-size:14px;flex-shrink:0;}
     .feed2-find{align-self:center;margin-top:8px;padding:13px 28px;border:none;border-radius:13px;cursor:pointer;
       background:linear-gradient(180deg,#ffe09a,#c8860a);color:#241701;font-family:Unbounded,sans-serif;
       font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(200,134,10,.32);}
@@ -110,21 +115,22 @@
     .dec-card.swipe-right{animation:decFR .5s ease-in forwards;}
     @keyframes decFL{to{transform:translateX(-140%) rotate(-18deg);opacity:0}}
     @keyframes decFR{to{transform:translateX(140%) rotate(18deg);opacity:0}}
-    .dc-inner{padding:20px 20px 22px;text-align:center;}
+    .dc-inner{padding:18px 16px 20px;text-align:center;overflow:hidden;box-sizing:border-box;width:100%;}
     .dc-badge{display:inline-block;font-family:Unbounded,sans-serif;font-weight:700;font-size:10px;
       letter-spacing:.14em;color:#241701;padding:5px 13px;border-radius:8px;
       background:linear-gradient(180deg,#ffe09a,#c8860a);margin-bottom:12px;}
-    .dc-title{font-family:Unbounded,sans-serif;font-weight:900;font-size:20px;line-height:1.12;color:#fff;margin-bottom:8px;}
+    .dc-title{font-family:Unbounded,sans-serif;font-weight:900;font-size:18px;line-height:1.15;color:#fff;margin-bottom:8px;word-wrap:break-word;overflow-wrap:break-word;hyphens:auto;}
     .dc-intro{font-size:13px;line-height:1.5;color:#b8b0a0;font-style:italic;margin-bottom:18px;}
     .dc-choices{display:flex;align-items:stretch;gap:8px;}
-    .dc-choice{flex:1;display:flex;align-items:center;gap:7px;padding:13px 12px;border-radius:13px;
-      font-family:Unbounded,sans-serif;font-weight:700;font-size:12px;line-height:1.2;transition:transform .15s;}
+    .dc-choice{flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding:12px 10px;border-radius:12px;
+      font-family:Unbounded,sans-serif;font-weight:700;font-size:11px;line-height:1.2;transition:transform .15s;
+      word-wrap:break-word;overflow-wrap:break-word;hyphens:auto;box-sizing:border-box;}
     .dc-choice.left{background:linear-gradient(135deg,rgba(176,80,80,.28),rgba(120,45,45,.16));
       border:1.5px solid rgba(220,120,120,.45);color:#ffb3a0;justify-content:flex-start;text-align:left;}
     .dc-choice.right{background:linear-gradient(135deg,rgba(74,170,150,.28),rgba(40,110,95,.16));
       border:1.5px solid rgba(110,210,185,.45);color:#9fe8d4;justify-content:flex-end;text-align:right;}
     .dc-arrow{font-size:18px;opacity:.8;flex-shrink:0;}
-    .dc-lbl{flex:1;}
+    .dc-lbl{flex:1;min-width:0;word-wrap:break-word;overflow-wrap:break-word;}
     .dc-or{display:flex;align-items:center;font-size:10px;color:#7a7264;font-family:Unbounded,sans-serif;
       text-transform:uppercase;letter-spacing:.08em;}
     .dc-choice.left.lit{transform:scale(1.04);box-shadow:0 0 18px rgba(220,120,120,.4);}
@@ -400,6 +406,15 @@
         // shift-карта: сразу карта-решение (выбор версии свайпом, без мини-игры)
         enterDecisionMode();
       } else {
+        // наводка перед мини-игрой (если у события есть hint и ещё нет улики)
+        if(ev.hint && ev.clue){
+          var hintEl=_wrap.querySelector('.feed2-hint');
+          if(!hintEl){
+            hintEl=document.createElement('div'); hintEl.className='feed2-hint';
+            hintEl.innerHTML='<span class="fh-ico">💡</span>'+esc(ev.hint);
+            _wrap.appendChild(hintEl);
+          }
+        }
         const btn=document.createElement('button'); btn.className='feed2-find';
         btn.textContent='🔍 Найти улики';
         btn.onclick=()=>{ openMiniGame(ev); };
@@ -428,13 +443,46 @@
 
   function openMiniGame(ev){
     try{ if(window.App) App.currentCard=ev; }catch(_){}
-    if(window.openHintGame){ window._pendingClue=ev.clue||null; openHintGame(ev); }
+    if(window.openHintGame){ window._pendingClue=ev.clue||null; window._pendingReact=ev.react||null; openHintGame(ev); }
     else enterDecisionMode();
   }
 
   function scrollEnd(){ setTimeout(()=>{ if(_wrap)_wrap.scrollTop=_wrap.scrollHeight; }, 40); }
 
   /* ── ФАЗА РЕШЕНИЯ (как было — каскады исходов) ── */
+  function showReaction(dialogueStr, done){
+    // разбираем строку реакции на реплики и показываем в ленте
+    if(!dialogueStr){ done&&done(); return; }
+    var lines=dialogueStr.split('\n').filter(function(s){return s.trim();});
+    var msgs=lines.map(function(line){
+      var m=line.match(/^([^:]+):\s*(.+)$/);
+      if(m){
+        var spk=m[1].trim().toLowerCase();
+        var map={'сдвиг':'shift','рекрут':'recruit','миллер':'miller','эленор':'eleanor','куратор':'kurator','патрульный':'narrator'};
+        return {type:'speech', speaker:map[spk]||'narrator', text:m[2].trim()};
+      }
+      return {type:'narr', text:line.trim()};
+    });
+    // разделитель "после находки"
+    var sep=document.createElement('div'); sep.className='feed2-sep';
+    sep.innerHTML='<span>улика найдена</span>'; _wrap.appendChild(sep);
+    var i=0;
+    function nextR(){
+      if(i<msgs.length){
+        addMessage(msgs[i], function(){}); i++;
+        scrollEnd();
+        var old=_wrap.querySelector('.feed2-next'); if(old)old.remove();
+        if(i<msgs.length){
+          var hint=document.createElement('div'); hint.className='feed2-next';
+          hint.textContent='▸ тап — далее'; _wrap.appendChild(hint);
+          _wrap.onclick=function(){ if(finishCurrentTyping())return; var h=_wrap.querySelector('.feed2-next'); if(h){h.remove(); nextR();} };
+        } else {
+          _wrap.onclick=null; setTimeout(function(){ done&&done(); }, 500);
+        }
+      }
+    }
+    nextR();
+  }
   function enterDecisionMode(){
     const ev=CState.ev?CASE.events[CState.ev]:null; if(!ev) return;
     if(ev.linear){ advanceLinear(ev); return; }

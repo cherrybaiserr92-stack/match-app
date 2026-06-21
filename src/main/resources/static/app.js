@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R50';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R51';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -597,6 +597,14 @@ function unlockSwipe(){
   vibrate(20); try{Sound.booster();}catch(_){}
   try{removeLockOverlay();}catch(_){}
   var _goDecision=function(){
+    // показываем реакцию персонажей на находку (если есть), потом решение
+    if(window._pendingReact && window.Feed && Feed.pushReaction){
+      var rc=window._pendingReact; window._pendingReact=null;
+      Feed.pushReaction(rc, function(){
+        if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} } else { try{ startDecisionMode(); }catch(_){} }
+      });
+      return;
+    }
     if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} }
     else { try{ startDecisionMode(); }catch(_){} }
   };
