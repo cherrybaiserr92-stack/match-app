@@ -518,3 +518,33 @@ body::before{
   animation:launchPulse 2.2s ease-in-out infinite;
 }
 @keyframes launchPulse{ 0%,100%{opacity:.4} 50%{opacity:.95} }
+
+/* ── ШКАЛЫ ПРОГРЕССА (отношения + детективность) ── */
+.scales-bar{display:flex;gap:10px;align-items:stretch;padding:10px 12px;}
+.gscale{flex:1;position:relative;background:rgba(16,20,28,.85);border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;padding:9px 12px;backdrop-filter:blur(8px);}
+.gscale-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.gscale-name{display:flex;align-items:center;gap:5px;font-family:Unbounded,sans-serif;font-weight:700;
+  font-size:10px;letter-spacing:.02em;text-transform:uppercase;}
+.gscale-ico{font-size:13px;}
+.gscale-num{font-family:Unbounded,sans-serif;font-weight:900;font-size:15px;}
+.gscale-track{height:6px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;}
+.gscale-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.3,1,.4,1);position:relative;}
+.gscale-fill::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);
+  animation:gscaleShine 2.4s ease-in-out infinite;}
+@keyframes gscaleShine{0%{transform:translateX(-100%)}60%,100%{transform:translateX(100%)}}
+.gscale-stat{font-size:9px;margin-top:4px;opacity:.65;font-style:italic;}
+.gscale.rapport .gscale-name,.gscale.rapport .gscale-num{color:#ff8fb0;}
+.gscale.rapport .gscale-fill{background:linear-gradient(90deg,#c44569,#ff8fb0);}
+.gscale.detective .gscale-name,.gscale.detective .gscale-num{color:#46d89b;}
+.gscale.detective .gscale-fill{background:linear-gradient(90deg,#2a9d6f,#46d89b);}
+.gscale-pop{position:absolute;top:-6px;right:10px;font-family:Unbounded,sans-serif;font-weight:800;
+  font-size:13px;opacity:0;pointer-events:none;z-index:5;}
+.gscale-pop.show{animation:gscalePop 1.2s ease forwards;}
+@keyframes gscalePop{0%{opacity:0;transform:translateY(0)}20%{opacity:1}100%{opacity:0;transform:translateY(-20px)}}
+.tools-mini{flex:0 0 auto;width:46px;border:1px solid rgba(200,134,10,.3);border-radius:14px;
+  background:rgba(200,134,10,.12);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.ev-chip-mini{display:flex;align-items:center;gap:3px;color:#ffcf6b;font-weight:800;font-size:13px;
+  font-family:Unbounded,sans-serif;}
+.ev-chip-mini .ev-dot{width:6px;height:6px;border-radius:50%;background:#46d89b;}

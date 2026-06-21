@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R48';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R49';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -248,6 +248,7 @@ function saveProfile(){
    ВХОД В ИГРУ
 ═══════════════════════════════════════════════ */
 function enterMain(){
+  try{ updateScaleBars(); }catch(_){}
   showScreen('main-screen');
   // навигацию и звук вешаем ПЕРВЫМИ — чтобы ошибка в рендере не убила меню
   bindNav();
@@ -782,7 +783,29 @@ function cSetProgress(){
 function addRapport(n){
   const p=App.profile; if(!p) return;
   p.rapport=clamp((p.rapport||0)+n,0,100); saveProfile();
-  try{ updateScaleBars&&updateScaleBars(); }catch(_){}
+  try{ updateScaleBars&&updateScaleBars(); scalePop&&scalePop('rap',n); }catch(_){}
+}
+function updateScaleBars(){
+  var p=App.profile; if(!p) return;
+  var rap=clamp(p.rapport||0,0,100), det=clamp(p.skill||30,0,100);
+  var rn=document.getElementById('rap-num'), rf=document.getElementById('rap-fill'), rs=document.getElementById('rap-stat');
+  var dn=document.getElementById('det-num'), df=document.getElementById('det-fill'), ds=document.getElementById('det-stat');
+  if(rn)rn.textContent=rap; if(rf)rf.style.width=rap+'%'; if(rs)rs.textContent=rapTitle(rap);
+  if(dn)dn.textContent=det; if(df)df.style.width=det+'%'; if(ds)ds.textContent=detTitle(det);
+}
+function rapTitle(v){
+  if(v>=95)return'Брат'; if(v>=80)return'Свой'; if(v>=60)return'Доверяет';
+  if(v>=40)return'Напарник'; if(v>=20)return'Терпит'; return'Чужак';
+}
+function detTitle(v){
+  if(v>=95)return'Легенда'; if(v>=80)return'Профи'; if(v>=60)return'Детектив';
+  if(v>=40)return'Сыщик'; if(v>=20)return'Стажёр'; return'Новичок';
+}
+function scalePop(which,delta){
+  var el=document.getElementById(which+'-pop'); if(!el)return;
+  el.textContent=(delta>0?'+':'')+delta;
+  el.style.color=delta>0?(which==='rap'?'#ff8fb0':'#46d89b'):'#ff5d6c';
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
 }
 function rapportTitle(){
   const r=(App.profile&&App.profile.rapport)||0;
@@ -799,7 +822,7 @@ function applyChoiceStats(o){
 }
 function addSkill(n){
   var p=App.profile; p.skill=clamp((p.skill||30)+n,0,100); saveProfile();
-  try{ updateScaleBars&&updateScaleBars(); }catch(_){}
+  try{ updateScaleBars&&updateScaleBars(); scalePop&&scalePop('det',n); }catch(_){}
 }
 function cApplyOption(o){
   if(o.set) Object.assign(CState.flags,o.set);

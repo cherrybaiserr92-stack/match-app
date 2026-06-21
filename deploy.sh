@@ -1,284 +1,172 @@
 #!/usr/bin/env bash
-# СДВИГ R48 — переписанный сюжет начисто + Эленор + механика шкалы детективности
+# СДВИГ R49 — визуальные шкалы внизу (отношения + детективность) вместо инструментов
 set -e
-echo "══ штамп → R48 ══"
-sed -i "s/SDVIG_BUILD='R4[0-9]'/SDVIG_BUILD='R48'/" src/main/resources/static/app.js
-sed -i 's/>R4[0-9]</>R48</' src/main/resources/static/index.html
+echo "══ штамп → R49 ══"
+sed -i "s/SDVIG_BUILD='R4[0-9]'/SDVIG_BUILD='R49'/" src/main/resources/static/app.js
+sed -i 's/>R4[0-9]</>R49</' src/main/resources/static/index.html
 
-echo ""; echo "══ 1/3  сюжет переписан начисто (build_story) ══════"
-python3 - << 'STORY_EOF'
-# Полностью переписанный сценарий case001 — вычитанный, связный, без остатков трупа
-import json
+echo ""; echo "══ 1/3  index.html — шкалы вместо tools-bar ════════"
+python3 - << 'PYEOF'
+path="src/main/resources/static/index.html"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
 
-path="src/main/resources/static/scenarios/case001.json"
-d=json.load(open(path,encoding='utf-8'))
+old='''      <div class="tools-bar" id="tools-bar">
+        <div class="ev-chip" id="ev-chip">
+          <span class="ev-dot"></span>
+          <span>Улики</span>
+          <b id="ev-count">0</b>
+        </div>
+        <button class="tool-btn" data-tool="magnify" title="Лупа — подсветит важную улику">
+          <span class="tool-ico" data-tico="magnify"></span>
+          <span class="tool-badge" id="tool-magnify-n">2</span>
+        </button>
+        <button class="tool-btn" data-tool="file" title="Досье — пропустить мини-игру">
+          <span class="tool-ico" data-tico="file"></span>
+          <span class="tool-badge" id="tool-file-n">1</span>
+        </button>
+        <button class="tool-btn" data-tool="hourglass" title="Песочные часы — +20 энергии">
+          <span class="tool-ico" data-tico="hourglass"></span>
+          <span class="tool-badge" id="tool-hourglass-n">1</span>
+        </button>
+        <button class="tool-btn tool-shop" data-tool="shop" title="Купить инструменты">
+          <span class="tool-ico" data-tico="plus"></span>
+        </button>
+      </div>'''
 
-d['title']='Пустой постамент'
-d['start']='L1_c1'
-d['truth']={'method':'trick','watchman':'bribed','mastermind':'curator'}
-
-# ПОЛНОСТЬЮ новое дерево событий — связный текст, исчезновение (не труп)
-EVENTS={
- # ─── АКТ 1: Прибытие (линейно) ───
- 'L1_c1':{'badge':'Октябрь 1987','title':'Дождь над кварталом','linear':True,'next':'L1_c2',
-   'text':'Дождь смывал грязь с улиц, но не из людей. Дворники полицейского «Форда» гоняли воду по стеклу — туда, обратно, как маятник, который никуда не ведёт.',
-   'dialogue':'Рекрут: «Что у нас по музею?»\nСдвиг: «Директор. Пропал прямо из запертого зала перед открытием выставки».'},
- 'L1_c2':{'badge':'Напарник','title':'Щелчок диктофона','linear':True,'next':'L1_c3','speaker':'shift',
-   'text':'Сдвиг не шевелился на пассажирском сиденье. Он слушал кассету. Щелчок. Тишина. Щелчок. Будто разбирал чужую речь по слогам.',
-   'dialogue':'Сдвиг: «Веришь в проклятия, малыш? Городской департамент верит. Боятся войти в музей».\nРекрут: «Я верю в улики. Проклятия их не оставляют».\nСдвиг: «Вот поэтому ты мне и нужен».'},
- 'L1_c3':{'badge':'Музей','title':'Готическая глыба','linear':True,'next':'L1_c4','speaker':'recruit',
-   'text':'Здание нависло над улицей. Каменные львы у входа блестели от дождя, отсветы мигалок ползли по их мордам.',
-   'dialogue':'Рекрут: «Заперто изнутри. Ни окон, ни второго выхода. Как человек выходит из такой комнаты?»\nСдвиг: «Никак. Если он вышел сам».'},
- 'L1_c4':{'badge':'Метод','title':'Сухой смешок','linear':True,'next':'L1_c5','speaker':'shift',
-   'text':'Сдвиг усмехнулся — звук как треск ломающейся ветки.',
-   'dialogue':'Сдвиг: «Запертая комната. Старейший трюк в книге. Люди верят в магию, лишь бы не думать».\nРекрут: «А ты во что веришь?»\nСдвиг: «В то, что у каждого фокуса есть механик за кулисами. Пошли искать его».'},
- 'L1_c5':{'badge':'Порог','title':'Запах грозы','linear':True,'next':'L1_c6','speaker':'shift',
-   'text':'Под лентой оцепления — запах старой бумаги, нафталина и чего-то едкого. Озон. Воздух будто наэлектризован.',
-   'dialogue':'Сдвиг: «Чувствуешь? Пахнет грозой за закрытой дверью. Запомни этот запах, рекрут».'},
- 'L1_c6':{'badge':'Главный зал','title':'Пустой постамент','linear':True,'next':'L1_c7',
-   'text':'Зал с колоннами. В центре — пустой постамент и опрокинутый стул. Директор должен был встречать гостей здесь. Вместо него — тишина и холодный мрамор.',
-   'dialogue':'Патрульный: «Дверь была заперта изнутри, клянусь! Это проклятие семьи основателя, не иначе!»\nСдвиг: «Проклятия не оставляют следов на полу. А тут — оставлено».'},
- 'L1_c7':{'badge':'Первый след','title':'Лужа у входа','linear':True,'next':'L1_c8','speaker':'shift',
-   'text':'Сдвиг не стал слушать про проклятие. Он присел над тёмной лужей у стены и тронул её пальцем в перчатке. Понюхал.',
-   'dialogue':'Сдвиг: «Проклятие, которое носит сапоги одиннадцатого размера и пахнет машинным маслом».\nРекрут: «Думаешь, кто-то свой?»\nСдвиг: «Думаю, призраки не смазывают петли. А кто-то здесь — смазал».'},
- 'L1_c8':{'badge':'Твой ход','title':'Надевай перчатки','linear':True,'next':'e0','speaker':'shift',
-   'text':'Он поднял на меня взгляд — холоднее ноябрьского ливня. Первое настоящее дело начиналось здесь и сейчас.',
-   'dialogue':'Сдвиг: «Время показать, чему тебя учили. Надевай перчатки».\nРекрут: «С чего начнём?»\nСдвиг: «С того, что все проглядели. Смотри не глазами — головой».'},
-
- # ─── АКТ 2: Осмотр — РАЗВИЛКА 1 (вход) ───
- 'e0':{'badge':'Главный зал','title':'С чего начать','intro':'Зал заперт изнутри, директора нет. Только опрокинутый стул и запах озона. Как поведёшь осмотр?',
-   'left':{'label':'Войти первым','set':{'approach':'sharp'},'dscore':6,'rapport':-2,
-     'evidence':'Ты шагнул вперёд раньше Сдвига. Он чуть приподнял бровь, но смолчал.','to':'eL2a'},
-   'right':{'label':'За Сдвигом','set':{'approach':'trust'},'dscore':0,'rapport':6,
-     'evidence':'Ты пропустил Сдвига вперёд. «Учись смотреть, как я», — бросил он.','to':'eL2b'}},
-
- 'eL2a':{'badge':'Сам','title':'Капля у стены',
-   'text':'Ты двинулся первым. У стены — масляное пятно и свежая царапина на паркете, будто что-то тяжёлое волокли к дальней панели.',
-   'clue':{'id':'oil','name':'Машинное масло','icon':'⚙️','proof':'Свежее масло и борозда на полу. Кто-то волок тяжёлый механизм к стене.'},
-   'left':{'label':'К портьере','to':'eMeetEleanor'},'right':{'label':'К панели','to':'eMeetEleanor'}},
- 'eL2b':{'badge':'Вместе','title':'Указка Сдвига',
-   'text':'Сдвиг присел над лужей первым. «Масло. Театральное. Кто-то готовил сцену заранее». Он кивнул тебе на след у стены — учил замечать.',
-   'clue':{'id':'oil','name':'Машинное масло','icon':'⚙️','proof':'Свежее масло и борозда на полу. Кто-то волок тяжёлый механизм к стене.'},
-   'left':{'label':'К портьере','to':'eMeetEleanor'},'right':{'label':'Осмотреть зал','to':'eMeetEleanor'}},
-
- # ─── НОВЫЙ ПЕРСОНАЖ: Эленор — РАЗВИЛКА 2 (как с ней) ───
- 'eMeetEleanor':{'badge':'Свидетель','title':'Женщина у колонны','speaker':'eleanor',
-   'text':'У колонны стоит женщина в рабочем халате реставратора. Бледная, руки дрожат. Она нашла пустой зал первой — и теперь смотрит на полицию так, будто боится, что обвинят её.',
-   'dialogue':'Эленор: «Я… я только пришла открыть зал к утренней смене. А его нет. Дверь была заперта, ключи у меня, клянусь!»',
-   'intro':'Эленор напугана. Свидетель ценен — но как его разговорить?'},
- # развилка обработана как choice
- 'eEleanorChoice':{'badge':'Допрос','title':'Как с ней говорить','intro':'Она на грани. Дави — выдаст быстро. Успокой — вспомнит больше. Выбирай.',
-   'left':{'label':'Допросить сухо','set':{'eleanor':'pressed'},'dscore':6,'rapport':-8,
-     'evidence':'Ты задал вопросы жёстко, по протоколу. Эленор сжалась и замкнулась. Сдвиг отвёл взгляд.','to':'eL2c2'},
-   'right':{'label':'Успокоить','set':{'eleanor':'calm'},'dscore':2,'rapport':10,
-     'evidence':'Ты говорил мягко. Эленор выдохнула — и вспомнила: ночью у чёрного хода стоял фургон без окон.','clue':{'id':'van_hint','name':'Фургон Эленор','icon':'🚐','proof':'Эленор видела фургон без окон у чёрного хода ночью. Совпадает со словами сторожа.'},'to':'eL2c2'}},
-
- 'eL2c2':{'badge':'Зал','title':'Надорванная портьера',
-   'text':'Вдоль готических фресок висят тяжёлые бархатные шторы. Одна надорвана у самого пола. За ней — холодок сквозняка, которого здесь быть не должно.',
-   'clue':{'id':'portiera','name':'Надорванная портьера','icon':'🪟','proof':'Штора надорвана изнутри, за ней сквозняк. Там скрытый проём.'},
-   'left':{'label':'Отдёрнуть штору','to':'eL2c3'},'right':{'label':'Искать проём','to':'eL2c3'}},
- 'eL2c3':{'badge':'За портьерой','title':'Чужая деталь',
-   'text':'За шторой — стенная панель с проводкой. Среди предохранителей эпохи Эдисона блестит что-то слишком новое: промышленная шестерёнка, каких в музее быть не может.',
-   'clue':{'id':'detail','name':'Чужая деталь','icon':'⚙️','proof':'Промышленная шестерёнка не из музея. След современного механизма — лебёдки или подъёмника.'},
-   'left':{'label':'Резать провод','to':'eShift1'},'right':{'label':'Сфотографировать','to':'eShift1'}},
-
- # ─── РАЗВИЛКА 3: версия исчезновения ───
- 'eShift1':{'shift':True,'badge':'ВЕРСИЯ · 1','title':'Как он исчез',
-   'intro':'Сцена сложилась двумя способами. Реши, что случилось в этом зале — и эта версия станет твоей.',
-   'a':{'label':'◄ ПРОКЛЯТИЕ','vtext':'Город прав: зал проклят, директор растворился в воздухе.','set':{'method':'ghost'},'bad':True,'dscore':-10,'rapport':-3,'to':'eL3c1'},
-   'b':{'label':'ТРЮК ►','vtext':'Люк за панелью, лебёдка, масло. Человека опустили под пол и увели через служебный ход.','set':{'method':'trick'},'dscore':12,'rapport':2,'to':'eL3c1'}},
-
- # ─── АКТ 3: Сторож — РАЗВИЛКА 4 ───
- 'eL3c1':{'badge':'Подсобка','title':'Сторож Миллер','speaker':'miller',
-   'text':'На колченогом стуле сгорбился старик в форме охраны. От него несёт дешёвым бурбоном. Ночью кто-то два часа возился с механизмом под куполом — а сторож «ничего не слышал».',
-   'dialogue':'Миллер: «Я спал, начальник. Богом клянусь, ничего не видел и не слышал».',
-   'intro':'Миллер врёт — это видно. Но как достать из него правду?'},
- 'eL3Choice':{'badge':'Допрос','title':'Разговор со сторожем','intro':'Старик дрожит. Надавишь — сломается быстро. Поговоришь по-человечески — расскажет больше.',
-   'left':{'label':'Надавить','set':{'pressure':'hard'},'dscore':6,'rapport':-8,
-     'evidence':'Ты повысил голос и навис над стариком. Он раскололся — но от страха замкнулся на деталях.','to':'eL3hard'},
-   'right':{'label':'По-человечески','set':{'pressure':'soft'},'dscore':2,'rapport':10,
-     'evidence':'Ты сел рядом, заговорил тихо. Миллер выдохнул и рассказал больше, чем собирался.','to':'eL3soft'}},
-
- 'eL3hard':{'badge':'Нажим','title':'Сломленный','speaker':'miller',
-   'text':'Миллер вжался в стул, голос сорвался.',
-   'dialogue':'Миллер: «Да! Заплатили мне! Велели вырубить свет на пятнадцать минут — и всё! Больше я ничего не знаю, отстаньте!»',
-   'left':{'label':'Дальше','to':'eL3c3'},'right':{'label':'Дальше','to':'eL3c3'}},
- 'eL3soft':{'badge':'Доверие','title':'Исповедь','speaker':'miller',
-   'text':'Миллер говорит тихо, глядя в пол. И вдруг выдаёт деталь, которой не было в деле.',
-   'dialogue':'Миллер: «Голос по телефону был… механический. Не человек. А ещё — у чёрного хода всю ночь стоял фургон. Без окон. Я больше ничего не видел, но это видел точно».',
-   'clue':{'id':'van','name':'Фургон без окон','icon':'🚐','proof':'Сторож подтвердил: фургон без окон у чёрного хода. На нём вывезли директора.'},
-   'left':{'label':'Дальше','to':'eL3c3'},'right':{'label':'Дальше','to':'eL3c3'}},
-
- 'eL3c3':{'badge':'Улика','title':'Пачка под резинкой','speaker':'shift',
-   'text':'Сдвиг заходит сзади и одним движением вытягивает из кармана сторожа толстую пачку свежих банкнот, перетянутую резинкой.',
-   'dialogue':'Сдвиг: «Зарплата выросла? Или кто-то купил твою слепоту, старик?»',
-   'clue':{'id':'bribe','name':'Пачка банкнот','icon':'💵','proof':'Свежие купюры у сторожа. Его подкупили, чтобы он отключил свет в нужную минуту.'},
-   'left':{'label':'Забрать как улику','to':'eShift2'},'right':{'label':'Предъявить сторожу','to':'eShift2'}},
-
- # ─── РАЗВИЛКА 5: роль сторожа ───
- 'eShift2':{'shift':True,'badge':'ВЕРСИЯ · 2','title':'Слепота сторожа',
-   'intro':'Кем был Миллер — случайным растяпой или звеном плана? Реши.',
-   'a':{'label':'◄ СЛУЧАЙ','vtext':'Может, старик просто пьяница и взял деньги из кассы.','set':{'watchman':'honest'},'bad':True,'dscore':-8,'rapport':-2,'to':'eL4c1'},
-   'b':{'label':'ПОДКУП ►','vtext':'Чужой голос по телефону, свежие купюры, точное время. Его наняли.','set':{'watchman':'bribed'},'dscore':10,'rapport':2,'to':'eL4c1'}},
-
- # ─── АКТ 4: След Куратора ───
- 'eL4c1':{'badge':'Кабинет','title':'Мигающий автоответчик',
-   'text':'Дубовые двери, картины эпохи Возрождения, запах старого табака. На столе директора мигает красным автоответчик. Следов борьбы нет — словно хозяин вышел на минуту пять часов назад.',
-   'clue':{'id':'answering','name':'Запись автоответчика','icon':'📼','proof':'На плёнке — сообщение, оставленное в ночь исчезновения. Голос механический.'},
-   'left':{'label':'Нажать play','to':'eL4c2'},'right':{'label':'Осмотреть стол','to':'eL4c2'}},
- 'eL4c2':{'badge':'Голос','title':'Визитка Куратора','speaker':'kurator',
-   'text':'Из динамика — искажённый металлический голос, словно через синтезатор речи. Спокойный. Довольный собой.',
-   'dialogue':'Куратор: «Приветствую, Сдвиг. Узнаёшь почерк? Я назвал эту работу — „Исчезновение Скупца". Директор не любил делиться искусством. Теперь он сам стал частью коллекции».',
-   'left':{'label':'Слушать дальше','to':'eL4c3'},'right':{'label':'Остановить плёнку','to':'eL4c3'}},
- 'eL4c3':{'badge':'Прошлое','title':'Пять лет','speaker':'shift',
-   'text':'Сдвиг выдёргивает кассету и медленно крутит её в длинных пальцах. Лицо застыло.',
-   'dialogue':'Сдвиг: «Куратор. Пять лет назад он провернул такое же в Чикаго. Тогда я опоздал. Теперь он в моём городе — и снова зовёт меня по имени».',
-   'left':{'label':'Спросить о Чикаго','to':'eShift3'},'right':{'label':'Сосредоточиться на деле','to':'eShift3'}},
-
- # ─── РАЗВИЛКА 6: чей почерк ───
- 'eShift3':{'shift':True,'badge':'ВЕРСИЯ · 3','title':'Чья подпись',
-   'intro':'Чьих рук это представление? Назови автора — и сцена закроется.',
-   'a':{'label':'◄ ОДИНОЧКА','vtext':'Может, мелкий вор позарился на экспонаты.','set':{'mastermind':'thief'},'bad':True,'dscore':-8,'rapport':-2,'to':'eAccuse'},
-   'b':{'label':'КУРАТОР ►','vtext':'Театр, голос из машины, инсценировка как искусство — это почерк Куратора. Он вернулся.','set':{'mastermind':'curator'},'dscore':12,'rapport':3,'to':'eAccuse'}},
-
- # ─── ФИНАЛ: РАЗВИЛКА 7 ───
- 'eAccuse':{'shift':True,'badge':'Финал главы','title':'Старый город',
-   'text':'Под голосом Куратора на плёнке слышен фоновый ритм: ту-тук, ту-тук. Мерный стук печатного станка.',
-   'dialogue':'Сдвиг: «Старый город. Там целая улица заброшенных типографий. Куратор готовит новую „выставку". Едем — пока он не закрыл двери».',
-   'intro':'Куратор оставил след нарочно. Как двинешься за ним?',
-   'a':{'label':'◄ ПО УСТАВУ','vtext':'Вызвать подкрепление, оцепить квартал. Дольше, но без риска.','set':{'approach':'trust'},'dscore':2,'rapport':6,'to':'__resolve__'},
-   'b':{'label':'САМИ ►','vtext':'Времени нет. Вдвоём, сейчас. Как в старой школе.','set':{'approach':'sharp'},'dscore':6,'rapport':-2,'to':'__resolve__'}},
-}
-
-d['events']=EVENTS
-
-# Вставляем развилки-чойсы после знакомства (eMeetEleanor → eEleanorChoice, eL3c1 → eL3Choice)
-# Делаем их linear-переходами в choice
-EVENTS['eMeetEleanor']['linear']=True; EVENTS['eMeetEleanor']['next']='eEleanorChoice'
-EVENTS['eL3c1']['linear']=True; EVENTS['eL3c1']['next']='eL3Choice'
-
-# Концовки
-d['endings']={
- 'win':{'kind':'win','mark':'★','verdict':'ДЕЛО РАСКРЫТО',
-   'text':'Ты прочёл сцену чисто: трюк, подкупленный сторож, почерк Куратора. Сдвиг кивнул — впервые без усмешки. «Теперь ты детектив. Старый город ждёт». Директор будет жив. А на постаменте осталась записка: «Браво. До встречи на премьере».'},
- 'partial':{'kind':'partial','mark':'☆','verdict':'СЛЕД ВЗЯТ',
-   'text':'Не всё сошлось, но главного хватило: Куратор в городе, директор жив, и у вас есть адрес. «Сойдёт для первого раза, — буркнул Сдвиг. — Но в следующий раз думай быстрее, иначе он будет думать за тебя».'},
- 'fail':{'kind':'fail','mark':'✗','verdict':'СЛЕД ПОТЕРЯН',
-   'text':'Ты пошёл не по той нити. Пока вы спорили о проклятиях, фургон без окон растворился в Старом городе. «Призраков нет, рекрут, — тихо сказал Сдвиг. — Есть только те, кого мы не успели найти». Директор пропал. Куратор — тоже. Пока.'}}
-
-json.dump(d,open(path,'w',encoding='utf-8'),ensure_ascii=False,indent=2)
-print("✓ Сценарий переписан начисто")
-print(f"  Событий: {len(EVENTS)}")
-print(f"  Новый персонаж: Эленор (eMeetEleanor)")
-
-# ВАЛИДАЦИЯ: проверяем все переходы
-print("\n=== ВАЛИДАЦИЯ переходов ===")
-allok=True
-for k,e in EVENTS.items():
-    targets=[]
-    if e.get('linear'): targets.append(e.get('next'))
-    if e.get('left'): targets.append(e['left'].get('to'))
-    if e.get('right'): targets.append(e['right'].get('to'))
-    if e.get('a'): targets.append(e['a'].get('to'))
-    if e.get('b'): targets.append(e['b'].get('to'))
-    for t in targets:
-        if t and t!='__resolve__' and t not in EVENTS:
-            print(f"  ✗ {k} → {t} НЕ СУЩЕСТВУЕТ")
-            allok=False
-if allok: print("  ✓ Все переходы валидны, тупиков нет")
-
-# Проверка на остатки трупа
-print("\n=== Проверка на остатки старого сюжета (труп) ===")
-bad_words=['труп','мёртв','тело','крови нет','шея','вывернут','рушится на мрамор','бойню']
-found=False
-for k,e in EVENTS.items():
-    txt=(e.get('text','')+' '+str(e.get('dialogue',''))+' '+str(e.get('intro',''))).lower()
-    for w in bad_words:
-        if w in txt:
-            print(f"  ⚠ {k}: содержит '{w}'")
-            found=True
-if not found: print("  ✓ Остатков трупа нет — чистое исчествение")
-
-STORY_EOF
+new='''      <div class="scales-bar" id="scales-bar">
+        <div class="gscale rapport">
+          <div class="gscale-pop" id="rap-pop"></div>
+          <div class="gscale-top">
+            <span class="gscale-name"><span class="gscale-ico">🎩</span>Сдвиг</span>
+            <span class="gscale-num" id="rap-num">50</span>
+          </div>
+          <div class="gscale-track"><div class="gscale-fill" id="rap-fill" style="width:50%"></div></div>
+          <div class="gscale-stat" id="rap-stat">Напарник</div>
+        </div>
+        <div class="gscale detective">
+          <div class="gscale-pop" id="det-pop"></div>
+          <div class="gscale-top">
+            <span class="gscale-name"><span class="gscale-ico">🔍</span>Детектив</span>
+            <span class="gscale-num" id="det-num">30</span>
+          </div>
+          <div class="gscale-track"><div class="gscale-fill" id="det-fill" style="width:30%"></div></div>
+          <div class="gscale-stat" id="det-stat">Стажёр</div>
+        </div>
+        <button class="tools-mini" data-tool="shop" title="Инструменты">
+          <span class="ev-chip-mini"><span class="ev-dot"></span><b id="ev-count">0</b></span>
+        </button>
+      </div>'''
+if old in txt:
+    txt=txt.replace(old,new,1); n+=1; print("  + tools-bar заменён на scales-bar (2 шкалы)")
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ index.html: %d"%n)
+PYEOF
 
 
-echo ""; echo "══ 2/3  app.js — Эленор в CHARS + шкала детективности"
+echo ""; echo "══ 2/3  CSS — стиль шкал ═══════════════════════════"
+python3 - << 'PYEOF'
+path="src/main/resources/static/style.css"
+with open(path,encoding="utf-8") as f: txt=f.read()
+if ".scales-bar" not in txt:
+    css='''
+/* ── ШКАЛЫ ПРОГРЕССА (отношения + детективность) ── */
+.scales-bar{display:flex;gap:10px;align-items:stretch;padding:10px 12px;}
+.gscale{flex:1;position:relative;background:rgba(16,20,28,.85);border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;padding:9px 12px;backdrop-filter:blur(8px);}
+.gscale-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.gscale-name{display:flex;align-items:center;gap:5px;font-family:Unbounded,sans-serif;font-weight:700;
+  font-size:10px;letter-spacing:.02em;text-transform:uppercase;}
+.gscale-ico{font-size:13px;}
+.gscale-num{font-family:Unbounded,sans-serif;font-weight:900;font-size:15px;}
+.gscale-track{height:6px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;}
+.gscale-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.3,1,.4,1);position:relative;}
+.gscale-fill::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);
+  animation:gscaleShine 2.4s ease-in-out infinite;}
+@keyframes gscaleShine{0%{transform:translateX(-100%)}60%,100%{transform:translateX(100%)}}
+.gscale-stat{font-size:9px;margin-top:4px;opacity:.65;font-style:italic;}
+.gscale.rapport .gscale-name,.gscale.rapport .gscale-num{color:#ff8fb0;}
+.gscale.rapport .gscale-fill{background:linear-gradient(90deg,#c44569,#ff8fb0);}
+.gscale.detective .gscale-name,.gscale.detective .gscale-num{color:#46d89b;}
+.gscale.detective .gscale-fill{background:linear-gradient(90deg,#2a9d6f,#46d89b);}
+.gscale-pop{position:absolute;top:-6px;right:10px;font-family:Unbounded,sans-serif;font-weight:800;
+  font-size:13px;opacity:0;pointer-events:none;z-index:5;}
+.gscale-pop.show{animation:gscalePop 1.2s ease forwards;}
+@keyframes gscalePop{0%{opacity:0;transform:translateY(0)}20%{opacity:1}100%{opacity:0;transform:translateY(-20px)}}
+.tools-mini{flex:0 0 auto;width:46px;border:1px solid rgba(200,134,10,.3);border-radius:14px;
+  background:rgba(200,134,10,.12);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.ev-chip-mini{display:flex;align-items:center;gap:3px;color:#ffcf6b;font-weight:800;font-size:13px;
+  font-family:Unbounded,sans-serif;}
+.ev-chip-mini .ev-dot{width:6px;height:6px;border-radius:50%;background:#46d89b;}
+'''
+    txt+=css
+    with open(path,"w",encoding="utf-8") as f: f.write(txt)
+    print("  + CSS шкал добавлен")
+else:
+    print("  · CSS шкал уже есть")
+PYEOF
+
+
+echo ""; echo "══ 3/3  app.js — updateScaleBars + статусы 0-100 ═══"
 python3 - << 'PYEOF'
 path="src/main/resources/static/app.js"
 with open(path,encoding="utf-8") as f: txt=f.read()
 n=0
 
-# Эленор в CHARS (пока заглушка — арт пришлют позже, используем guests как временный)
-if "eleanor:" not in txt:
-    old="  danny:  {src:'/img/chars/char-danny.png',   side:'right'},"
-    new=("  danny:  {src:'/img/chars/char-danny.png',   side:'right'},\n"
-         "  eleanor:{src:'/img/chars/char-guests.png',  side:'left'},  /* TODO: арт Эленор */")
-    txt=txt.replace(old,new,1); n+=1; print("  + Эленор в CHARS (временный арт guests)")
-
-# Имя Эленор в NAMES (если есть отдельный список в app)
-# Шкала детективности: профиль
-if "skill:" not in txt:
-    txt=txt.replace("lastEnergyTs:0, rapport:0, onboarded:false",
-                    "lastEnergyTs:0, rapport:0, skill:30, onboarded:false")
-    n+=1; print("  + skill (детективность) в профиль, старт 30")
-
-# applyChoiceStats — применяет dscore (детективность) и rapport из выбора
-if "function applyChoiceStats" not in txt:
-    anchor="function cApplyOption(o){"
-    fn=('''function applyChoiceStats(o){
-  if(!o) return;
-  if(typeof o.dscore==='number'){ addSkill(o.dscore); }
-  if(typeof o.rapport==='number'){ addRapport(o.rapport); }
+# updateScaleBars — обновляет обе шкалы
+if "function updateScaleBars" not in txt:
+    anchor="function rapportTitle(){"
+    fn='''function updateScaleBars(){
+  var p=App.profile; if(!p) return;
+  var rap=clamp(p.rapport||0,0,100), det=clamp(p.skill||30,0,100);
+  var rn=document.getElementById('rap-num'), rf=document.getElementById('rap-fill'), rs=document.getElementById('rap-stat');
+  var dn=document.getElementById('det-num'), df=document.getElementById('det-fill'), ds=document.getElementById('det-stat');
+  if(rn)rn.textContent=rap; if(rf)rf.style.width=rap+'%'; if(rs)rs.textContent=rapTitle(rap);
+  if(dn)dn.textContent=det; if(df)df.style.width=det+'%'; if(ds)ds.textContent=detTitle(det);
 }
-function addSkill(n){
-  var p=App.profile; p.skill=clamp((p.skill||30)+n,0,100); saveProfile();
-  try{ updateScaleBars&&updateScaleBars(); }catch(_){}
+function rapTitle(v){
+  if(v>=95)return'Брат'; if(v>=80)return'Свой'; if(v>=60)return'Доверяет';
+  if(v>=40)return'Напарник'; if(v>=20)return'Терпит'; return'Чужак';
 }
-''')
-    txt=txt.replace(anchor, fn+anchor, 1); n+=1; print("  + applyChoiceStats + addSkill")
+function detTitle(v){
+  if(v>=95)return'Легенда'; if(v>=80)return'Профи'; if(v>=60)return'Детектив';
+  if(v>=40)return'Сыщик'; if(v>=20)return'Стажёр'; return'Новичок';
+}
+function scalePop(which,delta){
+  var el=document.getElementById(which+'-pop'); if(!el)return;
+  el.textContent=(delta>0?'+':'')+delta;
+  el.style.color=delta>0?(which==='rap'?'#ff8fb0':'#46d89b'):'#ff5d6c';
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+}
+'''
+    txt=txt.replace(anchor, fn+anchor, 1); n+=1; print("  + updateScaleBars + статусы 0-100")
 
-# cApplyOption вызывает applyChoiceStats (вместо простого +1/-1)
-old_apply=('function cApplyOption(o){\n'
-           '  if(o.set) Object.assign(CState.flags,o.set);\n'
-           '  if(o.evidence) cAddEvidence(o.evidence);\n'
-           '  try{ addRapport(o.bad?-1:1); }catch(_){}\n'
-           '}')
-new_apply=('function cApplyOption(o){\n'
-           '  if(o.set) Object.assign(CState.flags,o.set);\n'
-           '  if(o.evidence) cAddEvidence(o.evidence);\n'
-           '  if(o.clue && window.grantClue){ try{ grantClue(o.clue); }catch(_){} }\n'
-           '  // шкалы: dscore (детективность) + rapport из выбора\n'
-           '  try{ applyChoiceStats(o); }catch(_){}\n'
-           '}')
-if old_apply in txt:
-    txt=txt.replace(old_apply,new_apply,1); n+=1; print("  + cApplyOption применяет шкалы из выбора")
+# addSkill и addRapport вызывают pop-анимацию
+txt=txt.replace(
+  "function addSkill(n){\n  var p=App.profile; p.skill=clamp((p.skill||30)+n,0,100); saveProfile();\n  try{ updateScaleBars&&updateScaleBars(); }catch(_){}\n}",
+  "function addSkill(n){\n  var p=App.profile; p.skill=clamp((p.skill||30)+n,0,100); saveProfile();\n  try{ updateScaleBars&&updateScaleBars(); scalePop&&scalePop('det',n); }catch(_){}\n}")
+txt=txt.replace(
+  "  p.rapport=clamp((p.rapport||0)+n,0,100); saveProfile();\n  try{ updateScaleBars&&updateScaleBars(); }catch(_){}",
+  "  p.rapport=clamp((p.rapport||0)+n,0,100); saveProfile();\n  try{ updateScaleBars&&updateScaleBars(); scalePop&&scalePop('rap',n); }catch(_){}")
+n+=1; print("  + pop-анимация при изменении шкал")
 
-# addRapport: расширяем диапазон до 0-100 (было -10..20)
-old_rap="  p.rapport=clamp((p.rapport||0)+n,-10,20); saveProfile();"
-new_rap="  p.rapport=clamp((p.rapport||0)+n,0,100); saveProfile();\n  try{ updateScaleBars&&updateScaleBars(); }catch(_){}"
-if old_rap in txt:
-    txt=txt.replace(old_rap,new_rap,1); n+=1; print("  + rapport диапазон 0-100")
+# вызываем updateScaleBars при входе в дело (показать актуальные значения)
+if "updateScaleBars();" not in txt.split("function enterMain")[1][:500] if "function enterMain" in txt else False:
+    pass
+# просто добавим вызов в enterMain
+import re
+m=re.search(r'(function enterMain\([^)]*\)\s*\{)', txt)
+if m and 'updateScaleBars' not in txt[m.end():m.end()+300]:
+    txt=txt[:m.end()]+'\n  try{ updateScaleBars(); }catch(_){}'+txt[m.end():]
+    n+=1; print("  + updateScaleBars при входе в дело")
 
 with open(path,"w",encoding="utf-8") as f: f.write(txt)
 print("✓ app.js: %d"%n)
 PYEOF
 
-
-echo ""; echo "══ 3/3  имя Эленор в ленте (feed NAMES) ════════════"
-python3 - << 'PYEOF'
-path="src/main/resources/static/games/feed.js"
-with open(path,encoding="utf-8") as f: txt=f.read()
-n=0
-if "eleanor:'Эленор'" not in txt:
-    txt=txt.replace("danny:'Дэнни',","danny:'Дэнни',eleanor:'Эленор',")
-    n+=1; print("  + имя Эленор в ленте")
-# цвет реплик Эленор (как свидетель — терракот, уже есть 'other')
-with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ feed.js: %d"%n)
-PYEOF
-
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R48 — сюжет переписан, Эленор, шкала детективности"
-echo "   git add -A && git commit -m 'R48: full story rewrite + Eleanor + detective skill scale' && git push"
+echo "✅  R49 — визуальные шкалы внизу (отношения + детектив)"
+echo "   git add -A && git commit -m 'R49: visual stat scales (rapport + detective) replace tools' && git push"
 echo "═══════════════════════════════════════════════════════"

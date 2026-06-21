@@ -12,7 +12,7 @@
 <script>window.SDVIG_BOT_USERNAME="sdvig_game_bot";</script>
 </head>
 <body>
-<div id="build-tag" style="position:fixed;bottom:2px;right:4px;z-index:9999;font-size:8px;color:rgba(200,160,90,.4);pointer-events:none;font-family:monospace">R48</div>
+<div id="build-tag" style="position:fixed;bottom:2px;right:4px;z-index:9999;font-size:8px;color:rgba(200,160,90,.4);pointer-events:none;font-family:monospace">R49</div>
 
 <!-- ══ АНИМИРОВАННЫЕ SVG-ГРАДИЕНТЫ (перелив самоцвета) ══ -->
 <svg id="gem-defs" width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -128,26 +128,27 @@
       <div class="stage" id="stage">
         <div class="ring-scene"><div class="ring" id="ring"></div></div>
       </div>
-      <div class="tools-bar" id="tools-bar">
-        <div class="ev-chip" id="ev-chip">
-          <span class="ev-dot"></span>
-          <span>Улики</span>
-          <b id="ev-count">0</b>
+      <div class="scales-bar" id="scales-bar">
+        <div class="gscale rapport">
+          <div class="gscale-pop" id="rap-pop"></div>
+          <div class="gscale-top">
+            <span class="gscale-name"><span class="gscale-ico">🎩</span>Сдвиг</span>
+            <span class="gscale-num" id="rap-num">50</span>
+          </div>
+          <div class="gscale-track"><div class="gscale-fill" id="rap-fill" style="width:50%"></div></div>
+          <div class="gscale-stat" id="rap-stat">Напарник</div>
         </div>
-        <button class="tool-btn" data-tool="magnify" title="Лупа — подсветит важную улику">
-          <span class="tool-ico" data-tico="magnify"></span>
-          <span class="tool-badge" id="tool-magnify-n">2</span>
-        </button>
-        <button class="tool-btn" data-tool="file" title="Досье — пропустить мини-игру">
-          <span class="tool-ico" data-tico="file"></span>
-          <span class="tool-badge" id="tool-file-n">1</span>
-        </button>
-        <button class="tool-btn" data-tool="hourglass" title="Песочные часы — +20 энергии">
-          <span class="tool-ico" data-tico="hourglass"></span>
-          <span class="tool-badge" id="tool-hourglass-n">1</span>
-        </button>
-        <button class="tool-btn tool-shop" data-tool="shop" title="Купить инструменты">
-          <span class="tool-ico" data-tico="plus"></span>
+        <div class="gscale detective">
+          <div class="gscale-pop" id="det-pop"></div>
+          <div class="gscale-top">
+            <span class="gscale-name"><span class="gscale-ico">🔍</span>Детектив</span>
+            <span class="gscale-num" id="det-num">30</span>
+          </div>
+          <div class="gscale-track"><div class="gscale-fill" id="det-fill" style="width:30%"></div></div>
+          <div class="gscale-stat" id="det-stat">Стажёр</div>
+        </div>
+        <button class="tools-mini" data-tool="shop" title="Инструменты">
+          <span class="ev-chip-mini"><span class="ev-dot"></span><b id="ev-count">0</b></span>
         </button>
       </div>
     </div>
