@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R47';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R48';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -25,7 +25,7 @@ const DEFAULT_PROFILE = {
   casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
   achievements:[], dailyStreak:0, lastDaily:null, sound:true,
-  lastEnergyTs:0, rapport:0, onboarded:false
+  lastEnergyTs:0, rapport:0, skill:30, onboarded:false
 };
 
 /* ── DOM helpers ───────────────────────────────── */
@@ -781,7 +781,8 @@ function cSetProgress(){
 }
 function addRapport(n){
   const p=App.profile; if(!p) return;
-  p.rapport=clamp((p.rapport||0)+n,-10,20); saveProfile();
+  p.rapport=clamp((p.rapport||0)+n,0,100); saveProfile();
+  try{ updateScaleBars&&updateScaleBars(); }catch(_){}
 }
 function rapportTitle(){
   const r=(App.profile&&App.profile.rapport)||0;
@@ -791,10 +792,21 @@ function rapportTitle(){
   if(r<=-3) return 'Раздражение';
   return 'Новичок';
 }
+function applyChoiceStats(o){
+  if(!o) return;
+  if(typeof o.dscore==='number'){ addSkill(o.dscore); }
+  if(typeof o.rapport==='number'){ addRapport(o.rapport); }
+}
+function addSkill(n){
+  var p=App.profile; p.skill=clamp((p.skill||30)+n,0,100); saveProfile();
+  try{ updateScaleBars&&updateScaleBars(); }catch(_){}
+}
 function cApplyOption(o){
   if(o.set) Object.assign(CState.flags,o.set);
   if(o.evidence) cAddEvidence(o.evidence);
-  try{ addRapport(o.bad?-1:1); }catch(_){}
+  if(o.clue && window.grantClue){ try{ grantClue(o.clue); }catch(_){} }
+  // шкалы: dscore (детективность) + rapport из выбора
+  try{ applyChoiceStats(o); }catch(_){}
 }
 
 function bindDrag(card){
@@ -984,6 +996,7 @@ const CHARS={
   jiang:  {src:'/img/chars/char-jiang.png',   side:'right'},
   purcell:{src:'/img/chars/char-purcell.png', side:'right'},
   danny:  {src:'/img/chars/char-danny.png',   side:'right'},
+  eleanor:{src:'/img/chars/char-guests.png',  side:'left'},  /* TODO: арт Эленор */
   guests: {src:'/img/chars/char-guests.png',  side:'right'}
 };
 window.CHARS=CHARS; window.CHAR_VER=CHAR_VER;

@@ -16,7 +16,7 @@
 
   const NAMES={shift:'Сдвиг',recruit:'Рекрут',kurator:'Куратор',arundel:'Аранделл',
     miller:'Миллер',hayes:'Хейс',romero:'Ромеро',conroy:'Конрой',jiang:'Цзян',
-    purcell:'Пёрселл',danny:'Дэнни',guests:'Гости'};
+    purcell:'Пёрселл',danny:'Дэнни',eleanor:'Эленор',guests:'Гости'};
   const CHARV=(window.CHAR_VER||'3');
   function avatar(id){
     var C=window.CHARS||(typeof CHARS!=='undefined'?CHARS:null);
