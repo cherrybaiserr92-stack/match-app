@@ -1,350 +1,255 @@
 #!/usr/bin/env bash
-# СДВИГ R51 — литературный текст + реакции после улик + наводки + фикс карточки
+# СДВИГ R52 — большой UI-фикс: аватары, лента, карточка, досье, шкала
 set -e
-echo "══ штамп → R51 ══"
-sed -i "s/SDVIG_BUILD='R50'/SDVIG_BUILD='R51'/" src/main/resources/static/app.js
-sed -i 's/>R50</>R51</' src/main/resources/static/index.html
+echo "══ штамп → R52 ══"
+sed -i "s/SDVIG_BUILD='R51'/SDVIG_BUILD='R52'/" src/main/resources/static/app.js
+sed -i 's/>R51</>R52</' src/main/resources/static/index.html
 
-echo ""; echo "══ 1/4  литературная переработка сценария ══════════"
-python3 - << 'STORY_EOF'
-# СДВИГ — литературная переработка case001 + диалоги-реакции после улик
-# Тон: атмосферный нуар, ритм, образность. Реакции персонажей после находок.
+echo ""; echo "══ 1/6  аватары — круглые, больше, Сдвиг влезает, говорят"
+python3 - << 'PYEOF'
+path="src/main/resources/static/games/feed.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
+
+# Круглые, больше (62px), кроп лучше под Сдвига
+old=".m2-av{width:56px;height:56px;border-radius:13px;flex-shrink:0;overflow:hidden;border:2px solid;position:relative;}"
+new=".m2-av{width:62px;height:62px;border-radius:50%;flex-shrink:0;overflow:hidden;border:2.5px solid;position:relative;}"
+if old in txt:
+    txt=txt.replace(old,new,1); n+=1; print("  + аватар круглый 62px")
+
+# Кроп: показываем голову+плечи, Сдвиг в шляпе влезает
+old2='''    .m2-av img{position:absolute;width:175%;left:-37%;top:6%;max-width:none;}
+    /* индивидуальный кроп под персонажа */
+    .m2-av.av-shift img{width:200%;left:-50%;top:2%;}
+    .m2-av.av-recruit img{width:170%;left:-35%;top:7%;}
+    .m2-av.av-miller img{width:165%;left:-32%;top:6%;}'''
+new2='''    .m2-av img{position:absolute;width:150%;left:-25%;top:8%;max-width:none;}
+    /* индивидуальный кроп — голова целиком влезает */
+    .m2-av.av-shift img{width:148%;left:-24%;top:9%;}
+    .m2-av.av-recruit img{width:150%;left:-25%;top:7%;}
+    .m2-av.av-miller img{width:145%;left:-22%;top:8%;}
+    .m2-av.av-eleanor img{width:150%;left:-25%;top:7%;}
+    .m2-av.av-kurator img{width:148%;left:-24%;top:8%;}'''
+if old2 in txt:
+    txt=txt.replace(old2,new2,1); n+=1; print("  + кроп: голова влезает, индив. под каждого")
+
+# Анимация "говорит" при печати — пульсация кольца
+if ".m2-av.talking" not in txt:
+    anchor=".msg2.active .m2-ring{opacity:1;box-shadow:0 0 0 2px currentColor,0 0 16px currentColor;}"
+    css=anchor+'''
+    .m2-av.talking{animation:avTalk .7s ease-in-out infinite;}
+    @keyframes avTalk{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+    .m2-av.talking .m2-ring{animation:ringTalk .5s ease-in-out infinite;}
+    @keyframes ringTalk{0%,100%{box-shadow:0 0 0 2px currentColor,0 0 12px currentColor;opacity:.9}50%{box-shadow:0 0 0 3px currentColor,0 0 22px currentColor;opacity:1}}'''
+    txt=txt.replace(anchor,css,1); n+=1; print("  + анимация 'говорит' при печати")
+
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ feed.js: %d"%n)
+PYEOF
+
+
+echo ""; echo "══ 2/6  лента — 'далее', класс talking при печати ══"
+python3 - << 'PYEOF'
+path="src/main/resources/static/games/feed.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
+
+# "тап — далее" → "далее", "тап — продолжить" → "далее"
+txt=txt.replace("hint.textContent='▸ тап — далее';","hint.textContent='далее ▸';")
+txt=txt.replace("hint.textContent='▸ тап — продолжить';","hint.textContent='далее ▸';")
+n+=1; print("  + 'тап — далее' → 'далее'")
+
+# talking-класс на аватар во время печати, снимаем после
+old='''  function typeInto(el, text, done, hasClues){
+    el._full=text; el._typing=true;'''
+new='''  function typeInto(el, text, done, hasClues){
+    el._full=text; el._typing=true;
+    // включаем "говорит" на аватаре этой реплики
+    var _msgEl=el.closest&&el.closest('.msg2'); var _avEl=_msgEl&&_msgEl.querySelector('.m2-av');
+    if(_avEl) _avEl.classList.add('talking');'''
+if old in txt:
+    txt=txt.replace(old,new,1); n+=1; print("  + talking при старте печати")
+
+# снимаем talking когда печать закончилась
+old_fin='''        clearInterval(el._tt); el._typing=false;
+        el.innerHTML=renderClues(text);
+        if(hasClues) bindClues(el);
+        done&&done(); return;'''
+new_fin='''        clearInterval(el._tt); el._typing=false;
+        el.innerHTML=renderClues(text);
+        if(hasClues) bindClues(el);
+        if(_avEl) _avEl.classList.remove('talking');
+        done&&done(); return;'''
+if old_fin in txt:
+    txt=txt.replace(old_fin,new_fin,1); n+=1; print("  + talking снимается после печати")
+
+# finishType тоже снимает talking
+old_ft='''  function finishType(el){
+    if(!el||!el._typing) return false;
+    clearInterval(el._tt); el._typing=false;'''
+new_ft='''  function finishType(el){
+    if(!el||!el._typing) return false;
+    clearInterval(el._tt); el._typing=false;
+    var _m=el.closest&&el.closest('.msg2'); var _a=_m&&_m.querySelector('.m2-av'); if(_a)_a.classList.remove('talking');'''
+if old_ft in txt:
+    txt=txt.replace(old_ft,new_ft,1); n+=1; print("  + finishType снимает talking")
+
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ feed.js: %d"%n)
+PYEOF
+
+
+echo ""; echo "══ 3/6  убрать бейджи-сепараторы между событиями ════"
+python3 - << 'PYEOF'
+path="src/main/resources/static/games/feed.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
+# Убираем разделитель с бейджем ("МЕТОД", "МУЗЕЙ") — он сбивает с толку
+# Оставляем только тонкую линию без текста
+old='''    // разделитель главы перед новым событием (кроме первого)
+    if(_wrap.children.length>0 && ev.badge){
+      var sep=document.createElement('div'); sep.className='feed2-sep';
+      sep.innerHTML='<span>'+esc(ev.badge)+'</span>';
+      _wrap.appendChild(sep);
+    }'''
+new='''    // тонкий разделитель между событиями (без текста-бейджа — он сбивал с толку)
+    if(_wrap.children.length>0){
+      var sep=document.createElement('div'); sep.className='feed2-sep feed2-sep-thin';
+      _wrap.appendChild(sep);
+    }'''
+if old in txt:
+    txt=txt.replace(old,new,1); n+=1; print("  + бейдж-сепаратор убран (тонкая линия)")
+
+# renderStatic тоже без бейджа
+old2='''    if(ev.badge && _wrap.children.length>0){
+      var sep=document.createElement('div'); sep.className='feed2-sep';
+      sep.innerHTML='<span>'+esc(ev.badge)+'</span>'; _wrap.appendChild(sep);
+    }'''
+new2='''    if(_wrap.children.length>0){
+      var sep=document.createElement('div'); sep.className='feed2-sep feed2-sep-thin'; _wrap.appendChild(sep);
+    }'''
+if old2 in txt:
+    txt=txt.replace(old2,new2,1); n+=1; print("  + renderStatic без бейджа")
+
+# CSS тонкого разделителя
+if ".feed2-sep-thin" not in txt:
+    anchor=".feed2-sep span{"
+    css=".feed2-sep-thin{margin:10px 20%;opacity:.3;}\n    .feed2-sep-thin::before,.feed2-sep-thin::after{height:1px;}\n    .feed2-sep span{"
+    txt=txt.replace(anchor,css,1); n+=1; print("  + CSS тонкого разделителя")
+
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ feed.js: %d"%n)
+PYEOF
+
+
+echo ""; echo "══ 4/6  карточка — короткие метки, без След, таймер ═"
+python3 - << 'PYEOF'
+path="src/main/resources/static/games/feed.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
+
+# Убираем боковые каскады "След" (outcome-cascade) — они путают
+old_cascade='''    const dec=document.createElement('div'); dec.className='decision-stage'; dec.id='dec-stage';
+    dec.innerHTML=cascadeHtml('left',collectOutcomes(opts.left))+
+      '<div class="dec-card" id="dec-card">'+decCardInner(ev)+'</div>'+
+      cascadeHtml('right',collectOutcomes(opts.right))+'''
+new_cascade='''    const dec=document.createElement('div'); dec.className='decision-stage'; dec.id='dec-stage';
+    dec.innerHTML='<div class="dec-card" id="dec-card">'+decCardInner(ev)+'</div>'+'''
+if old_cascade in txt:
+    txt=txt.replace(old_cascade,new_cascade,1); n+=1; print("  + боковые 'След' убраны")
+
+# Таймер: переносим НАД карточкой с отступом (не наезжает)
+old_t="    .dec-timer{position:absolute;top:7%;left:50%;transform:translateX(-50%);z-index:8;"
+new_t="    .dec-timer{position:absolute;top:2%;left:50%;transform:translateX(-50%);z-index:8;"
+if old_t in txt:
+    txt=txt.replace(old_t,new_t,1); n+=1; print("  + таймер выше (не наезжает)")
+
+# dec-card: отступ сверху под таймер, "свайп решает" ниже
+old_card2=".dec-card{position:relative;width:min(74vw,300px);border-radius:18px;overflow:hidden;z-index:5;"
+new_card2=".dec-card{position:relative;width:min(80vw,320px);margin-top:56px;border-radius:18px;overflow:hidden;z-index:5;"
+if old_card2 in txt:
+    txt=txt.replace(old_card2,new_card2,1); n+=1; print("  + карточка шире + отступ под таймер")
+
+# "свайп решает" — дальше от карточки
+old_h="    .oc-hint{position:absolute;bottom:13%;left:0;right:0;text-align:center;font-size:11px;color:#c8a05a;"
+new_h="    .oc-hint{position:absolute;bottom:6%;left:0;right:0;text-align:center;font-size:11px;color:#c8a05a;"
+if old_h in txt:
+    txt=txt.replace(old_h,new_h,1); n+=1; print("  + 'свайп решает' ниже")
+
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ feed.js: %d"%n)
+PYEOF
+
+
+echo ""; echo "══ 5/6  счётчик внизу открывает ДОСЬЕ + rapport=50 ═"
+python3 - << 'PYEOF'
+import re
+# index.html: возвращаем id=ev-chip счётчику (открывает досье), убираем data-tool=shop
+path="src/main/resources/static/index.html"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
+old='''        <button class="tools-mini" data-tool="shop" title="Инструменты">
+          <span class="ev-chip-mini"><span class="ev-dot"></span><b id="ev-count">0</b></span>
+        </button>'''
+new='''        <button class="tools-mini" id="ev-chip" title="Досье улик">
+          <span class="ev-chip-mini"><span class="ev-dot"></span><b id="ev-count">0</b></span>
+        </button>'''
+if old in txt:
+    txt=txt.replace(old,new,1); n+=1; print("  + счётчик = ev-chip (открывает досье)")
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print(f"✓ index.html: {n}")
+
+# app.js: rapport стартует с 50 (был 0 — потому шкала на нуле)
+path2="src/main/resources/static/app.js"
+with open(path2,encoding="utf-8") as f: txt2=f.read()
+n2=0
+txt2=txt2.replace("lastEnergyTs:0, rapport:0, skill:30, onboarded:false",
+                  "lastEnergyTs:0, rapport:50, skill:30, onboarded:false")
+n2+=1; print("  + rapport старт 50 (было 0)")
+# Миграция: если у существующего профиля rapport<=20 от старой системы — поднять к 50
+if "_migrateRapport" not in txt2:
+    anchor="function updateScaleBars(){"
+    mig='''var _migrateRapport=(function(){
+  try{ var p=App.profile; if(p && (p.rapport===0||p.rapport===undefined) && !p._rapMigrated){ p.rapport=50; p._rapMigrated=true; saveProfile(); } }catch(_){}
+})();
+'''
+    txt2=txt2.replace(anchor, mig+anchor, 1); n2+=1; print("  + миграция старого rapport→50")
+with open(path2,"w",encoding="utf-8") as f: f.write(txt2)
+print(f"✓ app.js: {n2}")
+PYEOF
+
+
+echo ""; echo "══ 6/6  сюжет — Патрульный как реплика + 'проклятие' ══"
+python3 - << 'PYEOF'
 import json
-
 path="src/main/resources/static/scenarios/case001.json"
 d=json.load(open(path,encoding='utf-8'))
-d['title']='Пустой постамент'
-d['start']='L1_c1'
-d['truth']={'method':'trick','watchman':'bribed','mastermind':'curator'}
+ev=d['events']
+n=0
 
-E={
- # ─── АКТ 1: Прибытие ───
- 'L1_c1':{'badge':'Октябрь 1987','title':'Дождь над кварталом','linear':True,'next':'L1_c2',
-   'text':'Город тонул в дожде третьи сутки. Вода стекала по витринам, по афишам, по лицам — смывала пыль, но не грязь. Полицейский «Форд» резал лужи, и дворники мотались по стеклу, как метроном, отсчитывающий чьё-то последнее время.',
-   'dialogue':'Рекрут: «Что у нас по музею?»\nСдвиг: «Директор. Растворился прямо из запертого зала — за час до открытия выставки».'},
- 'L1_c2':{'badge':'Напарник','title':'Плёнка в темноте','linear':True,'next':'L1_c3','speaker':'shift',
-   'text':'Сдвиг сидел неподвижно, надвинув шляпу на глаза. Крутил кассету — вперёд, назад. Щелчок. Тишина. Щелчок. Слушал так, будто разбирал чужую жизнь по слогам.',
-   'dialogue':'Сдвиг: «Веришь в проклятия, малыш? Полгорода уже верит. Боятся переступить порог музея».\nРекрут: «Я верю в улики. Призраки их не оставляют».\nСдвиг: «Потому ты и сидишь в этой машине рядом со мной».'},
- 'L1_c3':{'badge':'Музей','title':'Каменные львы','linear':True,'next':'L1_c4','speaker':'recruit',
-   'text':'Музей вырастал из дождя чёрной готической громадой. Два каменных льва у лестницы скалились в потёках воды, и синие отсветы мигалок ползли по их мордам, как живые тени.',
-   'dialogue':'Рекрут: «Заперто изнутри. Ни окон, ни второго выхода. Как человек уходит из такой комнаты?»\nСдвиг: «Никак. Если уходит сам».'},
- 'L1_c4':{'badge':'Метод','title':'Треск сухой ветки','linear':True,'next':'L1_c5','speaker':'shift',
-   'text':'Сдвиг усмехнулся — коротко, сухо, будто переломили ветку.',
-   'dialogue':'Сдвиг: «Запертая комната. Старейший фокус в мире. Люди готовы поверить в магию — лишь бы не думать».\nРекрут: «А во что веришь ты?»\nСдвиг: «В то, что за каждым фокусом стоит механик. Идём искать его руки».'},
- 'L1_c5':{'badge':'Порог','title':'Запах грозы','linear':True,'next':'L1_c6','speaker':'shift',
-   'text':'За лентой оцепления воздух был странный. Старая бумага, нафталин — и поверх всего что-то едкое, металлическое. Озон. Так пахнет после молнии. Только грозы здесь не было.',
-   'dialogue':'Сдвиг: «Чувствуешь? Гроза за закрытой дверью. Запомни этот запах, малыш. Он нам ещё аукнется».'},
- 'L1_c6':{'badge':'Главный зал','title':'Пустой постамент','linear':True,'next':'L1_c7',
-   'text':'Зал тонул в полумраке колонн. В самом центре — пустой постамент и опрокинутый стул. Здесь директор должен был встречать гостей. Вместо него остались только тишина да холодный блеск мрамора.',
-   'dialogue':'Патрульный: «Дверь была заперта изнутри, клянусь чем угодно! Это проклятие основателей, не иначе!»\nСдвиг: «Проклятия не оставляют следов на полу. А здесь — оставлено».'},
- 'L1_c7':{'badge':'Первый след','title':'Лужа у стены','linear':True,'next':'L1_c8','speaker':'shift',
-   'text':'Сдвиг не стал слушать про проклятия. Он опустился на колено у тёмной лужи возле стены, тронул её пальцем в перчатке и поднёс к лицу. Втянул запах.',
-   'dialogue':'Сдвиг: «Проклятие в сапогах одиннадцатого размера. И пахнет машинным маслом».\nРекрут: «Думаешь, кто-то из своих?»\nСдвиг: «Думаю, призраки не смазывают петли. А кто-то здесь — смазал. И тщательно».'},
- 'L1_c8':{'badge':'Твой ход','title':'Надевай перчатки','linear':True,'next':'e0','speaker':'shift',
-   'text':'Он поднял на меня взгляд — холоднее ноябрьского ливня за окном. И в этом взгляде я прочёл: детство кончилось. Первое настоящее дело начиналось здесь, на холодном мраморе, под шум дождя.',
-   'dialogue':'Сдвиг: «Пора показать, чему тебя учили. Надевай перчатки».\nРекрут: «С чего начнём?»\nСдвиг: «С того, что проглядели все остальные. Смотри не глазами — головой».'},
+# L1_c6: реплика Патрульного шла как текст автора. Делаем speaker + переписываем "проклятие основателей"
+ev['L1_c6']['text']='Зал тонул в полумраке колонн. В центре — пустой постамент и опрокинутый стул. Молоденький патрульный у входа нервно козырнул: «Дверь была заперта изнутри, я сам проверял замок. Тут дело нечисто». Сдвиг лишь хмыкнул.'
+ev['L1_c6']['dialogue']='Сдвиг: «Нечисто — это верно. Только пахнет здесь не чертовщиной, а машинным маслом».'
+ev['L1_c6']['speaker']='shift'
+n+=1
+print("  + L1_c6: Патрульный как реплика, 'проклятие основателей' переписано")
 
- # ─── АКТ 2: Осмотр — РАЗВИЛКА 1 ───
- 'e0':{'badge':'Главный зал','title':'С чего начать','intro':'Зал заперт изнутри, директора нет. Только опрокинутый стул да запах озона в воздухе. Осмотр можно повести по-разному — и Сдвиг это видит.',
-   'left':{'label':'Довериться чутью — войти первым','set':{'approach':'sharp'},'dscore':6,'rapport':-2,
-     'evidence':'Ты шагнул вперёд раньше Сдвига, не дожидаясь команды. Он чуть приподнял бровь — но смолчал. Кажется, отметил.','to':'eL2a'},
-   'right':{'label':'Идти за Сдвигом, перенять метод','set':{'approach':'trust'},'dscore':0,'rapport':6,
-     'evidence':'Ты пропустил Сдвига вперёд и встал за плечом. «Смотри, как смотрю я», — бросил он, не оборачиваясь.','to':'eL2b'}},
-
- 'eL2a':{'badge':'След','title':'Капля у стены',
-   'text':'Ты двинулся первым, и взгляд сам зацепился за деталь: у стены растеклось масляное пятно, а рядом — свежая царапина на старом паркете. Будто что-то тяжёлое волокли к дальней панели. Здесь стоит копнуть глубже.',
-   'hint':'В масле и борозде есть система. Найди её — и поймёшь, что тащили через зал.',
-   'clue':{'id':'oil','name':'Машинное масло','icon':'⚙️','proof':'Свежее масло и глубокая борозда в паркете. Кто-то волок через зал тяжёлый механизм — совсем недавно.'},
-   'react':'Сдвиг: «Масло и след волочения. Видишь, малыш? Никакой мистики — голая механика».\nРекрут: «Значит, в зале было что-то тяжёлое. И его убрали».',
-   'left':{'label':'К надорванной портьере','to':'eMeetEleanor'},'right':{'label':'Осмотреть стенную панель','to':'eMeetEleanor'}},
- 'eL2b':{'badge':'След','title':'Указка наставника',
-   'text':'Сдвиг присел над лужей первым. «Масло. Театральное, не машинное — таким смазывают сцену, чтобы не скрипела». Он кивнул тебе на тонкую борозду у стены, уча замечать то, что кричит в тишине.',
-   'hint':'Сдвиг показал направление. Разбери след до конца — и узнаешь, что тут двигали.',
-   'clue':{'id':'oil','name':'Машинное масло','icon':'⚙️','proof':'Свежее масло и глубокая борозда в паркете. Кто-то волок через зал тяжёлый механизм — совсем недавно.'},
-   'react':'Сдвиг: «Запомнил? След волочения ведёт к стене. К панели».\nРекрут: «Туда что-то закатили. Или выкатили».',
-   'left':{'label':'К надорванной портьере','to':'eMeetEleanor'},'right':{'label':'Осмотреть стенную панель','to':'eMeetEleanor'}},
-
- # ─── Эленор — РАЗВИЛКА 2 ───
- 'eMeetEleanor':{'badge':'Свидетель','title':'Женщина у колонны','speaker':'eleanor','linear':True,'next':'eEleanorChoice',
-   'text':'У колонны застыла женщина в халате реставратора. Бледная как мел, пальцы стиснуты в замок, чтобы не дрожали. Это она нашла пустой зал утром — и теперь смотрит на полицию так, будто ждёт наручников на свои запястья.',
-   'dialogue':'Эленор: «Я пришла открыть зал к утренней смене. А его… его просто нет. Дверь заперта, ключи всю ночь были у меня. Клянусь, я ничего не знаю!»'},
- 'eEleanorChoice':{'badge':'Допрос','title':'Как её разговорить','intro':'Свидетельница на грани. Надавишь по протоколу — выложит факты, но захлопнется. Успокоишь — вспомнит больше, чем сама ожидает. Выбор за тобой.',
-   'left':{'label':'Допросить жёстко, по протоколу','set':{'eleanor':'pressed'},'dscore':6,'rapport':-8,
-     'evidence':'Ты повёл допрос сухо, на одних фактах. Эленор сжалась, голос упал до шёпота, и она замкнулась. Сдвиг отвёл взгляд — ему это не понравилось.','to':'eL2c2'},
-   'right':{'label':'Успокоить, говорить мягко','set':{'eleanor':'calm'},'dscore':2,'rapport':10,
-     'evidence':'Ты заговорил тихо, без нажима. Эленор выдохнула — и вдруг вспомнила: ночью у чёрного хода стоял фургон. Длинный, без единого окна.','clue':{'id':'van_hint','name':'Фургон Эленор','icon':'🚐','proof':'Эленор видела у чёрного хода фургон без окон. Глухой, как гроб на колёсах.'},'to':'eL2c2'}},
-
- 'eL2c2':{'badge':'Зал','title':'Надорванная портьера',
-   'text':'Вдоль фресок тянулись тяжёлые бархатные шторы — реликвии прошлого века. Одна надорвана у самого пола, и из-за неё тянет сквозняком. Холодным. Уличным. Которого в запертом зале быть никак не может.',
-   'hint':'Сквозняк не врёт. За портьерой что-то спрятано — отдёрни её.',
-   'clue':{'id':'portiera','name':'Надорванная портьера','icon':'🪟','proof':'Штора надорвана изнутри, за ней — сквозняк. Там скрытый проём в стене.'},
-   'react':'Рекрут: «Сквозняк из глухой стены. За ней пустота».\nСдвиг: «Не пустота, малыш. Ход. Кто-то прорезал в музее чёрную дверь».',
-   'left':{'label':'Отдёрнуть портьеру','to':'eL2c3'},'right':{'label':'Простучать стену рядом','to':'eL2c3'}},
- 'eL2c3':{'badge':'За портьерой','title':'Чужая деталь',
-   'text':'За шторой пряталась стенная панель, опутанная проводкой. Среди чёрных от времени предохранителей эпохи Эдисона тускло блестело что-то чужое — новенькая промышленная шестерёнка. В музейной электрике ей не место.',
-   'hint':'Эта деталь — из другого мира. Разбери механизм, и поймёшь, что она держала.',
-   'clue':{'id':'detail','name':'Чужая деталь','icon':'⚙️','proof':'Промышленная шестерёнка, каких в музее нет. Часть подъёмника или лебёдки — современной, мощной.'},
-   'react':'Сдвиг: «Шестерёнка от лебёдки. Промышленной. Теперь сложи всё: масло, борозда, ход за стеной, подъёмник».\nРекрут: «Получается… его не похитили на глазах. Его опустили вниз. Под пол».\nСдвиг: «Вот теперь ты думаешь головой».',
-   'left':{'label':'Срезать провод на улику','to':'eShift1'},'right':{'label':'Сфотографировать схему','to':'eShift1'}},
-
- # ─── РАЗВИЛКА 3: версия ───
- 'eShift1':{'shift':True,'badge':'ВЕРСИЯ · 1','title':'Как он исчез',
-   'intro':'Картина сложилась — но в неё можно поверить двумя способами. Реши, что случилось в этом зале. Твоя версия станет официальной.',
-   'a':{'label':'◄ Проклятие: он растворился','vtext':'Город прав. Зал проклят, директор исчез в воздухе. Дело закрыто страхом.','set':{'method':'ghost'},'bad':True,'dscore':-10,'rapport':-3,'to':'eL3c1'},
-   'b':{'label':'Трюк: люк и лебёдка ►','vtext':'Ход за стеной, лебёдка, масло. Человека опустили под пол и увели служебным тоннелем. Чистая работа иллюзиониста.','set':{'method':'trick'},'dscore':12,'rapport':2,'to':'eL3c1'}},
-
- # ─── АКТ 3: Сторож — РАЗВИЛКА 4 ───
- 'eL3c1':{'badge':'Подсобка','title':'Сторож Миллер','speaker':'miller','linear':True,'next':'eL3Choice',
-   'text':'В каморке под лестницей сгорбился на колченогом стуле старик в форме охраны. От него тянуло дешёвым бурбоном. Всю ночь под куполом кто-то два часа кряду возился с железом — а сторож клянётся, что не слышал ни звука.',
-   'dialogue':'Миллер: «Я спал, начальник. Вот те крест, ничего не видел и не слышал. Старый стал, сплю как убитый».'},
- 'eL3Choice':{'badge':'Допрос','title':'Разговор со сторожем','intro':'Старик дрожит и врёт — это видно за версту. Надавишь — расколется быстро, но со страху многое утаит. Поговоришь по-людски — разоткровенничается.',
-   'left':{'label':'Надавить, прижать к стене','set':{'pressure':'hard'},'dscore':6,'rapport':-8,
-     'evidence':'Ты повысил голос и навис над стариком. Он раскололся в секунду — но от ужаса замкнулся, выдав только самое необходимое.','to':'eL3hard'},
-   'right':{'label':'Сесть рядом, говорить по-людски','set':{'pressure':'soft'},'dscore':2,'rapport':10,
-     'evidence':'Ты сел рядом, заговорил тихо, без угроз. Миллер обмяк, глаза заблестели — и он рассказал куда больше, чем собирался.','to':'eL3soft'}},
-
- 'eL3hard':{'badge':'Нажим','title':'Сломленный','speaker':'miller',
-   'text':'Миллер вжался в спинку стула, голос сорвался на фальцет.',
-   'dialogue':'Миллер: «Да! Заплатили мне, заплатили! Велели вырубить рубильник на пятнадцать минут — и всё, и всё! Больше ничего не знаю, отвяжитесь!»',
-   'left':{'label':'Обыскать его','to':'eL3c3'},'right':{'label':'Дать выговориться','to':'eL3c3'}},
- 'eL3soft':{'badge':'Доверие','title':'Исповедь','speaker':'miller',
-   'text':'Миллер заговорил тихо, уставившись в пол. И вдруг выложил деталь, которой не было ни в одном протоколе.',
-   'dialogue':'Миллер: «Голос в трубке был… не человеческий. Железный, будто через жестянку. А ещё — у чёрного хода всю ночь стоял фургон. Длинный, без окон. Вот это я видел точно, чем угодно поклянусь».',
-   'clue':{'id':'van','name':'Фургон без окон','icon':'🚐','proof':'Сторож подтвердил: фургон без окон у чёрного хода. На нём и вывезли директора из города.'},
-   'react':'Сдвиг: «Фургон без окон и железный голос в трубке. Знакомый почерк».\nРекрут: «Ты уже встречал такое?»\nСдвиг: «Встречал. Давно. И не здесь».',
-   'left':{'label':'Обыскать его','to':'eL3c3'},'right':{'label':'Поблагодарить и обыскать','to':'eL3c3'}},
-
- 'eL3c3':{'badge':'Улика','title':'Пачка под резинкой','speaker':'shift',
-   'text':'Сдвиг подошёл сзади бесшумно и одним движением вытянул из кармана сторожа толстую пачку купюр, перетянутую аптечной резинкой. Деньги были новые. Хрустящие. Пахли типографской краской.',
-   'hint':'Деньги слишком свежие для зарплаты сторожа. Разберись, откуда они — и подтвердишь подкуп.',
-   'clue':{'id':'bribe','name':'Пачка банкнот','icon':'💵','proof':'Новые, нетронутые купюры в кармане нищего сторожа. Цена его слепоты — пятнадцать минут темноты.'},
-   'react':'Сдвиг: «Зарплата выросла, старик? Или кто-то купил твою слепоту оптом?»\nРекрут: «Купюры из одной пачки. Свежие. Ему заплатили вперёд».',
-   'left':{'label':'Забрать как улику','to':'eShift2'},'right':{'label':'Предъявить сторожу','to':'eShift2'}},
-
- # ─── РАЗВИЛКА 5: роль сторожа ───
- 'eShift2':{'shift':True,'badge':'ВЕРСИЯ · 2','title':'Слепота сторожа',
-   'intro':'Кем был Миллер в этой пьесе — случайным пьяницей при кассе или винтиком чужого плана? Реши, как ляжет его роль в деле.',
-   'a':{'label':'◄ Случайность: просто украл','vtext':'Спившийся старик польстился на лёгкие деньги из кассы. Бывает.','set':{'watchman':'honest'},'bad':True,'dscore':-8,'rapport':-2,'to':'eL4c1'},
-   'b':{'label':'Подкуп: его наняли ►','vtext':'Железный голос в трубке, свежие купюры, точные пятнадцать минут. Его наняли — холодно и расчётливо.','set':{'watchman':'bribed'},'dscore':10,'rapport':2,'to':'eL4c1'}},
-
- # ─── АКТ 4: След Куратора ───
- 'eL4c1':{'badge':'Кабинет','title':'Красный огонёк','speaker':None,
-   'text':'Кабинет директора дышал дубом, старым табаком и большими деньгами. Картины Возрождения смотрели со стен пустыми глазами. На массивном столе мигал красным автоответчик — единственное живое пятно в мёртвой комнате. Следов борьбы не было. Будто хозяин вышел на минуту. Пять часов назад.',
-   'hint':'Красный огонёк — это сообщение, оставленное в ту самую ночь. Послушай плёнку.',
-   'clue':{'id':'answering','name':'Запись на плёнке','icon':'📼','proof':'Сообщение на автоответчике оставлено в ночь исчезновения. Голос — механический, нечеловеческий.'},
-   'react':'Рекрут: «Сообщение пришло в ночь, когда он пропал».\nСдвиг: «Значит, тот, кто звонил, знал, что директор уже не снимет трубку».',
-   'left':{'label':'Нажать «play»','to':'eL4c2'},'right':{'label':'Сперва осмотреть стол','to':'eL4c2'}},
- 'eL4c2':{'badge':'Голос','title':'Визитка Куратора','speaker':'kurator',
-   'text':'Из динамика пополз голос — искажённый, металлический, будто собранный из обрезков чужой речи. Спокойный. Довольный собой до дрожи.',
-   'dialogue':'Куратор: «Здравствуй, Сдвиг. Узнаёшь руку мастера? Я назвал эту работу „Вознесение скупца". Директор не умел делиться искусством с миром. Что ж — теперь он сам стал частью коллекции».',
-   'left':{'label':'Дослушать до конца','to':'eL4c3'},'right':{'label':'Остановить плёнку','to':'eL4c3'}},
- 'eL4c3':{'badge':'Прошлое','title':'Пять лет спустя','speaker':'shift',
-   'text':'Сдвиг выдернул кассету из аппарата и медленно покрутил в длинных пальцах. Лицо застыло, как мрамор в зале. Я впервые увидел на нём не усмешку — тень.',
-   'dialogue':'Сдвиг: «Куратор. Пять лет назад он провернул то же самое в Чикаго. Тогда я опоздал на четыре минуты. С тех пор считаю их каждую ночь. А теперь он здесь, в моём городе — и снова зовёт меня по имени».',
-   'left':{'label':'Спросить про Чикаго','to':'eShift3'},'right':{'label':'Не лезть в рану — к делу','to':'eShift3'}},
-
- # ─── РАЗВИЛКА 6: почерк ───
- 'eShift3':{'shift':True,'badge':'ВЕРСИЯ · 3','title':'Чья подпись',
-   'intro':'Всё представление — чьих рук дело? Назови автора этой жестокой пьесы, и сцена закроется. Имя решает, по чьему следу вы пойдёте дальше.',
-   'a':{'label':'◄ Мелкий вор-одиночка','vtext':'Какой-нибудь жулик позарился на экспонаты и обставил кражу. Скучно, но бывает.','set':{'mastermind':'thief'},'bad':True,'dscore':-8,'rapport':-2,'to':'eAccuse'},
-   'b':{'label':'Куратор. Он вернулся ►','vtext':'Театр, железный голос, инсценировка как искусство, имя на плёнке. Это его почерк. Куратор вернулся за старым долгом.','set':{'mastermind':'curator'},'dscore':12,'rapport':3,'to':'eAccuse'}},
-
- # ─── ФИНАЛ — РАЗВИЛКА 7 ───
- 'eAccuse':{'shift':True,'badge':'Финал главы','title':'Старый город',
-   'text':'Сдвиг отмотал плёнку и прибавил звук. Под голосом Куратора проступил фон — мерный механический ритм. Ту-тук. Ту-тук. Тяжёлый стук печатного станка, какие остались только в одном месте города.',
-   'dialogue':'Сдвиг: «Старый город. Заброшенные типографии на улице Печатников. Куратор готовит там новую „выставку". Едем — пока он не запер двери и за этим директором».',
-   'intro':'Куратор оставил след нарочно — это приглашение, не оплошность. Вопрос в том, как ты примешь вызов.',
-   'a':{'label':'◄ По уставу: вызвать подмогу','vtext':'Оцепить квартал, дождаться группы. Дольше — зато никто не погибнет по-глупому.','set':{'approach':'trust'},'dscore':2,'rapport':6,'to':'__resolve__'},
-   'b':{'label':'Сами, сейчас, вдвоём ►','vtext':'Времени нет — каждая минута стоит человеку жизни. Идём вдвоём, как в старые времена.','set':{'approach':'sharp'},'dscore':6,'rapport':-2,'to':'__resolve__'}},
-}
-
-d['events']=E
-d['endings']={
- 'win':{'kind':'win','mark':'★','verdict':'ДЕЛО РАСКРЫТО',
-   'text':'Ты прочёл сцену начисто, до последней капли масла: трюк, подкупленный сторож, почерк Куратора. Сдвиг посмотрел на тебя и кивнул — впервые без тени усмешки. «А ты соображаешь, малыш. Старый город ждёт». Директора ещё можно спасти. А на пустом постаменте белел листок: «Браво, детектив. До встречи на премьере».'},
- 'partial':{'kind':'partial','mark':'☆','verdict':'СЛЕД ВЗЯТ',
-   'text':'Не всё сошлось до конца, но главного хватило: Куратор в городе, директор пока жив, и у вас есть адрес. «Сойдёт для первого раза, — буркнул Сдвиг, надвигая шляпу. — Но в следующий раз думай быстрее. Иначе он будет думать за тебя».'},
- 'fail':{'kind':'fail','mark':'✗','verdict':'СЛЕД ПОТЕРЯН',
-   'text':'Ты пошёл не по той нити. Пока вы спорили о проклятиях, фургон без окон растаял в переулках Старого города. «Призраков не существует, малыш, — тихо сказал Сдвиг, глядя в дождь. — Есть только те, кого мы не успели найти вовремя». Директор пропал. И Куратор — вместе с ним. Пока.'}}
+# Уберём другие упоминания "проклятие основателей" если есть
+for k,e in ev.items():
+    for f in ['text','dialogue']:
+        v=e.get(f,'')
+        if 'проклятие основателей' in v.lower() or 'проклятие семьи' in v.lower():
+            e[f]=v.replace('Это проклятие основателей, не иначе!','Тут дело нечисто!').replace('проклятие семьи основателя','чью-то злую волю')
+            n+=1
 
 json.dump(d,open(path,'w',encoding='utf-8'),ensure_ascii=False,indent=2)
-print(f"✓ Литературная переработка: {len(E)} событий")
-print(f"  Реакции после улик: {sum(1 for e in E.values() if e.get('react'))}")
-print(f"  Наводки (hint): {sum(1 for e in E.values() if e.get('hint'))}")
-
-# Валидация
-ok=True
-for k,e in E.items():
-    for t in [e.get('next')]+[e.get(s,{}).get('to') for s in ['left','right','a','b']]:
-        if t and t!='__resolve__' and t not in E:
-            print(f"  ✗ {k}→{t} НЕТ"); ok=False
-if ok: print("  ✓ Все переходы валидны")
-
-STORY_EOF
-
-
-echo ""; echo "══ 2/4  feed.js — реакции после улики + наводки ════"
-python3 - << 'PYEOF'
-path="src/main/resources/static/games/feed.js"
-with open(path,encoding="utf-8") as f: txt=f.read()
-n=0
-
-# В showContinue: на кнопке "Найти улики" показываем наводку (hint), если есть
-old_btn='''      } else {
-        const btn=document.createElement('button'); btn.className='feed2-find';
-        btn.textContent='🔍 Найти улики';
-        btn.onclick=()=>{ openMiniGame(ev); };
-        _wrap.appendChild(btn);
-      }'''
-new_btn='''      } else {
-        // наводка перед мини-игрой (если у события есть hint и ещё нет улики)
-        if(ev.hint && ev.clue){
-          var hintEl=_wrap.querySelector('.feed2-hint');
-          if(!hintEl){
-            hintEl=document.createElement('div'); hintEl.className='feed2-hint';
-            hintEl.innerHTML='<span class="fh-ico">💡</span>'+esc(ev.hint);
-            _wrap.appendChild(hintEl);
-          }
-        }
-        const btn=document.createElement('button'); btn.className='feed2-find';
-        btn.textContent='🔍 Найти улики';
-        btn.onclick=()=>{ openMiniGame(ev); };
-        _wrap.appendChild(btn);
-      }'''
-if old_btn in txt:
-    txt=txt.replace(old_btn,new_btn,1); n+=1; print("  + наводка (hint) перед мини-игрой")
-
-# Сохраняем react-реакцию в _pendingClue потоке: после улики показать реакцию
-# В openMiniGame запоминаем react
-old_mini='''    if(window.openHintGame){ window._pendingClue=ev.clue||null; openHintGame(ev); }'''
-new_mini='''    if(window.openHintGame){ window._pendingClue=ev.clue||null; window._pendingReact=ev.react||null; openHintGame(ev); }'''
-if old_mini in txt:
-    txt=txt.replace(old_mini,new_mini,1); n+=1; print("  + react запоминается для показа после улики")
-
-with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ feed.js: %d"%n)
+print(f"✓ сюжет: {n}")
 PYEOF
 
 
-echo ""; echo "══ 3/4  app.js — показ реакции после улики ═════════"
-python3 - << 'PYEOF'
-path="src/main/resources/static/app.js"
-with open(path,encoding="utf-8") as f: txt=f.read()
-n=0
-# После закрытия улики — если есть _pendingReact, показать диалог-реакцию в ленте, потом решение
-old='''  var _goDecision=function(){
-    if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} }
-    else { try{ startDecisionMode(); }catch(_){} }
-  };'''
-new='''  var _goDecision=function(){
-    // показываем реакцию персонажей на находку (если есть), потом решение
-    if(window._pendingReact && window.Feed && Feed.pushReaction){
-      var rc=window._pendingReact; window._pendingReact=null;
-      Feed.pushReaction(rc, function(){
-        if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} } else { try{ startDecisionMode(); }catch(_){} }
-      });
-      return;
-    }
-    if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} }
-    else { try{ startDecisionMode(); }catch(_){} }
-  };'''
-if old in txt:
-    txt=txt.replace(old,new,1); n+=1; print("  + реакция показывается после улики, перед решением")
-with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ app.js: %d"%n)
-PYEOF
-
-
-echo ""; echo "══ 4/4  feed.js — Feed.pushReaction + CSS фиксы ════"
-python3 - << 'PYEOF'
-path="src/main/resources/static/games/feed.js"
-with open(path,encoding="utf-8") as f: txt=f.read()
-n=0
-
-# Добавляем метод pushReaction в Feed API
-old_api='''    enterDecision(){ enterDecisionMode(); },'''
-new_api='''    enterDecision(){ enterDecisionMode(); },
-    pushReaction(dialogueStr, done){ showReaction(dialogueStr, done); },'''
-if old_api in txt:
-    txt=txt.replace(old_api,new_api,1); n+=1; print("  + Feed.pushReaction в API")
-
-# Функция showReaction — выводит реплики реакции в ленту по очереди
-if "function showReaction" not in txt:
-    anchor="  function enterDecisionMode(){"
-    fn='''  function showReaction(dialogueStr, done){
-    // разбираем строку реакции на реплики и показываем в ленте
-    if(!dialogueStr){ done&&done(); return; }
-    var lines=dialogueStr.split('\\n').filter(function(s){return s.trim();});
-    var msgs=lines.map(function(line){
-      var m=line.match(/^([^:]+):\\s*(.+)$/);
-      if(m){
-        var spk=m[1].trim().toLowerCase();
-        var map={'сдвиг':'shift','рекрут':'recruit','миллер':'miller','эленор':'eleanor','куратор':'kurator','патрульный':'narrator'};
-        return {type:'speech', speaker:map[spk]||'narrator', text:m[2].trim()};
-      }
-      return {type:'narr', text:line.trim()};
-    });
-    // разделитель "после находки"
-    var sep=document.createElement('div'); sep.className='feed2-sep';
-    sep.innerHTML='<span>улика найдена</span>'; _wrap.appendChild(sep);
-    var i=0;
-    function nextR(){
-      if(i<msgs.length){
-        addMessage(msgs[i], function(){}); i++;
-        scrollEnd();
-        var old=_wrap.querySelector('.feed2-next'); if(old)old.remove();
-        if(i<msgs.length){
-          var hint=document.createElement('div'); hint.className='feed2-next';
-          hint.textContent='▸ тап — далее'; _wrap.appendChild(hint);
-          _wrap.onclick=function(){ if(finishCurrentTyping())return; var h=_wrap.querySelector('.feed2-next'); if(h){h.remove(); nextR();} };
-        } else {
-          _wrap.onclick=null; setTimeout(function(){ done&&done(); }, 500);
-        }
-      }
-    }
-    nextR();
-  }
-'''
-    txt=txt.replace(anchor, fn+anchor, 1); n+=1; print("  + showReaction (реплики после находки)")
-
-# CSS: наводка-hint + ФИКС переполнения карточки (текст/кнопки за угол)
-if ".feed2-hint{" not in txt:
-    anchor2="    .feed2-find{"
-    css='''    .feed2-hint{align-self:center;max-width:88%;margin:4px auto;padding:10px 14px;border-radius:12px;
-      background:rgba(255,207,107,.1);border:1px solid rgba(255,207,107,.28);color:#ffd98a;
-      font-size:12.5px;line-height:1.45;display:flex;gap:8px;align-items:flex-start;font-style:italic;}
-    .feed2-hint .fh-ico{font-size:14px;flex-shrink:0;}
-'''
-    txt=txt.replace(anchor2, css+anchor2, 1); n+=1; print("  + CSS наводки")
-
-# ФИКС карточки: текст не вылезает, кнопки в границах
-old_card="    .dc-inner{padding:20px 20px 22px;text-align:center;}"
-new_card="    .dc-inner{padding:18px 16px 20px;text-align:center;overflow:hidden;box-sizing:border-box;width:100%;}"
-if old_card in txt:
-    txt=txt.replace(old_card,new_card,1); n+=1; print("  + dc-inner: overflow hidden, box-sizing")
-
-old_title="    .dc-title{font-family:Unbounded,sans-serif;font-weight:900;font-size:20px;line-height:1.12;color:#fff;margin-bottom:8px;}"
-new_title="    .dc-title{font-family:Unbounded,sans-serif;font-weight:900;font-size:18px;line-height:1.15;color:#fff;margin-bottom:8px;word-wrap:break-word;overflow-wrap:break-word;hyphens:auto;}"
-if old_title in txt:
-    txt=txt.replace(old_title,new_title,1); n+=1; print("  + dc-title: перенос длинных слов")
-
-old_choice="    .dc-choice{flex:1;display:flex;align-items:center;gap:7px;padding:13px 12px;border-radius:13px;\n      font-family:Unbounded,sans-serif;font-weight:700;font-size:12px;line-height:1.2;transition:transform .15s;}"
-new_choice="    .dc-choice{flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding:12px 10px;border-radius:12px;\n      font-family:Unbounded,sans-serif;font-weight:700;font-size:11px;line-height:1.2;transition:transform .15s;\n      word-wrap:break-word;overflow-wrap:break-word;hyphens:auto;box-sizing:border-box;}"
-if old_choice in txt:
-    txt=txt.replace(old_choice,new_choice,1); n+=1; print("  + dc-choice: не вылезает, перенос слов")
-
-# dc-lbl перенос
-old_lbl="    .dc-lbl{flex:1;}"
-new_lbl="    .dc-lbl{flex:1;min-width:0;word-wrap:break-word;overflow-wrap:break-word;}"
-if old_lbl in txt:
-    txt=txt.replace(old_lbl,new_lbl,1); n+=1; print("  + dc-lbl: перенос")
-
-with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ feed.js: %d"%n)
-PYEOF
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R51 — литературный текст, реакции, наводки, фикс карточки"
-echo "   git add -A && git commit -m 'R51: literary rewrite + post-clue reactions + hints + card layout fix' && git push"
+echo "✅  R52 — аватары, лента, карточка, досье, шкала"
+echo "   git add -A && git commit -m 'R52: round avatars, talking anim, card layout, dossier, rapport fix' && git push"
 echo "═══════════════════════════════════════════════════════"

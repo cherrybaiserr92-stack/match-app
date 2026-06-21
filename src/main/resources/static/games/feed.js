@@ -49,15 +49,21 @@
     .feed2::-webkit-scrollbar{width:0;}
     .msg2{display:flex;gap:11px;opacity:0;transform:translateY(14px);animation:m2In .5s cubic-bezier(.2,1,.3,1) forwards;}
     @keyframes m2In{to{opacity:1;transform:none}}
-    .m2-av{width:56px;height:56px;border-radius:13px;flex-shrink:0;overflow:hidden;border:2px solid;position:relative;}
-    .m2-av img{position:absolute;width:175%;left:-37%;top:6%;max-width:none;}
-    /* индивидуальный кроп под персонажа */
-    .m2-av.av-shift img{width:200%;left:-50%;top:2%;}
-    .m2-av.av-recruit img{width:170%;left:-35%;top:7%;}
-    .m2-av.av-miller img{width:165%;left:-32%;top:6%;}
+    .m2-av{width:62px;height:62px;border-radius:50%;flex-shrink:0;overflow:hidden;border:2.5px solid;position:relative;}
+    .m2-av img{position:absolute;width:150%;left:-25%;top:8%;max-width:none;}
+    /* индивидуальный кроп — голова целиком влезает */
+    .m2-av.av-shift img{width:148%;left:-24%;top:9%;}
+    .m2-av.av-recruit img{width:150%;left:-25%;top:7%;}
+    .m2-av.av-miller img{width:145%;left:-22%;top:8%;}
+    .m2-av.av-eleanor img{width:150%;left:-25%;top:7%;}
+    .m2-av.av-kurator img{width:148%;left:-24%;top:8%;}
     .m2-ring{position:absolute;inset:-2px;border-radius:12px;opacity:0;transition:opacity .3s;}
     .msg2.active .m2-av{transform:scale(1.05);}
     .msg2.active .m2-ring{opacity:1;box-shadow:0 0 0 2px currentColor,0 0 16px currentColor;}
+    .m2-av.talking{animation:avTalk .7s ease-in-out infinite;}
+    @keyframes avTalk{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+    .m2-av.talking .m2-ring{animation:ringTalk .5s ease-in-out infinite;}
+    @keyframes ringTalk{0%,100%{box-shadow:0 0 0 2px currentColor,0 0 12px currentColor;opacity:.9}50%{box-shadow:0 0 0 3px currentColor,0 0 22px currentColor;opacity:1}}
     .m2-body{flex:1;min-width:0;}
     .m2-head{display:flex;align-items:center;gap:7px;margin-bottom:4px;}
     .m2-nm{font-family:Unbounded,sans-serif;font-weight:700;font-size:12px;letter-spacing:.02em;}
@@ -105,7 +111,7 @@
       font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(200,134,10,.32);}
     .decision-stage{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
       background:radial-gradient(70% 60% at 50% 45%,rgba(10,14,22,.7),rgba(6,8,13,.95));}
-    .dec-card{position:relative;width:min(74vw,300px);border-radius:18px;overflow:hidden;z-index:5;
+    .dec-card{position:relative;width:min(80vw,320px);margin-top:56px;border-radius:18px;overflow:hidden;z-index:5;
       background:linear-gradient(160deg,rgba(28,23,16,.99),rgba(13,11,8,.99));
       border:1.5px solid var(--acc,#c8860a);box-shadow:0 16px 44px rgba(0,0,0,.6),0 0 28px rgba(200,134,10,.2);
       animation:decT 2.8s ease-in-out infinite;}
@@ -153,9 +159,9 @@
     .oc-card:nth-child(1){transform:scale(1);opacity:1;}
     .oc-card:nth-child(2){transform:scale(.88);opacity:.78;}
     .oc-card:nth-child(3){transform:scale(.76);opacity:.56;}
-    .oc-hint{position:absolute;bottom:13%;left:0;right:0;text-align:center;font-size:11px;color:#c8a05a;
+    .oc-hint{position:absolute;bottom:6%;left:0;right:0;text-align:center;font-size:11px;color:#c8a05a;
       font-family:Unbounded,sans-serif;letter-spacing:.05em;}
-    .dec-timer{position:absolute;top:7%;left:50%;transform:translateX(-50%);z-index:8;
+    .dec-timer{position:absolute;top:2%;left:50%;transform:translateX(-50%);z-index:8;
       display:flex;flex-direction:column;align-items:center;gap:3px;}
     .dt-ring2{width:50px;height:50px;position:relative;}
     .dt-ring2 svg{width:100%;height:100%;transform:rotate(-90deg);}
@@ -168,6 +174,8 @@
     @keyframes dtP{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
     .feed2-sep{display:flex;align-items:center;gap:10px;margin:6px 2px;opacity:.5;}
     .feed2-sep::before,.feed2-sep::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(200,134,10,.4),transparent);}
+    .feed2-sep-thin{margin:10px 20%;opacity:.3;}
+    .feed2-sep-thin::before,.feed2-sep-thin::after{height:1px;}
     .feed2-sep span{font-family:Unbounded,sans-serif;font-size:9px;letter-spacing:.12em;color:#c8a05a;text-transform:uppercase;white-space:nowrap;}
     .msg2.m2-past{opacity:.62;}
     .msg2.m2-past .m2-av{filter:grayscale(.3) brightness(.85);}
@@ -197,9 +205,8 @@
   // статичный рендер прошлого события (вся реплики сразу, без печати)
   function renderStatic(evId){
     var ev=CASE.events[evId]; if(!ev) return;
-    if(ev.badge && _wrap.children.length>0){
-      var sep=document.createElement('div'); sep.className='feed2-sep';
-      sep.innerHTML='<span>'+esc(ev.badge)+'</span>'; _wrap.appendChild(sep);
+    if(_wrap.children.length>0){
+      var sep=document.createElement('div'); sep.className='feed2-sep feed2-sep-thin'; _wrap.appendChild(sep);
     }
     var msgs=buildMessages(ev);
     msgs.forEach(function(m){ addMessageStatic(m); });
@@ -235,10 +242,9 @@
     _wrap.querySelectorAll('.msg2').forEach(function(m){ m.classList.add('m2-past'); m.classList.remove('active'); });
     try{ if(window.updateCaseBg) updateCaseBg(); }catch(_){}
 
-    // разделитель главы перед новым событием (кроме первого)
-    if(_wrap.children.length>0 && ev.badge){
-      var sep=document.createElement('div'); sep.className='feed2-sep';
-      sep.innerHTML='<span>'+esc(ev.badge)+'</span>';
+    // тонкий разделитель между событиями (без текста-бейджа — он сбивал с толку)
+    if(_wrap.children.length>0){
+      var sep=document.createElement('div'); sep.className='feed2-sep feed2-sep-thin';
       _wrap.appendChild(sep);
     }
     const msgs=buildMessages(ev);
@@ -324,6 +330,9 @@
   /* печать текста с поддержкой {улики} */
   function typeInto(el, text, done, hasClues){
     el._full=text; el._typing=true;
+    // включаем "говорит" на аватаре этой реплики
+    var _msgEl=el.closest&&el.closest('.msg2'); var _avEl=_msgEl&&_msgEl.querySelector('.m2-av');
+    if(_avEl) _avEl.classList.add('talking');
     const plain=text.replace(/\{([^|]+)\|([^}]+)\}/g,'$1'); // для печати без разметки
     let i=0; el.innerHTML='<span class="m2-caret">▌</span>';
     clearInterval(el._tt);
@@ -333,6 +342,7 @@
         clearInterval(el._tt); el._typing=false;
         el.innerHTML=renderClues(text);
         if(hasClues) bindClues(el);
+        if(_avEl) _avEl.classList.remove('talking');
         done&&done(); return;
       }
       el.innerHTML=esc(plain.slice(0,i))+'<span class="m2-caret">▌</span>';
@@ -341,6 +351,7 @@
   function finishType(el){
     if(!el||!el._typing) return false;
     clearInterval(el._tt); el._typing=false;
+    var _m=el.closest&&el.closest('.msg2'); var _a=_m&&_m.querySelector('.m2-av'); if(_a)_a.classList.remove('talking');
     el.innerHTML=renderClues(el._full); bindClues(el); return true;
   }
 
@@ -384,7 +395,7 @@
     const old=_wrap.querySelector('.feed2-next,.feed2-find'); if(old)old.remove();
     if(!allShown){
       const hint=document.createElement('div'); hint.className='feed2-next';
-      hint.textContent='▸ тап — далее';
+      hint.textContent='далее ▸';
       hint.onclick=()=>{ if(finishCurrentTyping())return; hint.remove(); nextMsg(); };
       _wrap.appendChild(hint);
       // тап по ленте тоже продвигает
@@ -398,7 +409,7 @@
       _wrap.onclick=null;
       if(ev.linear){
         const hint=document.createElement('div'); hint.className='feed2-next';
-        hint.textContent='▸ тап — продолжить';
+        hint.textContent='далее ▸';
         hint.onclick=()=>{ advanceLinear(ev); };
         _wrap.appendChild(hint);
         _wrap.onclick=(e)=>{ if(!e.target.closest('.m2-clue')) advanceLinear(ev); };
@@ -474,7 +485,7 @@
         var old=_wrap.querySelector('.feed2-next'); if(old)old.remove();
         if(i<msgs.length){
           var hint=document.createElement('div'); hint.className='feed2-next';
-          hint.textContent='▸ тап — далее'; _wrap.appendChild(hint);
+          hint.textContent='далее ▸'; _wrap.appendChild(hint);
           _wrap.onclick=function(){ if(finishCurrentTyping())return; var h=_wrap.querySelector('.feed2-next'); if(h){h.remove(); nextR();} };
         } else {
           _wrap.onclick=null; setTimeout(function(){ done&&done(); }, 500);
@@ -490,9 +501,7 @@
     const opts=ev.shift?{left:ev.a,right:ev.b}:{left:ev.left,right:ev.right};
     const stage=document.getElementById('stage');
     const dec=document.createElement('div'); dec.className='decision-stage'; dec.id='dec-stage';
-    dec.innerHTML=cascadeHtml('left',collectOutcomes(opts.left))+
-      '<div class="dec-card" id="dec-card">'+decCardInner(ev)+'</div>'+
-      cascadeHtml('right',collectOutcomes(opts.right))+
+    dec.innerHTML='<div class="dec-card" id="dec-card">'+decCardInner(ev)+'</div>'+
       '<div class="dec-timer" id="dec-timer"><div class="dt-ring2"><svg viewBox="0 0 50 50">'+
       '<circle class="bg" cx="25" cy="25" r="21"/><circle class="fg" id="dec-fg" cx="25" cy="25" r="21"/></svg>'+
       '<div class="dt-n" id="dec-n">15</div></div></div><div class="oc-hint">← свайп решает →</div>';

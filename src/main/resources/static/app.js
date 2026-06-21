@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R51';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R52';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -25,7 +25,7 @@ const DEFAULT_PROFILE = {
   casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
   achievements:[], dailyStreak:0, lastDaily:null, sound:true,
-  lastEnergyTs:0, rapport:0, skill:30, onboarded:false
+  lastEnergyTs:0, rapport:50, skill:30, onboarded:false
 };
 
 /* ── DOM helpers ───────────────────────────────── */
@@ -805,6 +805,9 @@ function addRapport(n){
   p.rapport=clamp((p.rapport||0)+n,0,100); saveProfile();
   try{ updateScaleBars&&updateScaleBars(); scalePop&&scalePop('rap',n); }catch(_){}
 }
+var _migrateRapport=(function(){
+  try{ var p=App.profile; if(p && (p.rapport===0||p.rapport===undefined) && !p._rapMigrated){ p.rapport=50; p._rapMigrated=true; saveProfile(); } }catch(_){}
+})();
 function updateScaleBars(){
   var p=App.profile; if(!p) return;
   var rap=clamp(p.rapport||0,0,100), det=clamp(p.skill||30,0,100);
