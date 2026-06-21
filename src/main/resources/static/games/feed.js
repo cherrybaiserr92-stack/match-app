@@ -238,7 +238,13 @@
     const msgs=buildMessages(ev);
     let mi=0;
 
-    // показываем реплики по одной, тап продвигает
+    // если контента нет (shift-карта) — сразу к решению
+    if(msgs.length===0){
+      showContinue(ev, evId, function(){}, true);
+      try{ if(window.saveCaseState) saveCaseState(); }catch(_){}
+      return;
+    }
+
     function next(){
       if(mi<msgs.length){
         addMessage(msgs[mi], ()=>{}); mi++;
@@ -253,26 +259,27 @@
   /* событие → массив сообщений */
   function buildMessages(ev){
     const out=[];
-    // 1. нарратив (text) — если есть
+    // нарратив
     if(ev.text && ev.text.trim()){
       out.push({type:'narr', text:ev.text});
     }
-    // 2. прямая речь (dialogue может быть многострочной)
+    // прямая речь
     if(ev.dialogue && window.parseDialogue){
       const lines=parseDialogue(ev);
       lines.forEach(l=>{
         if(!l.speaker || l.speaker==='narrator'){
-          out.push({type:'narr', text:l.text}); // безымянная реплика = нарратив
+          out.push({type:'narr', text:l.text});
         } else {
           out.push({type:'speech', speaker:l.speaker, text:l.text});
         }
       });
     }
-    // 3. дедукция + улика (если у события есть clue)
-    if(ev.clue){
-      out.push({type:'deduce', clue:ev.clue,
-        text:ev.clue.proof.replace(ev.clue.name, '{'+ev.clue.name+'|'+ev.clue.name+'}')});
+    // shift-карта (выбор версии): показываем intro как реплику-вопрос
+    if(ev.shift && ev.intro){
+      out.push({type:'narr', text:ev.intro});
     }
+    // ВАЖНО: дедукция/улика тут НЕ добавляется — она появится ПОСЛЕ мини-игры
+    // (раньше спойлерило улику до находки)
     return out;
   }
 
@@ -389,6 +396,9 @@
         hint.onclick=()=>{ advanceLinear(ev); };
         _wrap.appendChild(hint);
         _wrap.onclick=(e)=>{ if(!e.target.closest('.m2-clue')) advanceLinear(ev); };
+      } else if(ev.shift){
+        // shift-карта: сразу карта-решение (выбор версии свайпом, без мини-игры)
+        enterDecisionMode();
       } else {
         const btn=document.createElement('button'); btn.className='feed2-find';
         btn.textContent='🔍 Найти улики';
