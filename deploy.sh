@@ -1,243 +1,203 @@
 #!/usr/bin/env bash
-# СДВИГ R55 — выбор пола Рекрута (М/Ж) + сброс прогресса + чистка вкладки Агент
+# СДВИГ R56 — выбор персонажа (показ), кнопки Агента (делегирование), подсказки без спойлера, досье
 set -e
-echo "══ штамп → R55 ══"
-sed -i "s/SDVIG_BUILD='R54'/SDVIG_BUILD='R55'/" src/main/resources/static/app.js
-sed -i 's/>R54</>R55</' src/main/resources/static/index.html
+echo "══ штамп → R56 ══"
+sed -i "s/SDVIG_BUILD='R55'/SDVIG_BUILD='R56'/" src/main/resources/static/app.js
+sed -i 's/>R55</>R56</' src/main/resources/static/index.html
 
-echo ""; echo "══ 1/5  профиль — поле gender + recruit-аватар по полу"
+echo ""; echo "══ 1/4  кнопки Агента — делегирование (переживает перерисовку)"
 python3 - << 'PYEOF'
 path="src/main/resources/static/app.js"
 with open(path,encoding="utf-8") as f: txt=f.read()
 n=0
 
-# gender в профиль
-txt=txt.replace("lastEnergyTs:0, rapport:50, skill:30, onboarded:false",
-                "lastEnergyTs:0, rapport:50, skill:30, gender:'m', onboarded:false")
-n+=1; print("  + gender в профиль")
+# Заменяем initCharSwitch/initResetProgress на ОДНУ функцию с делегированием на document
+old_calls="try{maybeShowGenderSelect();initCharSwitch();initResetProgress();}catch(_){}"
+new_calls="try{maybeShowGenderSelect();bindAgentControls();}catch(_){}"
+txt=txt.replace(old_calls,new_calls)
+n+=1; print("  + вызов bindAgentControls (делегирование)")
 
-# recruit-аватар зависит от пола: функция и динамическая подмена
-if "function recruitSrc" not in txt:
-    anchor="  recruit:{src:'/img/chars/char-recruit.png', side:'left'},"
-    txt=txt.replace(anchor, anchor+"\n  'recruit-f':{src:'/img/chars/char-recruit-f.png', side:'left'},")
-    # функция выбора спрайта рекрута
-    fn='''function recruitSrc(){
-  try{ return (App.profile&&App.profile.gender==='f')?'/img/chars/char-recruit-f.png':'/img/chars/char-recruit.png'; }
-  catch(_){ return '/img/chars/char-recruit.png'; }
+# Новая функция делегирования — вешается на document ОДИН раз, работает после любой перерисовки
+if "function bindAgentControls" not in txt:
+    fn='''function bindAgentControls(){
+  if(window._agentBound) return; window._agentBound=true;
+  document.addEventListener('click', function(e){
+    var t=e.target.closest&&e.target.closest('[data-gender]');
+    // смена персонажа в Агенте (кнопки cs-m/cs-f)
+    if(t && (t.id==='cs-m'||t.id==='cs-f')){
+      var g=t.getAttribute('data-gender');
+      if(App.profile){ App.profile.gender=g; saveProfile(); }
+      applyRecruitGender();
+      document.querySelectorAll('#cs-m,#cs-f').forEach(function(b){
+        b.classList.toggle('active', b.getAttribute('data-gender')===g);
+      });
+      try{ if(window.toast) toast('Персонаж изменён','Рекрут обновлён во всей игре.','👤'); }catch(_){}
+      return;
+    }
+    // сброс прогресса
+    if(e.target.closest&&e.target.closest('#reset-progress')){
+      if(confirm('Начать игру сначала? Прогресс, улики и шкалы сбросятся (выбранный персонаж сохранится).')){
+        try{
+          var gen=(App.profile&&App.profile.gender)||'m';
+          localStorage.removeItem('sdvig_case_state');
+          localStorage.removeItem('sdvig_progress');
+          localStorage.removeItem('sdvig_feed_history');
+          App.profile=normalizeProfile({...DEFAULT_PROFILE, gender:gen, onboarded:true});
+          saveProfile();
+          location.reload();
+        }catch(err){ console.error('reset',err); }
+      }
+      return;
+    }
+  });
 }
-function applyRecruitGender(){
-  try{ if(window.CHARS&&CHARS.recruit){ CHARS.recruit.src=recruitSrc(); window.CHAR_VER=String(Date.now()); } }catch(_){}
+function _refreshAgentGender(){
+  var g=(App.profile&&App.profile.gender)||'m';
+  document.querySelectorAll('#cs-m,#cs-f').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-gender')===g);
+  });
 }
 '''
-    txt=txt.replace("function recruitSrc",fn+"function recruitSrc",1) if "function recruitSrc" in txt else txt
-    # вставляем функции перед showChar
-    txt=txt.replace("let _charEl=null,_charId=null;", fn+"let _charEl=null,_charId=null;",1)
-    n+=1; print("  + recruitSrc/applyRecruitGender (аватар по полу)")
+    txt=txt.replace("function maybeShowGenderSelect", fn+"function maybeShowGenderSelect",1)
+    n+=1; print("  + bindAgentControls + _refreshAgentGender")
+
+# renderProfile в конце обновляет подсветку пола
+txt=txt.replace("function renderProfile(){\n  const p=App.profile, u=App.user||{};",
+                "function renderProfile(){\n  const p=App.profile, u=App.user||{};\n  try{ _refreshAgentGender(); }catch(_){}")
+n+=1; print("  + подсветка пола при открытии Агента")
 
 with open(path,"w",encoding="utf-8") as f: f.write(txt)
 print("✓ app.js: %d"%n)
 PYEOF
 
 
-echo ""; echo "══ 2/5  экран выбора персонажа (первый запуск) ═════"
-python3 - << 'PYEOF'
-path="src/main/resources/static/index.html"
-with open(path,encoding="utf-8") as f: txt=f.read()
-n=0
-# Добавляем модалку выбора персонажа перед </body>
-if 'id="gender-select"' not in txt:
-    modal='''
-  <!-- Выбор персонажа (первый запуск) -->
-  <div id="gender-select" class="gender-modal" style="display:none">
-    <div class="gm-inner">
-      <div class="gm-title">КТО ТЫ, ДЕТЕКТИВ?</div>
-      <div class="gm-sub">Выбери своего Рекрута. Это решение останется с тобой до конца расследования.</div>
-      <div class="gm-options">
-        <button class="gm-card" data-gender="m">
-          <div class="gm-portrait"><img src="/img/chars/char-recruit.png" alt="М"></div>
-          <div class="gm-label">Детектив</div>
-        </button>
-        <button class="gm-card" data-gender="f">
-          <div class="gm-portrait"><img src="/img/chars/char-recruit-f.png" alt="Ж"></div>
-          <div class="gm-label">Детектив</div>
-        </button>
-      </div>
-      <button class="gm-confirm" id="gm-confirm" disabled>Начать расследование</button>
-    </div>
-  </div>
-</body>'''
-    txt=txt.replace("</body>",modal,1); n+=1; print("  + модалка выбора персонажа")
-with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ index.html: %d"%n)
-PYEOF
-
-
-echo ""; echo "══ 3/5  CSS экрана выбора ══════════════════════════"
-python3 - << 'PYEOF'
-import os
-path="src/main/resources/static/style.css"
-with open(path,encoding="utf-8") as f: txt=f.read()
-if ".gender-modal" not in txt:
-    css='''
-/* ── Выбор персонажа ── */
-.gender-modal{position:fixed;inset:0;z-index:9000;background:rgba(6,8,13,.97);
-  display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(10px);}
-.gm-inner{max-width:440px;width:100%;text-align:center;}
-.gm-title{font-family:Unbounded,sans-serif;font-weight:900;font-size:24px;color:#ffcf6b;letter-spacing:.02em;margin-bottom:8px;}
-.gm-sub{font-size:13px;line-height:1.5;color:#9aa3b2;margin-bottom:26px;font-style:italic;}
-.gm-options{display:flex;gap:14px;margin-bottom:24px;}
-.gm-card{flex:1;background:rgba(16,20,28,.8);border:2px solid rgba(255,255,255,.1);border-radius:18px;
-  padding:14px 10px;cursor:pointer;transition:all .2s;}
-.gm-card:active{transform:scale(.97);}
-.gm-card.sel{border-color:#ffcf6b;box-shadow:0 0 24px rgba(200,134,10,.4);background:rgba(200,134,10,.1);}
-.gm-portrait{width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;margin-bottom:10px;
-  background:linear-gradient(180deg,#1a2230,#0d1119);position:relative;}
-.gm-portrait img{position:absolute;width:130%;left:-15%;top:0;object-fit:cover;}
-.gm-label{font-family:Unbounded,sans-serif;font-weight:700;font-size:13px;color:#e8e2d4;}
-.gm-card.sel .gm-label{color:#ffcf6b;}
-.gm-confirm{width:100%;padding:15px;border:none;border-radius:14px;font-family:Unbounded,sans-serif;
-  font-weight:800;font-size:15px;cursor:pointer;transition:all .2s;
-  background:linear-gradient(180deg,#ffe09a,#c8860a);color:#241701;}
-.gm-confirm:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.5);}
-'''
-    txt+=css
-    with open(path,"w",encoding="utf-8") as f: f.write(txt)
-    print("  + CSS выбора персонажа")
-PYEOF
-
-
-echo ""; echo "══ 4/5  вкладка Агент — смена персонажа + сброс ════"
-python3 - << 'PYEOF'
-path="src/main/resources/static/index.html"
-with open(path,encoding="utf-8") as f: txt=f.read()
-n=0
-# Добавляем в tab-profile блок управления (после достижений)
-old='''      <div class="pane-hd" style="margin-top:18px"><div class="pane-title" style="font-size:16px">Достижения</div></div>
-      <div class="ach-grid" id="ach-grid"></div>
-    </div>'''
-new='''      <div class="pane-hd" style="margin-top:18px"><div class="pane-title" style="font-size:16px">Достижения</div></div>
-      <div class="ach-grid" id="ach-grid"></div>
-
-      <div class="pane-hd" style="margin-top:18px"><div class="pane-title" style="font-size:16px">Персонаж</div></div>
-      <div class="char-switch">
-        <button class="cs-btn" data-gender="m" id="cs-m">
-          <span class="cs-ico">👤</span><span>Детектив (М)</span>
-        </button>
-        <button class="cs-btn" data-gender="f" id="cs-f">
-          <span class="cs-ico">👤</span><span>Детектив (Ж)</span>
-        </button>
-      </div>
-
-      <div class="pane-hd" style="margin-top:18px"><div class="pane-title" style="font-size:16px">Игра</div></div>
-      <button class="reset-btn" id="reset-progress">↺ Начать игру сначала</button>
-    </div>'''
-if old in txt:
-    txt=txt.replace(old,new,1); n+=1; print("  + смена персонажа + кнопка сброса в Агенте")
-with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ index.html: %d"%n)
-
-# CSS для этих кнопок
-path2="src/main/resources/static/style.css"
-with open(path2,encoding="utf-8") as f: t2=f.read()
-if ".char-switch" not in t2:
-    t2+='''
-.char-switch{display:flex;gap:10px;}
-.cs-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:13px;border-radius:12px;
-  background:rgba(16,20,28,.8);border:2px solid rgba(255,255,255,.1);color:#b8b0a0;cursor:pointer;
-  font-family:Unbounded,sans-serif;font-weight:700;font-size:12px;transition:all .2s;}
-.cs-btn.active{border-color:#ffcf6b;color:#ffcf6b;background:rgba(200,134,10,.1);}
-.cs-ico{font-size:15px;}
-.reset-btn{width:100%;padding:14px;border-radius:12px;background:rgba(176,80,80,.15);
-  border:1.5px solid rgba(220,120,120,.4);color:#ffb3a0;cursor:pointer;
-  font-family:Unbounded,sans-serif;font-weight:700;font-size:13px;transition:all .2s;}
-.reset-btn:active{transform:scale(.98);background:rgba(176,80,80,.25);}
-'''
-    with open(path2,"w",encoding="utf-8") as f: f.write(t2)
-    print("  + CSS кнопок Агента")
-PYEOF
-
-
-echo ""; echo "══ 5/5  логика — выбор, сброс, показ при старте ════"
+echo ""; echo "══ 2/4  выбор персонажа — кнопка перевыбора + надёжный показ"
 python3 - << 'PYEOF'
 path="src/main/resources/static/app.js"
 with open(path,encoding="utf-8") as f: txt=f.read()
 n=0
-
-if "function initGenderSelect" not in txt:
-    fn='''
-function initGenderSelect(){
-  var modal=document.getElementById('gender-select'); if(!modal) return;
-  var picked=null, confirm=document.getElementById('gm-confirm');
-  modal.querySelectorAll('.gm-card').forEach(function(c){
-    c.addEventListener('click',function(){
-      modal.querySelectorAll('.gm-card').forEach(function(x){x.classList.remove('sel');});
-      c.classList.add('sel'); picked=c.getAttribute('data-gender');
-      if(confirm) confirm.disabled=false;
-    });
-  });
-  if(confirm) confirm.addEventListener('click',function(){
-    if(!picked) return;
-    if(App.profile){ App.profile.gender=picked; App.profile.onboarded=true; saveProfile(); }
-    applyRecruitGender();
-    modal.style.display='none';
-    try{ updateProfileUI&&updateProfileUI(); }catch(_){}
-  });
-}
-function maybeShowGenderSelect(){
+# maybeShowGenderSelect: показывать выбор если пол ещё не выбран ЯВНО (новое поле genderChosen)
+old='''function maybeShowGenderSelect(){
   try{
     if(App.profile && !App.profile.onboarded){
       var m=document.getElementById('gender-select');
       if(m){ m.style.display='flex'; initGenderSelect(); }
     } else { applyRecruitGender(); }
   }catch(_){}
-}
-function initCharSwitch(){
-  var m=document.getElementById('cs-m'), f=document.getElementById('cs-f');
-  function refresh(){
-    var g=(App.profile&&App.profile.gender)||'m';
-    if(m)m.classList.toggle('active',g==='m');
-    if(f)f.classList.toggle('active',g==='f');
-  }
-  function set(g){ if(App.profile){ App.profile.gender=g; saveProfile(); } applyRecruitGender(); refresh();
-    try{ if(window.toast) toast('Персонаж изменён','Рекрут обновлён.','👤'); }catch(_){} }
-  if(m)m.addEventListener('click',function(){set('m');});
-  if(f)f.addEventListener('click',function(){set('f');});
-  refresh();
-}
-function initResetProgress(){
-  var btn=document.getElementById('reset-progress'); if(!btn) return;
-  btn.addEventListener('click',function(){
-    if(confirm('Начать игру сначала? Весь прогресс, улики и шкалы будут сброшены.')){
-      try{
-        // сброс прогресса дел, шкал, но СОХРАНЯЕМ выбранный пол
-        var g=(App.profile&&App.profile.gender)||'m';
-        localStorage.removeItem('sdvig_case_state');
-        localStorage.removeItem('sdvig_progress');
-        App.profile=normalizeProfile({...DEFAULT_PROFILE, gender:g, onboarded:true});
-        saveProfile();
-        try{ if(window.Feed&&Feed.reset) Feed.reset(); }catch(_){}
-        location.reload();
-      }catch(e){ console.error('reset',e); }
+}'''
+new='''function maybeShowGenderSelect(){
+  try{
+    applyRecruitGender();
+    if(App.profile && !App.profile.genderChosen){
+      var m=document.getElementById('gender-select');
+      if(m){ m.style.display='flex'; initGenderSelect(); }
     }
-  });
+  }catch(_){}
 }
-'''
-    txt=txt.replace("function initGenderSelect","XfnX") if False else txt
-    # вставляем перед initEvPanel
-    txt=txt.replace("function initEvPanel(){", fn+"\nfunction initEvPanel(){",1)
-    n+=1; print("  + логика выбора/смены/сброса")
+window.openGenderSelect=function(){
+  var m=document.getElementById('gender-select');
+  if(m){ m.style.display='flex'; initGenderSelect(); }
+};'''
+if old in txt:
+    txt=txt.replace(old,new,1); n+=1; print("  + показ выбора по genderChosen + openGenderSelect")
 
-# вызываем при инициализации (после enterMain/initEvPanel)
-txt=txt.replace("cSetProgress(); buildBacks(); initEvPanel();",
-                "cSetProgress(); buildBacks(); initEvPanel(); try{maybeShowGenderSelect();initCharSwitch();initResetProgress();}catch(_){}")
-n+=1; print("  + вызовы при старте")
+# initGenderSelect: ставим genderChosen=true при подтверждении
+txt=txt.replace("if(App.profile){ App.profile.gender=picked; App.profile.onboarded=true; saveProfile(); }",
+                "if(App.profile){ App.profile.gender=picked; App.profile.genderChosen=true; App.profile.onboarded=true; saveProfile(); }")
+n+=1; print("  + genderChosen при подтверждении")
+
+# DEFAULT_PROFILE: добавляем genderChosen:false
+txt=txt.replace("gender:'m', onboarded:false","gender:'m', genderChosen:false, onboarded:false")
+n+=1; print("  + genderChosen в профиль")
 
 with open(path,"w",encoding="utf-8") as f: f.write(txt)
 print("✓ app.js: %d"%n)
 PYEOF
 
+
+echo ""; echo "══ 3/4  кнопка «Сменить персонажа» открывает выбор ══"
+python3 - << 'PYEOF'
+path="src/main/resources/static/index.html"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
+# Заменяем две кнопки cs-m/cs-f на понятную: текущий + кнопка "сменить"
+old='''      <div class="char-switch">
+        <button class="cs-btn" data-gender="m" id="cs-m">
+          <span class="cs-ico">👤</span><span>Детектив (М)</span>
+        </button>
+        <button class="cs-btn" data-gender="f" id="cs-f">
+          <span class="cs-ico">👤</span><span>Детектив (Ж)</span>
+        </button>
+      </div>'''
+new='''      <div class="char-switch">
+        <button class="cs-btn" data-gender="m" id="cs-m">
+          <span class="cs-ico">🕵️</span><span>Мужчина</span>
+        </button>
+        <button class="cs-btn" data-gender="f" id="cs-f">
+          <span class="cs-ico">🕵️‍♀️</span><span>Женщина</span>
+        </button>
+      </div>'''
+if old in txt:
+    txt=txt.replace(old,new,1); n+=1; print("  + кнопки пола обновлены")
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ index.html: %d"%n)
+PYEOF
+
+
+echo ""; echo "══ 4/4  подсказки БЕЗ спойлера + досье счётчик/анимация"
+python3 - << 'PYEOF'
+import json
+# Подсказки переписываем — НЕ называем суть улики, только направление действия
+path="src/main/resources/static/scenarios/case001.json"
+d=json.load(open(path,encoding='utf-8'))
+ev=d['events']
+hints={
+  'eL2a':'Осмотри пол у стены внимательнее — там что-то есть.',
+  'eL2b':'Сдвиг кивнул в сторону стены. Присмотрись.',
+  'eL2c2':'За тяжёлой портьерой тянет холодом. Проверь её.',
+  'eL2c3':'Среди старой проводки мелькнуло что-то неуместное. Разгляди.',
+  'eL3c3':'Сторож что-то прячет в кармане. Загляни туда.',
+  'eL4c1':'На столе мигает огонёк. Стоит проверить.',
+}
+n=0
+for k,h in hints.items():
+    if k in ev and ev[k].get('hint'):
+        ev[k]['hint']=h; n+=1
+json.dump(d,open(path,'w',encoding='utf-8'),ensure_ascii=False,indent=2)
+print(f"  + {n} подсказок переписаны без спойлера")
+
+# Досье: счётчик ev-chip + анимация в правый нижний угол
+path2="src/main/resources/static/games/feed.js"
+with open(path2,encoding="utf-8") as f: txt=f.read()
+n2=0
+# flyToDossier — летит к РЕАЛЬНОМУ положению счётчика (ev-chip), а не к фикс. координатам
+import re
+old_fly="fly.style.left=(sr.width-60)+'px'; fly.style.top=(sr.height-30)+'px'; fly.style.opacity='0'; fly.style.transform='scale(.4)';"
+new_fly='''var _chip=document.getElementById('ev-chip');
+      if(_chip){ var cr=_chip.getBoundingClientRect(); var pr=fly.parentElement.getBoundingClientRect();
+        fly.style.left=(cr.left-pr.left+cr.width/2-20)+'px'; fly.style.top=(cr.top-pr.top+cr.height/2-20)+'px';
+      } else { fly.style.left=(sr.width-60)+'px'; fly.style.top=(sr.height-30)+'px'; }
+      fly.style.opacity='0'; fly.style.transform='scale(.4)';'''
+if old_fly in txt:
+    txt=txt.replace(old_fly,new_fly,1); n2+=1; print("  + улика летит к реальному счётчику ev-chip")
+with open(path2,"w",encoding="utf-8") as f: f.write(txt)
+print(f"✓ feed.js: {n2}")
+
+# Счётчик ev-chip: обновление числа при добавлении улики
+path3="src/main/resources/static/app.js"
+with open(path3,encoding="utf-8") as f: t3=f.read()
+n3=0
+# grantClue обновляет #ev-count
+if "_evCountEl" in t3 and "document.getElementById('ev-count')" not in t3:
+    t3=t3.replace("if(_evCountEl) _evCountEl.textContent=CState.clues.length;",
+                  "if(_evCountEl) _evCountEl.textContent=CState.clues.length;\n  try{ var _ec=document.getElementById('ev-count'); if(_ec)_ec.textContent=CState.clues.length; }catch(_){}")
+    n3+=1; print("  + счётчик улик обновляется")
+with open(path3,"w",encoding="utf-8") as f: f.write(t3)
+print(f"✓ app.js счётчик: {n3}")
+PYEOF
+
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R55 — выбор пола Рекрута + сброс прогресса"
-echo "   git add -A && git commit -m 'R55: recruit gender select + reset progress + agent cleanup' && git push"
+echo "✅  R56 — выбор персонажа, кнопки Агента, подсказки, досье"
+echo "   git add -A && git commit -m 'R56: gender select show, agent buttons, hint no-spoiler, dossier' && git push"
 echo "═══════════════════════════════════════════════════════"

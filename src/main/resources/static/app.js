@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R55';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R56';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -25,7 +25,7 @@ const DEFAULT_PROFILE = {
   casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
   achievements:[], dailyStreak:0, lastDaily:null, sound:true,
-  lastEnergyTs:0, rapport:50, skill:30, gender:'m', onboarded:false
+  lastEnergyTs:0, rapport:50, skill:30, gender:'m', genderChosen:false, onboarded:false
 };
 
 /* ── DOM helpers ───────────────────────────────── */
@@ -769,6 +769,7 @@ function grantClue(clue){
   }
   CState.clues.push(clue);
   if(_evCountEl) _evCountEl.textContent=CState.clues.length;
+  try{ var _ec=document.getElementById('ev-count'); if(_ec)_ec.textContent=CState.clues.length; }catch(_){}
   try{ showClueReveal(clue, window._afterClue||null); window._afterClue=null; }catch(_){}
   try{ saveCaseState&&saveCaseState(); }catch(_){}
 }
@@ -964,20 +965,63 @@ function initGenderSelect(){
   });
   if(confirm) confirm.addEventListener('click',function(){
     if(!picked) return;
-    if(App.profile){ App.profile.gender=picked; App.profile.onboarded=true; saveProfile(); }
+    if(App.profile){ App.profile.gender=picked; App.profile.genderChosen=true; App.profile.onboarded=true; saveProfile(); }
     applyRecruitGender();
     modal.style.display='none';
     try{ updateProfileUI&&updateProfileUI(); }catch(_){}
   });
 }
+function bindAgentControls(){
+  if(window._agentBound) return; window._agentBound=true;
+  document.addEventListener('click', function(e){
+    var t=e.target.closest&&e.target.closest('[data-gender]');
+    // смена персонажа в Агенте (кнопки cs-m/cs-f)
+    if(t && (t.id==='cs-m'||t.id==='cs-f')){
+      var g=t.getAttribute('data-gender');
+      if(App.profile){ App.profile.gender=g; saveProfile(); }
+      applyRecruitGender();
+      document.querySelectorAll('#cs-m,#cs-f').forEach(function(b){
+        b.classList.toggle('active', b.getAttribute('data-gender')===g);
+      });
+      try{ if(window.toast) toast('Персонаж изменён','Рекрут обновлён во всей игре.','👤'); }catch(_){}
+      return;
+    }
+    // сброс прогресса
+    if(e.target.closest&&e.target.closest('#reset-progress')){
+      if(confirm('Начать игру сначала? Прогресс, улики и шкалы сбросятся (выбранный персонаж сохранится).')){
+        try{
+          var gen=(App.profile&&App.profile.gender)||'m';
+          localStorage.removeItem('sdvig_case_state');
+          localStorage.removeItem('sdvig_progress');
+          localStorage.removeItem('sdvig_feed_history');
+          App.profile=normalizeProfile({...DEFAULT_PROFILE, gender:gen, onboarded:true});
+          saveProfile();
+          location.reload();
+        }catch(err){ console.error('reset',err); }
+      }
+      return;
+    }
+  });
+}
+function _refreshAgentGender(){
+  var g=(App.profile&&App.profile.gender)||'m';
+  document.querySelectorAll('#cs-m,#cs-f').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-gender')===g);
+  });
+}
 function maybeShowGenderSelect(){
   try{
-    if(App.profile && !App.profile.onboarded){
+    applyRecruitGender();
+    if(App.profile && !App.profile.genderChosen){
       var m=document.getElementById('gender-select');
       if(m){ m.style.display='flex'; initGenderSelect(); }
-    } else { applyRecruitGender(); }
+    }
   }catch(_){}
 }
+window.openGenderSelect=function(){
+  var m=document.getElementById('gender-select');
+  if(m){ m.style.display='flex'; initGenderSelect(); }
+};
 function initCharSwitch(){
   var m=document.getElementById('cs-m'), f=document.getElementById('cs-f');
   function refresh(){
@@ -1221,7 +1265,7 @@ function initCarousel(){
   if(_evCountEl)_evCountEl.textContent="0";
   var _cn=document.getElementById("case-name");if(_cn)_cn.textContent=CASE.name||"";
   var _cs=document.getElementById("case-sub");if(_cs)_cs.textContent=(CAMPAIGN&&CAMPAIGN.cases[_caseIdx])?CAMPAIGN.cases[_caseIdx].title:"";
-  cSetProgress(); buildBacks(); initEvPanel(); try{maybeShowGenderSelect();initCharSwitch();initResetProgress();}catch(_){} try{updateCaseBg();hideChar();}catch(_){} try{updateCaseBg();hideChar();}catch(_){}
+  cSetProgress(); buildBacks(); initEvPanel(); try{maybeShowGenderSelect();bindAgentControls();}catch(_){} try{updateCaseBg();hideChar();}catch(_){} try{updateCaseBg();hideChar();}catch(_){}
 }
 
 /* ═══════════════════════════════════════════════
@@ -1334,6 +1378,7 @@ const ACHIEVEMENTS=[
 
 function renderProfile(){
   const p=App.profile, u=App.user||{};
+  try{ _refreshAgentGender(); }catch(_){}
   const name=u.firstName||u.name||'Агент';
   $('#prof-av').textContent=(name[0]||'С').toUpperCase();
   $('#prof-name').textContent=name;

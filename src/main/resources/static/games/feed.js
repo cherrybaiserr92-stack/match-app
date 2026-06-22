@@ -385,7 +385,11 @@
     stage.appendChild(fly);
     requestAnimationFrame(()=>{
       fly.style.transition='all .7s cubic-bezier(.5,0,.7,1)';
-      fly.style.left=(sr.width-60)+'px'; fly.style.top=(sr.height-30)+'px'; fly.style.opacity='0'; fly.style.transform='scale(.4)';
+      var _chip=document.getElementById('ev-chip');
+      if(_chip){ var cr=_chip.getBoundingClientRect(); var pr=fly.parentElement.getBoundingClientRect();
+        fly.style.left=(cr.left-pr.left+cr.width/2-20)+'px'; fly.style.top=(cr.top-pr.top+cr.height/2-20)+'px';
+      } else { fly.style.left=(sr.width-60)+'px'; fly.style.top=(sr.height-30)+'px'; }
+      fly.style.opacity='0'; fly.style.transform='scale(.4)';
     });
     setTimeout(()=>fly.remove(),720);
     try{ Sound.approve&&Sound.approve(); vibrate&&vibrate(12); }catch(_){}
