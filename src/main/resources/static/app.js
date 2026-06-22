@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R53';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R54';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -1060,13 +1060,19 @@ const CHARS={
   jiang:  {src:'/img/chars/char-jiang.png',   side:'right'},
   purcell:{src:'/img/chars/char-purcell.png', side:'right'},
   danny:  {src:'/img/chars/char-danny.png',   side:'right'},
-  eleanor:{src:'/img/chars/char-guests.png',  side:'left'},  /* TODO: арт Эленор */
+  eleanor:{src:'/img/chars/char-eleanor.png', side:'left'},
+  cop:    {src:'/img/chars/char-cop.png',     side:'left'},
+  captain:{src:'/img/chars/char-captain.png', side:'right'},
+  pocketman:{src:'/img/chars/char-pocketman.png',side:'left'},
   guests: {src:'/img/chars/char-guests.png',  side:'right'}
 };
 window.CHARS=CHARS; window.CHAR_VER=CHAR_VER;
 const CASE_BGS={
-  'case001':'/img/bg/bg-ch1-hall.png'
-  /* остальные фоны добавить, когда арт будет готов */
+  'case001':'/img/bg/bg-ch1-hall.png',
+  'case002':'/img/bg/bg-oldcity.jpg',
+  'case003':'/img/bg/bg-docks.jpg',
+  'case004':'/img/bg/bg-mansion-ext.jpg',
+  'case005':'/img/bg/bg-mansion-int.jpg'
 };
 let _charEl=null,_charId=null;
 function showChar(id){

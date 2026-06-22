@@ -16,7 +16,7 @@
 
   const NAMES={shift:'Сдвиг',recruit:'Рекрут',kurator:'Куратор',arundel:'Аранделл',
     miller:'Миллер',hayes:'Хейс',romero:'Ромеро',conroy:'Конрой',jiang:'Цзян',
-    purcell:'Пёрселл',danny:'Дэнни',eleanor:'Эленор',guests:'Гости'};
+    purcell:'Пёрселл',danny:'Дэнни',eleanor:'Эленор',cop:'Патрульный',captain:'Капитан',pocketman:'Свидетель',guests:'Гости'};
   const CHARV=(window.CHAR_VER||'3');
   function avatar(id){
     var C=window.CHARS||(typeof CHARS!=='undefined'?CHARS:null);
@@ -56,6 +56,8 @@
     .m2-av.av-recruit img{width:150%;left:-25%;top:7%;}
     .m2-av.av-miller img{width:140%;left:-20%;top:5%;}
     .m2-av.av-eleanor img{width:148%;left:-24%;top:5%;}
+    .m2-av.av-cop img{width:130%;left:-15%;top:2%;}
+    .m2-av.av-captain img{width:125%;left:-12%;top:1%;}
     .m2-av.av-kurator img{width:122%;left:-11%;top:0%;}
     .m2-ring{position:absolute;inset:-2px;border-radius:12px;opacity:0;transition:opacity .3s;}
     .msg2.active .m2-av{transform:scale(1.05);}
