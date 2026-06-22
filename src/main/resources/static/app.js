@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R59';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R60';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -25,7 +25,7 @@ const DEFAULT_PROFILE = {
   casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
   achievements:[], dailyStreak:0, lastDaily:null, sound:true,
-  lastEnergyTs:0, rapport:50, skill:30, gender:'m', genderChosen:false, onboarded:false
+  lastEnergyTs:0, rapport:50, skill:30, gender:'m', genderChosen:false, prologueSeen:false, onboarded:false
 };
 
 /* ── DOM helpers ───────────────────────────────── */
@@ -1013,10 +1013,37 @@ function maybeShowGenderSelect(){
   try{
     applyRecruitGender();
     if(App.profile && !App.profile.genderChosen){
-      var m=document.getElementById('gender-select');
-      if(m){ m.style.display='flex'; initGenderSelect(); }
+      // сначала пролог, потом выбор персонажа
+      if(!App.profile.prologueSeen){ showPrologue(); }
+      else { var m=document.getElementById('gender-select'); if(m){ m.style.display='flex'; initGenderSelect(); } }
     }
   }catch(_){}
+}
+var _prSlide=0, _prTotal=4;
+function showPrologue(){
+  var pr=document.getElementById('prologue'); if(!pr) return;
+  _prSlide=0; pr.style.display='flex'; _prShow(0);
+}
+function _prShow(i){
+  document.querySelectorAll('.pr-slide').forEach(function(s){ s.classList.toggle('active', +s.getAttribute('data-s')===i); });
+  document.querySelectorAll('#pr-dots i').forEach(function(d,di){ d.classList.toggle('on', di===i); });
+  var nb=document.getElementById('pr-next'); if(nb) nb.textContent=(i===_prTotal-1)?'Выбрать персонажа':'Дальше';
+  // перезапуск анимаций
+  var sl=document.querySelector('.pr-slide[data-s="'+i+'"]');
+  if(sl) sl.querySelectorAll('.pr-ico,.pr-eyebrow,.pr-title,.pr-body').forEach(function(el){
+    el.style.animation='none'; void el.offsetWidth; el.style.animation='';
+  });
+}
+window.prologueNext=function(skip){
+  if(skip){ _finishPrologue(); return; }
+  _prSlide++;
+  if(_prSlide<_prTotal){ _prShow(_prSlide); }
+  else { _finishPrologue(); }
+};
+function _finishPrologue(){
+  var pr=document.getElementById('prologue'); if(pr) pr.style.display='none';
+  if(App.profile){ App.profile.prologueSeen=true; saveProfile(); }
+  var m=document.getElementById('gender-select'); if(m){ m.style.display='flex'; initGenderSelect(); }
 }
 window.openGenderSelect=function(){
   var m=document.getElementById('gender-select');

@@ -12,7 +12,7 @@
 <script>window.SDVIG_BOT_USERNAME="sdvig_game_bot";</script>
 </head>
 <body>
-<div id="build-tag" style="position:fixed;bottom:2px;right:4px;z-index:9999;font-size:8px;color:rgba(200,160,90,.4);pointer-events:none;font-family:monospace">R59</div>
+<div id="build-tag" style="position:fixed;bottom:2px;right:4px;z-index:9999;font-size:8px;color:rgba(200,160,90,.4);pointer-events:none;font-family:monospace">R60</div>
 
 <!-- ══ АНИМИРОВАННЫЕ SVG-ГРАДИЕНТЫ (перелив самоцвета) ══ -->
 <svg id="gem-defs" width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -304,6 +304,41 @@
 </div>
 
   <!-- Выбор персонажа (первый запуск) -->
+  <!-- ПРОЛОГ (первый запуск) -->
+  <div id="prologue" class="prologue" style="display:none">
+    <button class="pr-skip" onclick="window.prologueNext&&window.prologueNext(true)">Пропустить ›</button>
+    <div class="pr-slides" id="pr-slides">
+      <div class="pr-slide active" data-s="0">
+        <div class="pr-ico"><img src="/img/icons/ico-detective.png" alt=""></div>
+        <div class="pr-eyebrow">Добро пожаловать в СДВИГ</div>
+        <div class="pr-title">Ты — <em>детектив</em></div>
+        <div class="pr-body">Расследуй дела о загадочных исчезновениях. Осматривай места преступлений, ищи улики, допрашивай свидетелей и вычисляй правду.</div>
+      </div>
+      <div class="pr-slide" data-s="1">
+        <div class="pr-ico"><img src="/img/icons/ico-hat.png" alt=""></div>
+        <div class="pr-eyebrow">Твой наставник</div>
+        <div class="pr-title"><em>Сдвиг</em></div>
+        <div class="pr-body">Опытный детектив ведёт тебя через расследование. Слушай его — или иди своим путём. От этого зависят ваши отношения.</div>
+      </div>
+      <div class="pr-slide" data-s="2">
+        <div class="pr-ico"><img src="/img/icons/ico-cards.png" alt=""></div>
+        <div class="pr-eyebrow">Управление</div>
+        <div class="pr-title">Свайп <em>решает</em></div>
+        <div class="pr-body">Принимай решения свайпом карточек. Находи улики в мини-играх. Выбирай версии — каждый выбор меняет ход дела.</div>
+      </div>
+      <div class="pr-slide" data-s="3">
+        <div class="pr-ico"><img src="/img/icons/ico-scales.png" alt=""></div>
+        <div class="pr-eyebrow">Две шкалы</div>
+        <div class="pr-title">Истина — в <em>балансе</em></div>
+        <div class="pr-body">Отношения со Сдвигом и твоя детективность растут от решений. Дави — растёшь как сыщик. Будь человечнее — крепнет доверие.</div>
+      </div>
+    </div>
+    <div class="pr-controls">
+      <div class="pr-dots" id="pr-dots"><i class="on"></i><i></i><i></i><i></i></div>
+      <button class="pr-next" id="pr-next" onclick="window.prologueNext&&window.prologueNext()">Дальше</button>
+    </div>
+  </div>
+
   <div id="gender-select" class="gender-modal" style="display:none">
     <div class="gm-inner">
       <div class="gm-title">КТО ТЫ, ДЕТЕКТИВ?</div>
