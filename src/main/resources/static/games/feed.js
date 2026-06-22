@@ -112,7 +112,8 @@
       background:linear-gradient(180deg,#ffe09a,#c8860a);color:#241701;font-family:Unbounded,sans-serif;
       font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(200,134,10,.32);}
     .decision-stage{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
-      background:radial-gradient(70% 60% at 50% 45%,rgba(10,14,22,.7),rgba(6,8,13,.95));}
+      background:radial-gradient(80% 70% at 50% 45%,rgba(12,16,24,.55),rgba(8,11,18,.82));
+      backdrop-filter:blur(3px);}
     .dec-card{position:relative;width:min(80vw,320px);margin-top:56px;border-radius:18px;overflow:hidden;z-index:5;
       background:linear-gradient(160deg,rgba(28,23,16,.99),rgba(13,11,8,.99));
       border:1.5px solid var(--acc,#c8860a);box-shadow:0 16px 44px rgba(0,0,0,.6),0 0 28px rgba(200,134,10,.2);
@@ -278,13 +279,15 @@
       out.push({type:'narr', text:ev.text});
     }
     // прямая речь
-    if(ev.dialogue && window.parseDialogue){
-      const lines=parseDialogue(ev);
-      lines.forEach(l=>{
-        if(!l.speaker || l.speaker==='narrator'){
-          out.push({type:'narr', text:l.text});
+    if(ev.dialogue){
+      var NMAP={'сдвиг':'shift','рекрут':'recruit','миллер':'miller','эленор':'eleanor','куратор':'kurator','патрульный':'cop','капитан':'captain','хейс':'hayes','дэнни':'danny'};
+      String(ev.dialogue).split('\n').forEach(function(line){
+        line=line.trim(); if(!line) return;
+        var m=line.match(/^([^:«»]{2,20}):\s*(.+)$/);
+        if(m && NMAP[m[1].trim().toLowerCase()]){
+          out.push({type:'speech', speaker:NMAP[m[1].trim().toLowerCase()], text:m[2].trim(), who:m[1].trim()});
         } else {
-          out.push({type:'speech', speaker:l.speaker, text:l.text});
+          out.push({type:'narr', text:line});
         }
       });
     }
@@ -357,7 +360,15 @@
     el.innerHTML=renderClues(el._full); bindClues(el); return true;
   }
 
+  function _genderText(text){
+    if(!text) return text;
+    var fem=false;
+    try{ fem=(window.App&&App.profile&&App.profile.gender==='f'); }catch(_){}
+    // {муж|жен} → выбираем по полу
+    return String(text).replace(/\{([^|{}]*)\|([^|{}]*)\}/g, function(_,m,f){ return fem?f:m; });
+  }
   function renderClues(text){
+    text=_genderText(text);
     return esc(text).replace(/\{([^|]+)\|([^}]+)\}/g,(m,disp,name)=>
       '<span class="m2-clue" data-clue="'+escAttr(name)+'">'+esc(disp)+'</span>');
   }
@@ -420,8 +431,14 @@
         _wrap.appendChild(hint);
         _wrap.onclick=(e)=>{ if(!e.target.closest('.m2-clue')) advanceLinear(ev); };
       } else if(ev.shift){
-        // shift-карта: сразу карта-решение (выбор версии свайпом, без мини-игры)
-        enterDecisionMode();
+        // shift-карта: ждём, пока допечатается последняя реплика, потом карта
+        var _waitType=function(){
+          var anyTyping=false;
+          _wrap.querySelectorAll('.m2-bubble,.m2-narr').forEach(function(b){ if(b._typing)anyTyping=true; });
+          if(anyTyping){ setTimeout(_waitType,120); }
+          else { setTimeout(function(){ enterDecisionMode(); }, 400); }
+        };
+        _waitType();
       } else {
         // наводка перед мини-игрой (если у события есть hint и ещё нет улики)
         if(ev.hint && ev.clue){
