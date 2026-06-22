@@ -634,3 +634,10 @@ body::before{
 .ag-danger{border-color:rgba(220,120,120,.3);}
 .ag-danger .ag-action-ico{color:#ff8f7a;}
 .ag-danger:active{background:rgba(176,80,80,.15);}
+
+/* ── премиум-иконки шкал ── */
+.gscale-ico-img{width:20px;height:20px;object-fit:contain;
+  filter:drop-shadow(0 1px 3px rgba(0,0,0,.5));vertical-align:middle;}
+.ag-stat-img{width:30px;height:30px;object-fit:contain;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));}
+.ag-stat-ico{display:flex;align-items:center;justify-content:center;margin-bottom:6px;}
