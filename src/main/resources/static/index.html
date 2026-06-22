@@ -12,7 +12,7 @@
 <script>window.SDVIG_BOT_USERNAME="sdvig_game_bot";</script>
 </head>
 <body>
-<div id="build-tag" style="position:fixed;bottom:2px;right:4px;z-index:9999;font-size:8px;color:rgba(200,160,90,.4);pointer-events:none;font-family:monospace">R56</div>
+<div id="build-tag" style="position:fixed;bottom:2px;right:4px;z-index:9999;font-size:8px;color:rgba(200,160,90,.4);pointer-events:none;font-family:monospace">R57</div>
 
 <!-- ══ АНИМИРОВАННЫЕ SVG-ГРАДИЕНТЫ (перелив самоцвета) ══ -->
 <svg id="gem-defs" width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -170,38 +170,47 @@
     </div>
 
     <div class="tab-pane" id="tab-profile">
-      <div class="profile-hero">
-        <div class="profile-av" id="prof-av">С</div>
-        <div>
-          <div class="profile-name" id="prof-name">Агент</div>
-          <div class="profile-arch" id="prof-arch">Новичок</div>
-          <div class="profile-id" id="prof-id">#000000</div>
+      <!-- Герой-карточка -->
+      <div class="ag-hero">
+        <div class="ag-hero-bg"></div>
+        <div class="ag-portrait" id="ag-portrait"><img id="ag-portrait-img" src="/img/chars/char-recruit.png" alt=""></div>
+        <div class="ag-hero-info">
+          <div class="ag-name" id="ag-name">Детектив</div>
+          <div class="ag-rank" id="ag-rank">Новичок · Дело 1</div>
+          <div class="ag-lvlbar"><div class="ag-lvlfill" id="ag-lvlfill"></div><span class="ag-lvltext" id="ag-lvltext">УР 1</span></div>
         </div>
       </div>
-      <div class="stats-row">
-        <div class="sg"><div class="sg-val" id="st-cases">0</div><div class="sg-lbl">Дел</div></div>
-        <div class="sg"><div class="sg-val" id="st-streak">0</div><div class="sg-lbl">Серия</div></div>
-        <div class="sg"><div class="sg-val" id="st-prestige">0</div><div class="sg-lbl">Престиж</div></div>
-        <div class="sg"><div class="sg-val" id="st-lvl">1</div><div class="sg-lbl">Уровень</div></div>
-      </div>
-      <div class="pane-hd" style="margin-top:6px"><div class="pane-title" style="font-size:16px">Навыки</div></div>
-      <div class="skill-list" id="skill-list"></div>
-      <div class="pane-hd" style="margin-top:18px"><div class="pane-title" style="font-size:16px">Достижения</div></div>
-      <div class="ach-grid" id="ach-grid"></div>
 
-      <div class="pane-hd" style="margin-top:18px"><div class="pane-title" style="font-size:16px">Персонаж</div></div>
-      <div class="char-switch">
-        <button class="cs-btn" data-gender="m" id="cs-m">
-          <span class="cs-ico">🕵️</span><span>Мужчина</span>
-        </button>
-        <button class="cs-btn" data-gender="f" id="cs-f">
-          <span class="cs-ico">🕵️‍♀️</span><span>Женщина</span>
-        </button>
+      <!-- Статистика карточками -->
+      <div class="ag-stats">
+        <div class="ag-stat"><div class="ag-stat-ico">🔍</div><div class="ag-stat-val" id="ag-skill">30</div><div class="ag-stat-lbl">Детектив</div></div>
+        <div class="ag-stat"><div class="ag-stat-ico">🎩</div><div class="ag-stat-val" id="ag-rap">50</div><div class="ag-stat-lbl">Сдвиг</div></div>
+        <div class="ag-stat"><div class="ag-stat-ico">📁</div><div class="ag-stat-val" id="ag-cases">0</div><div class="ag-stat-lbl">Дел</div></div>
       </div>
 
-      <div class="pane-hd" style="margin-top:18px"><div class="pane-title" style="font-size:16px">Игра</div></div>
-      <button class="reset-btn" id="reset-progress">↺ Начать игру сначала</button>
-    </div>
+      <!-- Выбор персонажа -->
+      <div class="ag-section-title">Персонаж</div>
+      <div class="ag-chars">
+        <button class="ag-char" id="agc-m" onclick="window.setRecruitGender&&window.setRecruitGender('m')">
+          <div class="ag-char-pic"><img src="/img/chars/char-recruit.png" alt="М"></div>
+          <div class="ag-char-name">Мужчина</div>
+          <div class="ag-char-check">✓</div>
+        </button>
+        <button class="ag-char" id="agc-f" onclick="window.setRecruitGender&&window.setRecruitGender('f')">
+          <div class="ag-char-pic"><img src="/img/chars/char-recruit-f.png" alt="Ж"></div>
+          <div class="ag-char-name">Женщина</div>
+          <div class="ag-char-check">✓</div>
+        </button>
+      </div>
+
+      <!-- Действия -->
+      <div class="ag-section-title">Игра</div>
+      <button class="ag-action ag-danger" onclick="window.resetGameProgress&&window.resetGameProgress()">
+        <span class="ag-action-ico">↺</span>
+        <span class="ag-action-txt"><b>Начать сначала</b><small>Сбросить прогресс и улики</small></span>
+      </button>
+
+      </div>
 
     <div class="tab-pane" id="tab-shop">
       <div class="pane-hd">

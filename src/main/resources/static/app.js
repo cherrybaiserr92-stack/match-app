@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R56';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R57';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -1377,43 +1377,50 @@ const ACHIEVEMENTS=[
 ];
 
 function renderProfile(){
-  const p=App.profile, u=App.user||{};
-  try{ _refreshAgentGender(); }catch(_){}
-  const name=u.firstName||u.name||'Агент';
-  $('#prof-av').textContent=(name[0]||'С').toUpperCase();
-  $('#prof-name').textContent=name;
-  $('#prof-arch').textContent=archetype(p);
-  $('#prof-id').textContent='#'+String(u.id||'000000').slice(-6).padStart(6,'0');
-  $('#st-cases').textContent=p.casesSolved;
-  $('#st-streak').textContent=p.streak;
-  $('#st-prestige').textContent=p.prestige;
-  $('#st-lvl').textContent=p.level;
-
-  const sl=$('#skill-list'); sl.innerHTML='';
-  SKILLS.forEach(s=>{
-    const lv=p.skills[s.k]||1; const cost=lv*40;
-    const row=el('div','skill-row',`
-      <div class="sk-icon">${s.icon}</div>
-      <div class="sk-body"><div class="sk-name">${s.name}</div><div class="sk-desc">${s.desc}</div>
-        <div class="sk-bar"><div class="sk-fill" style="width:${clamp(lv/10*100,5,100)}%"></div></div></div>
-      <div class="sk-side"><div class="sk-lv">ур ${lv}</div>
-        <button class="up-btn" ${p.credits<cost?'disabled':''}>+${cost}◈</button></div>`);
-    row.querySelector('.up-btn').onclick=()=>{
-      if(App.profile.credits<cost) return;
-      addCredits(-cost); App.profile.skills[s.k]=lv+1;
-      Sound.booster(); vibrate(10); toast('Навык повышен',s.name+' ур '+(lv+1),'⬆️');
-      renderProfile();
-    };
-    sl.appendChild(row);
-  });
-
-  const ag=$('#ach-grid'); ag.innerHTML='';
-  ACHIEVEMENTS.forEach(a=>{
-    const earned=p.achievements.includes(a.k);
-    ag.appendChild(el('div','ach-cell'+(earned?' earned':''),
-      `<div class="ach-ico">${a.icon}</div><div class="ach-title">${a.title}</div>`));
-  });
+  var p=App.profile||{}, u=App.user||{};
+  var name=u.firstName||u.name||'Детектив';
+  var gid=document.getElementById('ag-name'); if(gid)gid.textContent=name;
+  // ранг + дело
+  var rank=(typeof detTitle==='function')?detTitle(clamp(p.skill||30,0,100)):'Новичок';
+  var caseN=(p.casesSolved||0)+1;
+  var ar=document.getElementById('ag-rank'); if(ar)ar.textContent=rank+' · Дело '+caseN;
+  // уровень-бар (по детективности)
+  var det=clamp(p.skill||30,0,100), rap=clamp(p.rapport||50,0,100);
+  var lf=document.getElementById('ag-lvlfill'); if(lf)lf.style.width=det+'%';
+  var lt=document.getElementById('ag-lvltext'); if(lt)lt.textContent='УР '+(p.level||1);
+  // статы
+  var s1=document.getElementById('ag-skill'); if(s1)s1.textContent=det;
+  var s2=document.getElementById('ag-rap'); if(s2)s2.textContent=rap;
+  var s3=document.getElementById('ag-cases'); if(s3)s3.textContent=p.casesSolved||0;
+  // портрет по полу
+  var src=(p.gender==='f')?'/img/chars/char-recruit-f.png':'/img/chars/char-recruit.png';
+  var pi=document.getElementById('ag-portrait-img'); if(pi)pi.src=src;
+  // подсветка выбранного персонажа
+  var g=p.gender||'m';
+  var cm=document.getElementById('agc-m'), cf=document.getElementById('agc-f');
+  if(cm)cm.classList.toggle('active',g==='m');
+  if(cf)cf.classList.toggle('active',g==='f');
 }
+// ── рабочие функции Агента (inline onclick — надёжно) ──
+window.setRecruitGender=function(g){
+  if(App.profile){ App.profile.gender=g; App.profile.genderChosen=true; saveProfile(); }
+  try{ applyRecruitGender(); }catch(_){}
+  try{ renderProfile(); }catch(_){}
+  try{ if(window.toast) toast('Персонаж выбран', (g==='f'?'Детектив-женщина':'Детектив-мужчина')+'. Обновлено во всей игре.', '🕵️'); }catch(_){}
+};
+window.resetGameProgress=function(){
+  if(!confirm('Начать игру сначала? Прогресс, улики и шкалы сбросятся. Выбранный персонаж сохранится.')) return;
+  try{
+    var gen=(App.profile&&App.profile.gender)||'m';
+    var chosen=(App.profile&&App.profile.genderChosen)||false;
+    ['sdvig_case_state','sdvig_progress','sdvig_feed_history','caseState','feedHistory'].forEach(function(k){
+      try{ localStorage.removeItem(k); }catch(_){}
+    });
+    App.profile=normalizeProfile({...DEFAULT_PROFILE, gender:gen, genderChosen:chosen, onboarded:true});
+    saveProfile();
+    location.reload();
+  }catch(e){ console.error('reset',e); alert('Не удалось сбросить: '+e.message); }
+};
 function archetype(p){
   const m=Math.max(...Object.values(p.skills));
   const k=Object.keys(p.skills).find(x=>p.skills[x]===m);

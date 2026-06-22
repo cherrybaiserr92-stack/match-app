@@ -1,203 +1,207 @@
 #!/usr/bin/env bash
-# СДВИГ R56 — выбор персонажа (показ), кнопки Агента (делегирование), подсказки без спойлера, досье
+# СДВИГ R57 — полный редизайн вкладки Агент (по принципам топ-игр) + рабочие кнопки
 set -e
-echo "══ штамп → R56 ══"
-sed -i "s/SDVIG_BUILD='R55'/SDVIG_BUILD='R56'/" src/main/resources/static/app.js
-sed -i 's/>R55</>R56</' src/main/resources/static/index.html
+echo "══ штамп → R57 ══"
+sed -i "s/SDVIG_BUILD='R56'/SDVIG_BUILD='R57'/" src/main/resources/static/app.js
+sed -i 's/>R56</>R57</' src/main/resources/static/index.html
 
-echo ""; echo "══ 1/4  кнопки Агента — делегирование (переживает перерисовку)"
-python3 - << 'PYEOF'
-path="src/main/resources/static/app.js"
-with open(path,encoding="utf-8") as f: txt=f.read()
-n=0
-
-# Заменяем initCharSwitch/initResetProgress на ОДНУ функцию с делегированием на document
-old_calls="try{maybeShowGenderSelect();initCharSwitch();initResetProgress();}catch(_){}"
-new_calls="try{maybeShowGenderSelect();bindAgentControls();}catch(_){}"
-txt=txt.replace(old_calls,new_calls)
-n+=1; print("  + вызов bindAgentControls (делегирование)")
-
-# Новая функция делегирования — вешается на document ОДИН раз, работает после любой перерисовки
-if "function bindAgentControls" not in txt:
-    fn='''function bindAgentControls(){
-  if(window._agentBound) return; window._agentBound=true;
-  document.addEventListener('click', function(e){
-    var t=e.target.closest&&e.target.closest('[data-gender]');
-    // смена персонажа в Агенте (кнопки cs-m/cs-f)
-    if(t && (t.id==='cs-m'||t.id==='cs-f')){
-      var g=t.getAttribute('data-gender');
-      if(App.profile){ App.profile.gender=g; saveProfile(); }
-      applyRecruitGender();
-      document.querySelectorAll('#cs-m,#cs-f').forEach(function(b){
-        b.classList.toggle('active', b.getAttribute('data-gender')===g);
-      });
-      try{ if(window.toast) toast('Персонаж изменён','Рекрут обновлён во всей игре.','👤'); }catch(_){}
-      return;
-    }
-    // сброс прогресса
-    if(e.target.closest&&e.target.closest('#reset-progress')){
-      if(confirm('Начать игру сначала? Прогресс, улики и шкалы сбросятся (выбранный персонаж сохранится).')){
-        try{
-          var gen=(App.profile&&App.profile.gender)||'m';
-          localStorage.removeItem('sdvig_case_state');
-          localStorage.removeItem('sdvig_progress');
-          localStorage.removeItem('sdvig_feed_history');
-          App.profile=normalizeProfile({...DEFAULT_PROFILE, gender:gen, onboarded:true});
-          saveProfile();
-          location.reload();
-        }catch(err){ console.error('reset',err); }
-      }
-      return;
-    }
-  });
-}
-function _refreshAgentGender(){
-  var g=(App.profile&&App.profile.gender)||'m';
-  document.querySelectorAll('#cs-m,#cs-f').forEach(function(b){
-    b.classList.toggle('active', b.getAttribute('data-gender')===g);
-  });
-}
-'''
-    txt=txt.replace("function maybeShowGenderSelect", fn+"function maybeShowGenderSelect",1)
-    n+=1; print("  + bindAgentControls + _refreshAgentGender")
-
-# renderProfile в конце обновляет подсветку пола
-txt=txt.replace("function renderProfile(){\n  const p=App.profile, u=App.user||{};",
-                "function renderProfile(){\n  const p=App.profile, u=App.user||{};\n  try{ _refreshAgentGender(); }catch(_){}")
-n+=1; print("  + подсветка пола при открытии Агента")
-
-with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ app.js: %d"%n)
-PYEOF
-
-
-echo ""; echo "══ 2/4  выбор персонажа — кнопка перевыбора + надёжный показ"
-python3 - << 'PYEOF'
-path="src/main/resources/static/app.js"
-with open(path,encoding="utf-8") as f: txt=f.read()
-n=0
-# maybeShowGenderSelect: показывать выбор если пол ещё не выбран ЯВНО (новое поле genderChosen)
-old='''function maybeShowGenderSelect(){
-  try{
-    if(App.profile && !App.profile.onboarded){
-      var m=document.getElementById('gender-select');
-      if(m){ m.style.display='flex'; initGenderSelect(); }
-    } else { applyRecruitGender(); }
-  }catch(_){}
-}'''
-new='''function maybeShowGenderSelect(){
-  try{
-    applyRecruitGender();
-    if(App.profile && !App.profile.genderChosen){
-      var m=document.getElementById('gender-select');
-      if(m){ m.style.display='flex'; initGenderSelect(); }
-    }
-  }catch(_){}
-}
-window.openGenderSelect=function(){
-  var m=document.getElementById('gender-select');
-  if(m){ m.style.display='flex'; initGenderSelect(); }
-};'''
-if old in txt:
-    txt=txt.replace(old,new,1); n+=1; print("  + показ выбора по genderChosen + openGenderSelect")
-
-# initGenderSelect: ставим genderChosen=true при подтверждении
-txt=txt.replace("if(App.profile){ App.profile.gender=picked; App.profile.onboarded=true; saveProfile(); }",
-                "if(App.profile){ App.profile.gender=picked; App.profile.genderChosen=true; App.profile.onboarded=true; saveProfile(); }")
-n+=1; print("  + genderChosen при подтверждении")
-
-# DEFAULT_PROFILE: добавляем genderChosen:false
-txt=txt.replace("gender:'m', onboarded:false","gender:'m', genderChosen:false, onboarded:false")
-n+=1; print("  + genderChosen в профиль")
-
-with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ app.js: %d"%n)
-PYEOF
-
-
-echo ""; echo "══ 3/4  кнопка «Сменить персонажа» открывает выбор ══"
+echo ""; echo "══ 1/3  новый HTML вкладки Агент ════════════════════"
 python3 - << 'PYEOF'
 path="src/main/resources/static/index.html"
 with open(path,encoding="utf-8") as f: txt=f.read()
 n=0
-# Заменяем две кнопки cs-m/cs-f на понятную: текущий + кнопка "сменить"
-old='''      <div class="char-switch">
-        <button class="cs-btn" data-gender="m" id="cs-m">
-          <span class="cs-ico">👤</span><span>Детектив (М)</span>
+# Находим весь старый tab-profile и заменяем
+import re
+start=txt.find('<div class="tab-pane" id="tab-profile">')
+end=txt.find('<div class="tab-pane" id="tab-shop">')
+if start>=0 and end>start:
+    old=txt[start:end]
+    new='''<div class="tab-pane" id="tab-profile">
+      <!-- Герой-карточка -->
+      <div class="ag-hero">
+        <div class="ag-hero-bg"></div>
+        <div class="ag-portrait" id="ag-portrait"><img id="ag-portrait-img" src="/img/chars/char-recruit.png" alt=""></div>
+        <div class="ag-hero-info">
+          <div class="ag-name" id="ag-name">Детектив</div>
+          <div class="ag-rank" id="ag-rank">Новичок · Дело 1</div>
+          <div class="ag-lvlbar"><div class="ag-lvlfill" id="ag-lvlfill"></div><span class="ag-lvltext" id="ag-lvltext">УР 1</span></div>
+        </div>
+      </div>
+
+      <!-- Статистика карточками -->
+      <div class="ag-stats">
+        <div class="ag-stat"><div class="ag-stat-ico">🔍</div><div class="ag-stat-val" id="ag-skill">30</div><div class="ag-stat-lbl">Детектив</div></div>
+        <div class="ag-stat"><div class="ag-stat-ico">🎩</div><div class="ag-stat-val" id="ag-rap">50</div><div class="ag-stat-lbl">Сдвиг</div></div>
+        <div class="ag-stat"><div class="ag-stat-ico">📁</div><div class="ag-stat-val" id="ag-cases">0</div><div class="ag-stat-lbl">Дел</div></div>
+      </div>
+
+      <!-- Выбор персонажа -->
+      <div class="ag-section-title">Персонаж</div>
+      <div class="ag-chars">
+        <button class="ag-char" id="agc-m" onclick="window.setRecruitGender&&window.setRecruitGender('m')">
+          <div class="ag-char-pic"><img src="/img/chars/char-recruit.png" alt="М"></div>
+          <div class="ag-char-name">Мужчина</div>
+          <div class="ag-char-check">✓</div>
         </button>
-        <button class="cs-btn" data-gender="f" id="cs-f">
-          <span class="cs-ico">👤</span><span>Детектив (Ж)</span>
+        <button class="ag-char" id="agc-f" onclick="window.setRecruitGender&&window.setRecruitGender('f')">
+          <div class="ag-char-pic"><img src="/img/chars/char-recruit-f.png" alt="Ж"></div>
+          <div class="ag-char-name">Женщина</div>
+          <div class="ag-char-check">✓</div>
         </button>
-      </div>'''
-new='''      <div class="char-switch">
-        <button class="cs-btn" data-gender="m" id="cs-m">
-          <span class="cs-ico">🕵️</span><span>Мужчина</span>
-        </button>
-        <button class="cs-btn" data-gender="f" id="cs-f">
-          <span class="cs-ico">🕵️‍♀️</span><span>Женщина</span>
-        </button>
-      </div>'''
-if old in txt:
-    txt=txt.replace(old,new,1); n+=1; print("  + кнопки пола обновлены")
+      </div>
+
+      <!-- Действия -->
+      <div class="ag-section-title">Игра</div>
+      <button class="ag-action ag-danger" onclick="window.resetGameProgress&&window.resetGameProgress()">
+        <span class="ag-action-ico">↺</span>
+        <span class="ag-action-txt"><b>Начать сначала</b><small>Сбросить прогресс и улики</small></span>
+      </button>
+
+      </div>
+
+    '''
+    txt=txt.replace(old,new,1); n+=1; print("  + новый HTML Агента (герой, статы, персонаж, действия)")
 with open(path,"w",encoding="utf-8") as f: f.write(txt)
 print("✓ index.html: %d"%n)
 PYEOF
 
 
-echo ""; echo "══ 4/4  подсказки БЕЗ спойлера + досье счётчик/анимация"
+echo ""; echo "══ 2/3  CSS нового Агента ═══════════════════════════"
 python3 - << 'PYEOF'
-import json
-# Подсказки переписываем — НЕ называем суть улики, только направление действия
-path="src/main/resources/static/scenarios/case001.json"
-d=json.load(open(path,encoding='utf-8'))
-ev=d['events']
-hints={
-  'eL2a':'Осмотри пол у стены внимательнее — там что-то есть.',
-  'eL2b':'Сдвиг кивнул в сторону стены. Присмотрись.',
-  'eL2c2':'За тяжёлой портьерой тянет холодом. Проверь её.',
-  'eL2c3':'Среди старой проводки мелькнуло что-то неуместное. Разгляди.',
-  'eL3c3':'Сторож что-то прячет в кармане. Загляни туда.',
-  'eL4c1':'На столе мигает огонёк. Стоит проверить.',
-}
+path="src/main/resources/static/style.css"
+with open(path,encoding="utf-8") as f: txt=f.read()
+if ".ag-hero{" not in txt:
+    css='''
+/* ════ R57 — РЕДИЗАЙН АГЕНТА ════ */
+#tab-profile{padding:14px 14px 90px;}
+.ag-hero{position:relative;border-radius:20px;overflow:hidden;padding:20px 18px;margin-bottom:14px;
+  display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#1a2433,#0d1420);
+  border:1px solid rgba(200,134,10,.25);}
+.ag-hero-bg{position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,rgba(200,134,10,.15),transparent 60%);}
+.ag-portrait{position:relative;width:84px;height:84px;border-radius:50%;overflow:hidden;flex-shrink:0;
+  border:3px solid #c8860a;box-shadow:0 0 20px rgba(200,134,10,.4);background:#0d1119;}
+.ag-portrait img{position:absolute;width:135%;left:-17%;top:8%;}
+.ag-hero-info{position:relative;flex:1;min-width:0;}
+.ag-name{font-family:Unbounded,sans-serif;font-weight:900;font-size:22px;color:#fff;line-height:1.1;margin-bottom:3px;}
+.ag-rank{font-size:12px;color:#c8a05a;margin-bottom:10px;}
+.ag-lvlbar{position:relative;height:18px;border-radius:9px;background:rgba(0,0,0,.4);overflow:hidden;}
+.ag-lvlfill{height:100%;border-radius:9px;background:linear-gradient(90deg,#c8860a,#ffcf6b);width:30%;transition:width .6s;}
+.ag-lvltext{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:Unbounded,sans-serif;font-weight:800;font-size:10px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);}
+
+.ag-stats{display:flex;gap:10px;margin-bottom:20px;}
+.ag-stat{flex:1;background:rgba(16,20,28,.8);border:1px solid rgba(255,255,255,.08);border-radius:16px;
+  padding:14px 8px;text-align:center;}
+.ag-stat-ico{font-size:20px;margin-bottom:6px;}
+.ag-stat-val{font-family:Unbounded,sans-serif;font-weight:900;font-size:22px;color:#ffcf6b;line-height:1;}
+.ag-stat-lbl{font-size:10px;color:#7a8494;margin-top:4px;text-transform:uppercase;letter-spacing:.04em;}
+
+.ag-section-title{font-family:Unbounded,sans-serif;font-weight:700;font-size:13px;color:#c8a05a;
+  text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px 4px;}
+
+.ag-chars{display:flex;gap:12px;margin-bottom:22px;}
+.ag-char{flex:1;position:relative;background:rgba(16,20,28,.8);border:2px solid rgba(255,255,255,.1);
+  border-radius:18px;padding:12px 10px 14px;cursor:pointer;transition:all .2s;overflow:hidden;}
+.ag-char:active{transform:scale(.97);}
+.ag-char.active{border-color:#ffcf6b;box-shadow:0 0 20px rgba(200,134,10,.35);background:rgba(200,134,10,.08);}
+.ag-char-pic{width:100%;aspect-ratio:1/1;border-radius:13px;overflow:hidden;margin-bottom:9px;
+  background:linear-gradient(180deg,#1a2230,#0d1119);position:relative;}
+.ag-char-pic img{position:absolute;width:135%;left:-17%;top:6%;}
+.ag-char-name{font-family:Unbounded,sans-serif;font-weight:700;font-size:13px;color:#e8e2d4;text-align:center;}
+.ag-char.active .ag-char-name{color:#ffcf6b;}
+.ag-char-check{position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;
+  background:#c8860a;color:#241701;display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:14px;opacity:0;transform:scale(.5);transition:all .2s;}
+.ag-char.active .ag-char-check{opacity:1;transform:scale(1);}
+
+.ag-action{width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:16px;
+  border:1px solid rgba(255,255,255,.1);background:rgba(16,20,28,.8);cursor:pointer;transition:all .2s;
+  text-align:left;margin-bottom:10px;}
+.ag-action:active{transform:scale(.98);}
+.ag-action-ico{font-size:22px;width:32px;text-align:center;flex-shrink:0;}
+.ag-action-txt{display:flex;flex-direction:column;gap:2px;}
+.ag-action-txt b{font-family:Unbounded,sans-serif;font-weight:700;font-size:14px;color:#e8e2d4;}
+.ag-action-txt small{font-size:11px;color:#7a8494;}
+.ag-danger{border-color:rgba(220,120,120,.3);}
+.ag-danger .ag-action-ico{color:#ff8f7a;}
+.ag-danger:active{background:rgba(176,80,80,.15);}
+'''
+    txt+=css
+    with open(path,"w",encoding="utf-8") as f: f.write(txt)
+    print("  + CSS Агента")
+PYEOF
+
+
+echo ""; echo "══ 3/3  renderProfile + рабочие функции (inline onclick)"
+python3 - << 'PYEOF'
+path="src/main/resources/static/app.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
 n=0
-for k,h in hints.items():
-    if k in ev and ev[k].get('hint'):
-        ev[k]['hint']=h; n+=1
-json.dump(d,open(path,'w',encoding='utf-8'),ensure_ascii=False,indent=2)
-print(f"  + {n} подсказок переписаны без спойлера")
 
-# Досье: счётчик ev-chip + анимация в правый нижний угол
-path2="src/main/resources/static/games/feed.js"
-with open(path2,encoding="utf-8") as f: txt=f.read()
-n2=0
-# flyToDossier — летит к РЕАЛЬНОМУ положению счётчика (ev-chip), а не к фикс. координатам
+# Заменяем renderProfile целиком под новый HTML
 import re
-old_fly="fly.style.left=(sr.width-60)+'px'; fly.style.top=(sr.height-30)+'px'; fly.style.opacity='0'; fly.style.transform='scale(.4)';"
-new_fly='''var _chip=document.getElementById('ev-chip');
-      if(_chip){ var cr=_chip.getBoundingClientRect(); var pr=fly.parentElement.getBoundingClientRect();
-        fly.style.left=(cr.left-pr.left+cr.width/2-20)+'px'; fly.style.top=(cr.top-pr.top+cr.height/2-20)+'px';
-      } else { fly.style.left=(sr.width-60)+'px'; fly.style.top=(sr.height-30)+'px'; }
-      fly.style.opacity='0'; fly.style.transform='scale(.4)';'''
-if old_fly in txt:
-    txt=txt.replace(old_fly,new_fly,1); n2+=1; print("  + улика летит к реальному счётчику ev-chip")
-with open(path2,"w",encoding="utf-8") as f: f.write(txt)
-print(f"✓ feed.js: {n2}")
-
-# Счётчик ev-chip: обновление числа при добавлении улики
-path3="src/main/resources/static/app.js"
-with open(path3,encoding="utf-8") as f: t3=f.read()
-n3=0
-# grantClue обновляет #ev-count
-if "_evCountEl" in t3 and "document.getElementById('ev-count')" not in t3:
-    t3=t3.replace("if(_evCountEl) _evCountEl.textContent=CState.clues.length;",
-                  "if(_evCountEl) _evCountEl.textContent=CState.clues.length;\n  try{ var _ec=document.getElementById('ev-count'); if(_ec)_ec.textContent=CState.clues.length; }catch(_){}")
-    n3+=1; print("  + счётчик улик обновляется")
-with open(path3,"w",encoding="utf-8") as f: f.write(t3)
-print(f"✓ app.js счётчик: {n3}")
+start=txt.find('function renderProfile(){')
+if start>=0:
+    # находим конец функции (первая '}' на нулевом уровне)
+    depth=0; i=txt.find('{',start); end=-1
+    for j in range(i,len(txt)):
+        if txt[j]=='{':depth+=1
+        elif txt[j]=='}':
+            depth-=1
+            if depth==0: end=j+1; break
+    old=txt[start:end]
+    new='''function renderProfile(){
+  var p=App.profile||{}, u=App.user||{};
+  var name=u.firstName||u.name||'Детектив';
+  var gid=document.getElementById('ag-name'); if(gid)gid.textContent=name;
+  // ранг + дело
+  var rank=(typeof detTitle==='function')?detTitle(clamp(p.skill||30,0,100)):'Новичок';
+  var caseN=(p.casesSolved||0)+1;
+  var ar=document.getElementById('ag-rank'); if(ar)ar.textContent=rank+' · Дело '+caseN;
+  // уровень-бар (по детективности)
+  var det=clamp(p.skill||30,0,100), rap=clamp(p.rapport||50,0,100);
+  var lf=document.getElementById('ag-lvlfill'); if(lf)lf.style.width=det+'%';
+  var lt=document.getElementById('ag-lvltext'); if(lt)lt.textContent='УР '+(p.level||1);
+  // статы
+  var s1=document.getElementById('ag-skill'); if(s1)s1.textContent=det;
+  var s2=document.getElementById('ag-rap'); if(s2)s2.textContent=rap;
+  var s3=document.getElementById('ag-cases'); if(s3)s3.textContent=p.casesSolved||0;
+  // портрет по полу
+  var src=(p.gender==='f')?'/img/chars/char-recruit-f.png':'/img/chars/char-recruit.png';
+  var pi=document.getElementById('ag-portrait-img'); if(pi)pi.src=src;
+  // подсветка выбранного персонажа
+  var g=p.gender||'m';
+  var cm=document.getElementById('agc-m'), cf=document.getElementById('agc-f');
+  if(cm)cm.classList.toggle('active',g==='m');
+  if(cf)cf.classList.toggle('active',g==='f');
+}
+// ── рабочие функции Агента (inline onclick — надёжно) ──
+window.setRecruitGender=function(g){
+  if(App.profile){ App.profile.gender=g; App.profile.genderChosen=true; saveProfile(); }
+  try{ applyRecruitGender(); }catch(_){}
+  try{ renderProfile(); }catch(_){}
+  try{ if(window.toast) toast('Персонаж выбран', (g==='f'?'Детектив-женщина':'Детектив-мужчина')+'. Обновлено во всей игре.', '🕵️'); }catch(_){}
+};
+window.resetGameProgress=function(){
+  if(!confirm('Начать игру сначала? Прогресс, улики и шкалы сбросятся. Выбранный персонаж сохранится.')) return;
+  try{
+    var gen=(App.profile&&App.profile.gender)||'m';
+    var chosen=(App.profile&&App.profile.genderChosen)||false;
+    ['sdvig_case_state','sdvig_progress','sdvig_feed_history','caseState','feedHistory'].forEach(function(k){
+      try{ localStorage.removeItem(k); }catch(_){}
+    });
+    App.profile=normalizeProfile({...DEFAULT_PROFILE, gender:gen, genderChosen:chosen, onboarded:true});
+    saveProfile();
+    location.reload();
+  }catch(e){ console.error('reset',e); alert('Не удалось сбросить: '+e.message); }
+};'''
+    txt=txt.replace(old,new,1); n+=1; print("  + renderProfile переписан + setRecruitGender/resetGameProgress")
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ app.js: %d"%n)
 PYEOF
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R56 — выбор персонажа, кнопки Агента, подсказки, досье"
-echo "   git add -A && git commit -m 'R56: gender select show, agent buttons, hint no-spoiler, dossier' && git push"
+echo "✅  R57 — редизайн Агента + рабочие кнопки"
+echo "   git add -A && git commit -m 'R57: agent tab redesign + working buttons' && git push"
 echo "═══════════════════════════════════════════════════════"
