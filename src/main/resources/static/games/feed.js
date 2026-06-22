@@ -52,11 +52,11 @@
     .m2-av{width:62px;height:62px;border-radius:50%;flex-shrink:0;overflow:hidden;border:2.5px solid;position:relative;}
     .m2-av img{position:absolute;width:150%;left:-25%;top:8%;max-width:none;}
     /* индивидуальный кроп — голова целиком влезает */
-    .m2-av.av-shift img{width:148%;left:-24%;top:9%;}
+    .m2-av.av-shift img{width:128%;left:-14%;top:1%;}
     .m2-av.av-recruit img{width:150%;left:-25%;top:7%;}
-    .m2-av.av-miller img{width:145%;left:-22%;top:8%;}
-    .m2-av.av-eleanor img{width:150%;left:-25%;top:7%;}
-    .m2-av.av-kurator img{width:148%;left:-24%;top:8%;}
+    .m2-av.av-miller img{width:140%;left:-20%;top:5%;}
+    .m2-av.av-eleanor img{width:148%;left:-24%;top:5%;}
+    .m2-av.av-kurator img{width:122%;left:-11%;top:0%;}
     .m2-ring{position:absolute;inset:-2px;border-radius:12px;opacity:0;transition:opacity .3s;}
     .msg2.active .m2-av{transform:scale(1.05);}
     .msg2.active .m2-ring{opacity:1;box-shadow:0 0 0 2px currentColor,0 0 16px currentColor;}
@@ -286,8 +286,8 @@
         }
       });
     }
-    // shift-карта (выбор версии): показываем intro как реплику-вопрос
-    if(ev.shift && ev.intro){
+    // shift-карта: intro показываем в ленте ТОЛЬКО если нет dialogue (иначе intro будет на самой карте)
+    if(ev.shift && ev.intro && !ev.dialogue){
       out.push({type:'narr', text:ev.intro});
     }
     // ВАЖНО: дедукция/улика тут НЕ добавляется — она появится ПОСЛЕ мини-игры
@@ -383,7 +383,7 @@
     stage.appendChild(fly);
     requestAnimationFrame(()=>{
       fly.style.transition='all .7s cubic-bezier(.5,0,.7,1)';
-      fly.style.left='14px'; fly.style.top='10px'; fly.style.opacity='0'; fly.style.transform='scale(.5)';
+      fly.style.left=(sr.width-60)+'px'; fly.style.top=(sr.height-30)+'px'; fly.style.opacity='0'; fly.style.transform='scale(.4)';
     });
     setTimeout(()=>fly.remove(),720);
     try{ Sound.approve&&Sound.approve(); vibrate&&vibrate(12); }catch(_){}

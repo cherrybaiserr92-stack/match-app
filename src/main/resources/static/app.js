@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R52';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R53';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -953,7 +953,7 @@ function restartCarousel(){
 
 function initEvPanel(){
   const chip=document.getElementById("ev-chip");
-  if(chip) chip.addEventListener("click",function(){
+  if(chip && !chip._evChipBound){ chip._evChipBound=true; chip.addEventListener("click",function(){
     const panel=document.getElementById("ev-panel");
     const list=document.getElementById("ev-list");
     if(!panel||!list)return;
@@ -963,7 +963,7 @@ function initEvPanel(){
           '<div class="ec-body"><div class="ec-name">'+c.name+'</div><div class="ec-proof">'+c.proof+'</div></div></div>';}).join("")
       : '<div class="ev-empty">Улики появятся по ходу расследования.</div>';
     panel.classList.add("open");
-  });
+  }); }
   const closeBtn=document.getElementById("ev-close");
   if(closeBtn) closeBtn.addEventListener("click",function(){
     const panel=document.getElementById("ev-panel");if(panel)panel.classList.remove("open");
