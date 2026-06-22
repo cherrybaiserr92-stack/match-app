@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R54';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R55';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -25,7 +25,7 @@ const DEFAULT_PROFILE = {
   casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
   achievements:[], dailyStreak:0, lastDaily:null, sound:true,
-  lastEnergyTs:0, rapport:50, skill:30, onboarded:false
+  lastEnergyTs:0, rapport:50, skill:30, gender:'m', onboarded:false
 };
 
 /* ── DOM helpers ───────────────────────────────── */
@@ -951,6 +951,64 @@ function restartCarousel(){
   buildBacks();
 }
 
+
+function initGenderSelect(){
+  var modal=document.getElementById('gender-select'); if(!modal) return;
+  var picked=null, confirm=document.getElementById('gm-confirm');
+  modal.querySelectorAll('.gm-card').forEach(function(c){
+    c.addEventListener('click',function(){
+      modal.querySelectorAll('.gm-card').forEach(function(x){x.classList.remove('sel');});
+      c.classList.add('sel'); picked=c.getAttribute('data-gender');
+      if(confirm) confirm.disabled=false;
+    });
+  });
+  if(confirm) confirm.addEventListener('click',function(){
+    if(!picked) return;
+    if(App.profile){ App.profile.gender=picked; App.profile.onboarded=true; saveProfile(); }
+    applyRecruitGender();
+    modal.style.display='none';
+    try{ updateProfileUI&&updateProfileUI(); }catch(_){}
+  });
+}
+function maybeShowGenderSelect(){
+  try{
+    if(App.profile && !App.profile.onboarded){
+      var m=document.getElementById('gender-select');
+      if(m){ m.style.display='flex'; initGenderSelect(); }
+    } else { applyRecruitGender(); }
+  }catch(_){}
+}
+function initCharSwitch(){
+  var m=document.getElementById('cs-m'), f=document.getElementById('cs-f');
+  function refresh(){
+    var g=(App.profile&&App.profile.gender)||'m';
+    if(m)m.classList.toggle('active',g==='m');
+    if(f)f.classList.toggle('active',g==='f');
+  }
+  function set(g){ if(App.profile){ App.profile.gender=g; saveProfile(); } applyRecruitGender(); refresh();
+    try{ if(window.toast) toast('Персонаж изменён','Рекрут обновлён.','👤'); }catch(_){} }
+  if(m)m.addEventListener('click',function(){set('m');});
+  if(f)f.addEventListener('click',function(){set('f');});
+  refresh();
+}
+function initResetProgress(){
+  var btn=document.getElementById('reset-progress'); if(!btn) return;
+  btn.addEventListener('click',function(){
+    if(confirm('Начать игру сначала? Весь прогресс, улики и шкалы будут сброшены.')){
+      try{
+        // сброс прогресса дел, шкал, но СОХРАНЯЕМ выбранный пол
+        var g=(App.profile&&App.profile.gender)||'m';
+        localStorage.removeItem('sdvig_case_state');
+        localStorage.removeItem('sdvig_progress');
+        App.profile=normalizeProfile({...DEFAULT_PROFILE, gender:g, onboarded:true});
+        saveProfile();
+        try{ if(window.Feed&&Feed.reset) Feed.reset(); }catch(_){}
+        location.reload();
+      }catch(e){ console.error('reset',e); }
+    }
+  });
+}
+
 function initEvPanel(){
   const chip=document.getElementById("ev-chip");
   if(chip && !chip._evChipBound){ chip._evChipBound=true; chip.addEventListener("click",function(){
@@ -1051,6 +1109,7 @@ const CHAR_VER='3';  /* поднимай при замене артов — пр
 const CHARS={
   shift:  {src:'/img/chars/char-shift.png',   side:'right'},
   recruit:{src:'/img/chars/char-recruit.png', side:'left'},
+  'recruit-f':{src:'/img/chars/char-recruit-f.png', side:'left'},
   kurator:{src:'/img/chars/char-kurator.png', side:'right'},
   arundel:{src:'/img/chars/char-arundel.png', side:'right'},
   miller: {src:'/img/chars/char-miller.png',  side:'right'},
@@ -1074,6 +1133,13 @@ const CASE_BGS={
   'case004':'/img/bg/bg-mansion-ext.jpg',
   'case005':'/img/bg/bg-mansion-int.jpg'
 };
+function recruitSrc(){
+  try{ return (App.profile&&App.profile.gender==='f')?'/img/chars/char-recruit-f.png':'/img/chars/char-recruit.png'; }
+  catch(_){ return '/img/chars/char-recruit.png'; }
+}
+function applyRecruitGender(){
+  try{ if(window.CHARS&&CHARS.recruit){ CHARS.recruit.src=recruitSrc(); window.CHAR_VER=String(Date.now()); } }catch(_){}
+}
 let _charEl=null,_charId=null;
 function showChar(id){
   if(!id||!CHARS[id]){hideChar();return;}
@@ -1155,7 +1221,7 @@ function initCarousel(){
   if(_evCountEl)_evCountEl.textContent="0";
   var _cn=document.getElementById("case-name");if(_cn)_cn.textContent=CASE.name||"";
   var _cs=document.getElementById("case-sub");if(_cs)_cs.textContent=(CAMPAIGN&&CAMPAIGN.cases[_caseIdx])?CAMPAIGN.cases[_caseIdx].title:"";
-  cSetProgress(); buildBacks(); initEvPanel(); try{updateCaseBg();hideChar();}catch(_){} try{updateCaseBg();hideChar();}catch(_){}
+  cSetProgress(); buildBacks(); initEvPanel(); try{maybeShowGenderSelect();initCharSwitch();initResetProgress();}catch(_){} try{updateCaseBg();hideChar();}catch(_){} try{updateCaseBg();hideChar();}catch(_){}
 }
 
 /* ═══════════════════════════════════════════════

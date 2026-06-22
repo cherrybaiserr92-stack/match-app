@@ -548,3 +548,35 @@ body::before{
 .ev-chip-mini{display:flex;align-items:center;gap:3px;color:#ffcf6b;font-weight:800;font-size:13px;
   font-family:Unbounded,sans-serif;}
 .ev-chip-mini .ev-dot{width:6px;height:6px;border-radius:50%;background:#46d89b;}
+
+/* ── Выбор персонажа ── */
+.gender-modal{position:fixed;inset:0;z-index:9000;background:rgba(6,8,13,.97);
+  display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(10px);}
+.gm-inner{max-width:440px;width:100%;text-align:center;}
+.gm-title{font-family:Unbounded,sans-serif;font-weight:900;font-size:24px;color:#ffcf6b;letter-spacing:.02em;margin-bottom:8px;}
+.gm-sub{font-size:13px;line-height:1.5;color:#9aa3b2;margin-bottom:26px;font-style:italic;}
+.gm-options{display:flex;gap:14px;margin-bottom:24px;}
+.gm-card{flex:1;background:rgba(16,20,28,.8);border:2px solid rgba(255,255,255,.1);border-radius:18px;
+  padding:14px 10px;cursor:pointer;transition:all .2s;}
+.gm-card:active{transform:scale(.97);}
+.gm-card.sel{border-color:#ffcf6b;box-shadow:0 0 24px rgba(200,134,10,.4);background:rgba(200,134,10,.1);}
+.gm-portrait{width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;margin-bottom:10px;
+  background:linear-gradient(180deg,#1a2230,#0d1119);position:relative;}
+.gm-portrait img{position:absolute;width:130%;left:-15%;top:0;object-fit:cover;}
+.gm-label{font-family:Unbounded,sans-serif;font-weight:700;font-size:13px;color:#e8e2d4;}
+.gm-card.sel .gm-label{color:#ffcf6b;}
+.gm-confirm{width:100%;padding:15px;border:none;border-radius:14px;font-family:Unbounded,sans-serif;
+  font-weight:800;font-size:15px;cursor:pointer;transition:all .2s;
+  background:linear-gradient(180deg,#ffe09a,#c8860a);color:#241701;}
+.gm-confirm:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.5);}
+
+.char-switch{display:flex;gap:10px;}
+.cs-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:13px;border-radius:12px;
+  background:rgba(16,20,28,.8);border:2px solid rgba(255,255,255,.1);color:#b8b0a0;cursor:pointer;
+  font-family:Unbounded,sans-serif;font-weight:700;font-size:12px;transition:all .2s;}
+.cs-btn.active{border-color:#ffcf6b;color:#ffcf6b;background:rgba(200,134,10,.1);}
+.cs-ico{font-size:15px;}
+.reset-btn{width:100%;padding:14px;border-radius:12px;background:rgba(176,80,80,.15);
+  border:1.5px solid rgba(220,120,120,.4);color:#ffb3a0;cursor:pointer;
+  font-family:Unbounded,sans-serif;font-weight:700;font-size:13px;transition:all .2s;}
+.reset-btn:active{transform:scale(.98);background:rgba(176,80,80,.25);}
