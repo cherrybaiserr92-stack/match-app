@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R60';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R61';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -265,6 +265,8 @@ function enterMain(){
   try{ renderProfile(); }catch(e){ console.error('renderProfile',e); }
   try{ renderShop(); }catch(e){ console.error('renderShop',e); }
   try{ checkDaily(); }catch(e){ console.error('checkDaily',e); }
+  // пролог + выбор персонажа (работает и в Feed-режиме)
+  setTimeout(function(){ try{ maybeShowGenderSelect(); bindAgentControls(); }catch(e){ console.error('prologue',e); } }, 300);
 }
 
 /* ── навигация ─────────────────────────────────── */
