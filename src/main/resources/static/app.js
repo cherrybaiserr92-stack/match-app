@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R61';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R62';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
