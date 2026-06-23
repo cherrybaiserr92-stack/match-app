@@ -1,6 +1,12 @@
 {
   "cases": [
     {
+      "id": "level-1-1",
+      "chapter": 1,
+      "title": "Музейный квартал",
+      "subtitle": "Битое стекло"
+    },
+    {
       "id": "case001",
       "chapter": 1,
       "title": "Музейный квартал",
