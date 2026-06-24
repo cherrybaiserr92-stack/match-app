@@ -1,184 +1,146 @@
 #!/usr/bin/env bash
-# СДВИГ R68 — скрытая админ-панель для тестирования уровней
+# СДВИГ R69 — глава 2, уровень 2-1 «Запах краски» (вход в Старый город)
 set -e
-echo "══ штамп → R68 ══"
-sed -i "s/SDVIG_BUILD='R67'/SDVIG_BUILD='R68'/" src/main/resources/static/app.js
-sed -i 's/>R67</>R68</' src/main/resources/static/index.html
+echo "══ штамп → R69 ══"
+sed -i "s/SDVIG_BUILD='R68'/SDVIG_BUILD='R69'/" src/main/resources/static/app.js
+sed -i 's/>R68</>R69</' src/main/resources/static/index.html
 
-echo ""; echo "══ 1/3  HTML админ-панели ══════════════════════════"
-python3 - << 'PYEOF'
-path="src/main/resources/static/index.html"
-with open(path,encoding="utf-8") as f: txt=f.read()
-n=0
-if 'id="admin-panel"' not in txt:
-    panel='''
-  <!-- СКРЫТАЯ АДМИН-ПАНЕЛЬ (5 тапов по штампу версии) -->
-  <div id="admin-panel" class="admin-panel" style="display:none">
-    <div class="adm-sheet">
-      <div class="adm-head">
-        <span>⚙ ОТЛАДКА</span>
-        <button class="adm-close" onclick="window.closeAdmin&&closeAdmin()">✕</button>
-      </div>
+echo ""; echo "══ 1/3  создаём level-2-1.json (Запах краски) ═════"
+python3 - << 'STORY_EOF'
+# СДВИГ — Уровень 2-1 «Запах краски» (вход в Старый город, поиск типографии)
+import json
 
-      <div class="adm-sec">Перейти на уровень</div>
-      <div class="adm-levels" id="adm-levels"></div>
-
-      <div class="adm-sec">Шкалы</div>
-      <div class="adm-scale">
-        <label>🎩 Отношения: <b id="adm-rap-val">50</b></label>
-        <input type="range" id="adm-rap" min="0" max="100" value="50" oninput="window.admSetRap&&admSetRap(this.value)">
-      </div>
-      <div class="adm-scale">
-        <label>🔍 Детектив: <b id="adm-skill-val">30</b></label>
-        <input type="range" id="adm-skill" min="0" max="100" value="30" oninput="window.admSetSkill&&admSetSkill(this.value)">
-      </div>
-
-      <div class="adm-sec">Действия</div>
-      <div class="adm-actions">
-        <button onclick="window.admJump&&admJump(-1)">◄ Пред. уровень</button>
-        <button onclick="window.admJump&&admJump(1)">След. уровень ►</button>
-        <button onclick="window.admRestartLevel&&admRestartLevel()">↻ Перезапуск уровня</button>
-        <button onclick="window.admMaxScales&&admMaxScales()">Шкалы 100/100</button>
-        <button onclick="window.admMinScales&&admMinScales()">Шкалы 0/0</button>
-        <button class="adm-danger" onclick="window.admWipe&&admWipe()">⌫ Полный сброс</button>
-      </div>
-
-      <div class="adm-info" id="adm-info"></div>
-    </div>
-  </div>
-</body>'''
-    txt=txt.replace("</body>",panel,1); n+=1; print("  + HTML админ-панели")
-with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ index.html: %d"%n)
-PYEOF
-
-
-echo ""; echo "══ 2/3  CSS админ-панели ═══════════════════════════"
-python3 - << 'PYEOF'
-path="src/main/resources/static/style.css"
-with open(path,encoding="utf-8") as f: txt=f.read()
-if ".admin-panel{" not in txt:
-    txt+='''
-/* ════ АДМИН-ПАНЕЛЬ ════ */
-.admin-panel{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);
-  display:flex;align-items:flex-end;justify-content:center;}
-.adm-sheet{width:100%;max-width:480px;max-height:85vh;overflow-y:auto;background:#12161e;
-  border-top:2px solid #c8860a;border-radius:18px 18px 0 0;padding:16px 18px 30px;}
-.adm-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;
-  font-family:Unbounded,sans-serif;font-weight:900;font-size:15px;color:#ffcf6b;letter-spacing:.05em;}
-.adm-close{background:rgba(255,255,255,.1);border:none;color:#fff;width:30px;height:30px;
-  border-radius:8px;font-size:14px;cursor:pointer;}
-.adm-sec{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#7a8494;
-  margin:16px 0 8px;font-weight:700;}
-.adm-levels{display:flex;flex-direction:column;gap:6px;}
-.adm-lvl{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
-  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#e8e2d4;
-  cursor:pointer;text-align:left;font-size:13px;transition:all .15s;}
-.adm-lvl:active{transform:scale(.98);}
-.adm-lvl.cur{border-color:#ffcf6b;background:rgba(200,134,10,.12);}
-.adm-lvl-idx{font-family:Unbounded,sans-serif;font-weight:800;color:#c8860a;min-width:32px;}
-.adm-lvl-sub{color:#7a8494;font-size:11px;}
-.adm-scale{margin-bottom:12px;}
-.adm-scale label{font-size:12px;color:#b8b0a0;display:block;margin-bottom:5px;}
-.adm-scale label b{color:#ffcf6b;}
-.adm-scale input[type=range]{width:100%;accent-color:#c8860a;}
-.adm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.adm-actions button{padding:11px;border-radius:9px;background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.1);color:#e8e2d4;font-size:12px;cursor:pointer;
-  font-family:Unbounded,sans-serif;font-weight:600;}
-.adm-actions button:active{transform:scale(.97);}
-.adm-actions .adm-danger{grid-column:1/3;border-color:rgba(220,120,120,.4);color:#ff9b88;
-  background:rgba(176,80,80,.12);}
-.adm-info{margin-top:14px;font-size:11px;color:#7a8494;font-family:monospace;
-  background:rgba(0,0,0,.3);padding:8px 10px;border-radius:8px;}
-'''
-    with open(path,"w",encoding="utf-8") as f: f.write(txt)
-    print("  + CSS админ-панели")
-PYEOF
-
-
-echo ""; echo "══ 3/3  логика админ-панели ════════════════════════"
-python3 - << 'PYEOF'
-path="src/main/resources/static/app.js"
-with open(path,encoding="utf-8") as f: txt=f.read()
-n=0
-if "window.openAdmin" not in txt:
-    code='''
-// ════ АДМИН-ПАНЕЛЬ (отладка) ════
-(function(){
-  var _admTaps=0, _admTimer=null;
-  // тайный триггер: 5 быстрых тапов по штампу версии
-  document.addEventListener('click', function(e){
-    var t=e.target.closest&&e.target.closest('#build-tag,.build-tag,[id^="build"]');
-    if(!t) return;
-    _admTaps++;
-    clearTimeout(_admTimer); _admTimer=setTimeout(function(){_admTaps=0;},800);
-    if(_admTaps>=5){ _admTaps=0; window.openAdmin&&window.openAdmin(); }
-  });
-})();
-window.openAdmin=function(){
-  var p=document.getElementById('admin-panel'); if(!p) return;
-  p.style.display='flex';
-  // список уровней
-  var box=document.getElementById('adm-levels');
-  if(box&&window.CAMPAIGN&&CAMPAIGN.cases){
-    box.innerHTML=CAMPAIGN.cases.map(function(c,i){
-      var cur=(i===_caseIdx)?' cur':'';
-      var sub=c.subtitle||c.title||'';
-      return '<button class="adm-lvl'+cur+'" onclick="window.admGoto&&admGoto('+i+')">'+
-        '<span class="adm-lvl-idx">'+(i+1)+'</span>'+
-        '<span>'+(c.id)+(sub?'<br><span class="adm-lvl-sub">'+sub+'</span>':'')+'</span></button>';
-    }).join('');
-  }
-  // текущие шкалы в ползунки
-  var p2=App.profile||{};
-  var r=document.getElementById('adm-rap'), s=document.getElementById('adm-skill');
-  if(r){ r.value=p2.rapport||50; document.getElementById('adm-rap-val').textContent=p2.rapport||50; }
-  if(s){ s.value=p2.skill||30; document.getElementById('adm-skill-val').textContent=p2.skill||30; }
-  _admUpdateInfo();
-};
-window.closeAdmin=function(){ var p=document.getElementById('admin-panel'); if(p)p.style.display='none'; };
-function _admUpdateInfo(){
-  var el=document.getElementById('adm-info'); if(!el) return;
-  var p=App.profile||{};
-  el.textContent='уровень: '+(_caseIdx+1)+'/'+((window.CAMPAIGN&&CAMPAIGN.cases.length)||'?')+
-    ' | id: '+((window.CAMPAIGN&&CAMPAIGN.cases[_caseIdx]&&CAMPAIGN.cases[_caseIdx].id)||'?')+
-    ' | 🎩'+(p.rapport||0)+' 🔍'+(p.skill||0)+' | build '+(window.SDVIG_BUILD||'?');
+d={
+ 'name':'Запах краски','title':'Запах краски','chapter':2,'level':1,
+ 'truth':{'place':'found','letter':'recognized'},  # нашёл типографию; узнал букву
+ 'start':'s1','total':1,'events':{}
 }
-window.admGoto=function(i){
-  try{
-    _caseIdx=i;
-    try{ localStorage.setItem('sdvig_case', CAMPAIGN.cases[i].id); }catch(_){}
-    loadCaseByIndex(i);
-    if(window.Feed){ try{initCarousel_data();}catch(_){}; Feed.reset(); Feed.init(); }
-    closeAdmin();
-    if(window.toast) toast('Уровень '+(i+1),CAMPAIGN.cases[i].id,'⚙');
-  }catch(e){ alert('Ошибка перехода: '+e.message); }
-};
-window.admJump=function(d){
-  var ni=Math.max(0,Math.min((CAMPAIGN.cases.length-1),_caseIdx+d));
-  admGoto(ni);
-};
-window.admRestartLevel=function(){ admGoto(_caseIdx); };
-window.admSetRap=function(v){ if(App.profile){App.profile.rapport=+v;saveProfile();} var e=document.getElementById('adm-rap-val');if(e)e.textContent=v; try{updateScaleBars();}catch(_){}; _admUpdateInfo(); };
-window.admSetSkill=function(v){ if(App.profile){App.profile.skill=+v;saveProfile();} var e=document.getElementById('adm-skill-val');if(e)e.textContent=v; try{updateScaleBars();}catch(_){}; _admUpdateInfo(); };
-window.admMaxScales=function(){ admSetRap(100); admSetSkill(100); var r=document.getElementById('adm-rap'),s=document.getElementById('adm-skill'); if(r)r.value=100; if(s)s.value=100; };
-window.admMinScales=function(){ admSetRap(0); admSetSkill(0); var r=document.getElementById('adm-rap'),s=document.getElementById('adm-skill'); if(r)r.value=0; if(s)s.value=0; };
-window.admWipe=function(){
-  if(!confirm('Полный сброс прогресса и профиля?')) return;
-  try{ Object.keys(localStorage).filter(function(k){return k.indexOf('sdvig')===0;}).forEach(function(k){localStorage.removeItem(k);}); }catch(_){}
-  location.reload();
-};
-'''
-    # вставляем перед последним закрытием (после initEvPanel или в конец app)
-    txt=txt.replace("function initEvPanel(){", code+"\nfunction initEvPanel(){",1)
-    n+=1; print("  + логика админ-панели (переход, шкалы, сброс)")
+E=d['events']
+
+# ─── ВХОД В СТАРЫЙ ГОРОД ───
+E['s1']={'badge':'Улица Печатников','title':'Старый город','linear':True,'next':'s2',
+  'text':'Старый город начинался там, где кончались фонари. Узкие улицы, глухие кирпичные стены, вывески мастерских, которых давно нет. Когда-то здесь печатали все городские газеты — теперь только ветер гонял по мостовой обрывки старых афиш.',
+  'dialogue':'Рекрут: «И где тут искать? Тут половина домов заколочена».\nСдвиг: «Деньги сторожа пахли свежей краской. Значит, где-то здесь печатный станок ещё дышит. Ищи, где пахнет, а не где темно».'}
+
+E['s2']={'badge':'След','title':'Чем пахнет','linear':True,'next':'s3','speaker':'shift',
+  'text':'Сдвиг шёл медленно, принюхиваясь, как старый пёс. На углу остановился — потянул носом воздух у водостока. Среди сырости и плесени пробивалось что-то чужое: резкий химический запах.',
+  'dialogue':'Сдвиг: «Чувствуешь? Растворитель, краска, горячий металл. Газеты тут не печатают лет тридцать. А пахнет так, будто печатали час назад».'}
+
+# ─── РАЗВИЛКА 1: как искать ───
+E['s3']={'badge':'Поиск','title':'Куда идти','intro':'Запах краски где-то рядом, но улицы петляют. Искать самим по следу или порасспрашивать редких местных?',
+  'left':{'label':'Идти по запаху и следам','set':{'how':'track'},'dscore':7,'rapport':-1,
+    'evidence':'Ты пошёл на запах, читая землю. Свежие пятна краски на брусчатке, обрывки бумаги, ещё влажные. След вёл в тупик к двери с замазанным окном — единственной, из-под которой пробивался свет.','to':'s4'},
+  'right':{'label':'Расспросить местных','set':{'how':'ask'},'dscore':3,'rapport':7,
+    'evidence':'У бочки с огнём грелись двое стариков. Сначала отнекивались, но Сдвиг говорил с ними по-свойски, без давления. Один кивнул в сторону переулка: «Каплунова мастерская. Думали, пустая. А по ночам там стучит и светится. Мы туда не ходим».','to':'s4'}}
+
+# ─── НАХОДЯТ ТИПОГРАФИЮ ───
+E['s4']={'badge':'Мастерская','title':'Дверь с замазанным окном','linear':True,'next':'s5',
+  'text':'Дверь старой типографии. Окно закрашено изнутри чёрным, но по краю стекла пробивался свет, и за дверью что-то мерно стучало — тяжёлый, ритмичный звук. Стук-стук-стук. Печатный станок. Работающий.',
+  'dialogue':'Рекрут: «Внутри кто-то есть. Станок работает».\nСдвиг: «Тихо. Сначала посмотрим, что печатают, потом будем стучаться. Окно сбоку — попробуй разглядеть».'}
+
+# ─── улика: буква (узнавание) ───
+E['s5']={'badge':'В щель','title':'Что печатают','linear':True,'next':'s6',
+  'text':'Сквозь щель в закрашенном окне виден был кусок мастерской: станок, стопки свежих листов, чьи-то руки в краске. И на полу, в свете лампы — груда обрезков бумаги. На каждом обрезке оттиснута одна и та же литера. Та самая, с дорогой карточки из пустого бумажника.',
+  'hint':'Эти обрезки ты уже где-то видел. Точнее — не их, а то, что на них оттиснуто.',
+  'clue':{'id':'letter','name':'Та самая буква','icon':'🅰','proof':'Обрезки бумаги с тиснёной литерой — точь-в-точь как на карточке из бумажника, что срезал Дэнни. Здесь её печатают тиражом.'},
+  'react':'Рекрут: «Это же та буква. С карточки Дэнни. Помнишь, пустой бумажник?»\nСдвиг: «Помню. Значит, карточки делают здесь. И не одну — целую гору. Кто-то метит этим знаком много чего».'}
+
+# ─── РАЗВИЛКА 2: как действовать ───
+E['s6']={'badge':'Решение','title':'Внутрь или ждать','intro':'В мастерской кто-то есть. Войти сейчас, пока станок работает, — или последить, кто выйдет?',
+  'left':{'label':'Войти сразу, по горячему','set':{'move':'in'},'dscore':6,'rapport':-3,
+    'evidence':'Ты толкнул дверь — заперто. Постучал. Стук станка оборвался, внутри замерли. Потом — поспешные шаги, грохот падающего стула, хлопок задней двери. Кто-то уходил через чёрный ход.','to':'s7'},
+  'right':{'label':'Последить, кто выйдет','set':{'move':'wait'},'dscore':4,'rapport':4,
+    'evidence':'Вы отступили в тень напротив. Через несколько минут дверь приоткрылась — высокий человек в пальто выскользнул, нервно оглядываясь, и быстро зашагал прочь. В руке он сжимал что-то блестящее. Карманные часы.','to':'s7'}}
+
+# ─── ТЕНЬ СТАНОВИТСЯ УГРОЗОЙ (мост к погоне) ───
+E['s7']={'badge':'Не одни','title':'Перекрытый выход','linear':True,'next':'s8',
+  'text':'И тут Рекрут почувствовал чужой взгляд. Не из мастерской — со стороны улицы, которой они пришли. В устье переулка, под единственным фонарём, стоял человек. Крупный, в тёмном плаще. Не прятался. Просто стоял и смотрел — и в том, как он стоял, читалось: выход закрыт.',
+  'dialogue':'Рекрут: «Сдвиг. Сзади. Тот, что перекрыл переулок».\nСдвиг: «Вижу. И где один такой — там всегда второй. Это уже не слежка. Это загон».'}
+
+# ─── РАЗВИЛКА-ВЕРСИЯ: что происходит ───
+E['s8']={'shift':True,'badge':'ВЕРСИЯ','title':'Что это значит',
+  'text':'Человек под фонарём не двигался. Где-то за спиной, в темноте, скрипнул камень под чьим-то ботинком. Их обкладывали — спокойно, без спешки, как умеют те, кто делает это не впервые.',
+  'dialogue':'Сдвиг: «Они не за карточками пришли. Они пришли за нами. Значит, мы подобрались близко — ближе, чем думали».',
+  'intro':'Двое крупных, перекрытый переулок, спокойный загон. Что это?',
+  'a':{'label':'◄ Местная шпана','vtext':'Просто гопники Старого города, защищают территорию. Можно припугнуть значком.','set':{'threat':'local'},'bad':True,'dscore':-8,'rapport':-2,'to':'end'},
+  'b':{'label':'Чистильщики, та же рука ►','vtext':'Те самые «двое больших» от человека с часами. Их работа — убирать тех, кто лезет не туда. И сейчас это мы.','set':{'threat':'cleaners'},'dscore':12,'rapport':3,'to':'end'}}
+
+# ─── ФИНАЛ: завязка погони ───
+E['end']={'shift':True,'badge':'Итог','title':'Пора уходить','linear':False,
+  'text':'Человек под фонарём наконец сдвинулся с места — неторопливо, вразвалку, как идут, когда уверены, что добыча никуда не денется. За спиной из темноты выступил второй. Сдвиг коротко глянул на Рекрута и качнул головой в сторону узкого прохода между домами.',
+  'dialogue':'Сдвиг: «Драться с двумя такими — дурное дело. Ноги, Рекрут. Через тот проход, и не отставай».',
+  'intro':'Уходить нужно сейчас. Как?',
+  'a':{'label':'◄ Тихо отступить в проход','vtext':'Не бежать, не провоцировать — медленно уйти в темноту прохода, пока не бросились.','set':{'escape':'quiet'},'dscore':5,'rapport':2,'to':'__resolve__'},
+  'b':{'label':'Рвануть со всех ног ►','vtext':'Не ждать — рвануть в проход бегом, выгадать фору, пока они не ожидают.','set':{'escape':'run'},'dscore':3,'rapport':3,'to':'__resolve__'}}
+
+# ─── КОНЦОВКИ ───
+d['endings']={
+ 'win':{'kind':'win','mark':'★','verdict':'ЛОГОВО НАЙДЕНО',
+   'text':'Ты нашёл, где бьётся сердце сети: заброшенная типография, что печатает меченые карточки и, похоже, деньги. И ту самую букву — связь с карточкой Дэнни теперь не догадка, а факт. «Хорошая ночь, — Сдвиг отступал в тень прохода, не сводя глаз с фигур под фонарём. — Нашли нору. Теперь бы из неё ноги унести». Где-то впереди ждал лабиринт Старого города — и погоня.'},
+ 'partial':{'kind':'partial','mark':'☆','verdict':'НОРА, ДА НЕ ВСЯ',
+   'text':'Типографию нашли, но разглядеть толком не успели — обложили слишком быстро. «Видели мало, поняли половину, — буркнул Сдвиг, пятясь в проход. — Зато теперь знаем: тут не только печатают. Тут и стерегут». Двое под фонарём двинулись следом.'},
+ 'fail':{'kind':'fail','mark':'✗','verdict':'ЕДВА НЕ В ЛОВУШКЕ',
+   'text':'Приняли чистильщиков за местную шпану, чуть не пошли на них в открытую — и едва не угодили в загон. «В следующий раз, когда я говорю „ноги", не спорь, — процедил Сдвиг, утягивая Рекрута в темноту. — Эти ребята шутить не умеют». Проход проглотил их за миг до того, как сомкнулась ловушка.'}}
+
+json.dump(d,open('src/main/resources/static/scenarios/level-2-1.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+print(f"✓ level-2-1.json создан: {len(E)} событий")
+ok=True
+for k,e in E.items():
+    for t in [e.get('next')]+[e.get(s,{}).get('to') for s in ['left','right','a','b']]:
+        if t and t!='__resolve__' and t not in E: print(f"  ✗ {k}→{t}"); ok=False
+if ok: print("  ✓ переходы валидны")
+import re
+for k,e in E.items():
+    for f in ['text','dialogue','intro','react']:
+        v=str(e.get(f,''))
+        if v.count('«')!=v.count('»'): print(f"  ⚠ {k}.{f} кавычки")
+# штампы
+for pat in ['нутром чу','дожд','малыш','чует неладн']:
+    c=sum(len(re.findall(pat,str(e.get(f,'')),re.I)) for e in E.values() for f in ['text','dialogue','intro','react'])
+    if c: print(f"  ⚠ штамп '{pat}': {c}")
+# проверка на латинские/китайские артефакты
+full=json.dumps(d,ensure_ascii=False)
+bad=re.findall(r'[a-zA-Z\u4e00-\u9fff]+',full.replace('level-2-1','').replace('id','').replace('curator','').replace('hayes',''))
+
+STORY_EOF
+
+
+echo ""; echo "══ 2/3  campaign.json — уровень 2-1 после музея ═══"
+python3 - << 'PYEOF'
+import json
+path="src/main/resources/static/scenarios/campaign.json"
+d=json.load(open(path,encoding='utf-8'))
+ids=[c['id'] for c in d['cases']]
+if 'level-2-1' not in ids:
+    new=[]
+    for c in d['cases']:
+        # вставляем level-2-1 после case001 (музей), ВМЕСТО старого case002
+        if c['id']=='case002':
+            new.append({'id':'level-2-1','chapter':2,'title':'Старый город','subtitle':'Запах краски'})
+            continue  # пропускаем старый case002 (1987, убийство)
+        new.append(c)
+    d['cases']=new
+    json.dump(d,open(path,'w',encoding='utf-8'),ensure_ascii=False,indent=2)
+    print("  + level-2-1 вместо старого case002")
+print("  cases:", [c['id'] for c in d['cases']])
+PYEOF
+
+
+echo ""; echo "══ 3/3  лента — имена для гл.2 (печатник, старик) ═"
+python3 - << 'PYEOF'
+path="src/main/resources/static/games/feed.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
+if "'печатник'" not in txt:
+    txt=txt.replace("'аранделл':'arundel','директор':'arundel',",
+                    "'аранделл':'arundel','директор':'arundel','печатник':'pocketman','старик':'miller','посредник':'pocketman',")
+    n+=1; print("  + имена печатник/старик/посредник")
 with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ app.js: %d"%n)
+print("✓ feed.js: %d"%n)
 PYEOF
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R68 — админ-панель (5 тапов по штампу версии R68 внизу)"
-echo "   git add -A && git commit -m 'R68: hidden admin debug panel for level testing' && git push"
+echo "✅  R69 — глава 2 началась: уровень 2-1 «Запах краски»"
+echo "   git add -A && git commit -m 'R69: chapter 2 level 2-1 Smell of Ink' && git push"
 echo "═══════════════════════════════════════════════════════"
