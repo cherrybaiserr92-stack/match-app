@@ -1,167 +1,184 @@
 #!/usr/bin/env bash
-# СДВИГ R67 — полировка текста главы 1: убраны штампы, ослаблена привязка к Куратору, добавлена настоящесть
+# СДВИГ R68 — скрытая админ-панель для тестирования уровней
 set -e
-echo "══ штамп → R67 ══"
-sed -i "s/SDVIG_BUILD='R66'/SDVIG_BUILD='R67'/" src/main/resources/static/app.js
-sed -i 's/>R66</>R67</' src/main/resources/static/index.html
+echo "══ штамп → R68 ══"
+sed -i "s/SDVIG_BUILD='R67'/SDVIG_BUILD='R68'/" src/main/resources/static/app.js
+sed -i 's/>R67</>R68</' src/main/resources/static/index.html
 
-echo ""; echo "══ 1/2  полировка level-1-1 + level-1-3 ═══════════"
-python3 - << 'STORY_EOF'
-# СДВИГ — полировка главы 1: убрать штампы, добавить настоящесть, ослабить привязку к Куратору
-import json, re
+echo ""; echo "══ 1/3  HTML админ-панели ══════════════════════════"
+python3 - << 'PYEOF'
+path="src/main/resources/static/index.html"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
+if 'id="admin-panel"' not in txt:
+    panel='''
+  <!-- СКРЫТАЯ АДМИН-ПАНЕЛЬ (5 тапов по штампу версии) -->
+  <div id="admin-panel" class="admin-panel" style="display:none">
+    <div class="adm-sheet">
+      <div class="adm-head">
+        <span>⚙ ОТЛАДКА</span>
+        <button class="adm-close" onclick="window.closeAdmin&&closeAdmin()">✕</button>
+      </div>
 
-# ════════ LEVEL 1-1 «Битое стекло» ════════
-p="src/main/resources/static/scenarios/level-1-1.json"
-d=json.load(open(p,encoding='utf-8'))
-E=d['events']
+      <div class="adm-sec">Перейти на уровень</div>
+      <div class="adm-levels" id="adm-levels"></div>
 
-# s1 — убрать "дождь барабанил", дать живой обмен (Рекрут зевает, ночь, скука перебивается странностью)
-E['s1']['text']='Третий час ночи. Витрина ювелирной лавки зияла дырой с рваными краями, осколки веером по тротуару. Но за стеклом — нетронутые подносы с кольцами. Никто не сунул руку внутрь. Просто разбили и ушли.'
-E['s1']['dialogue']='Рекрут: «Раскокали витрину — и ничего не взяли? Пьяные, что ли?»\nСдвиг: «Шестая за неделю. Пьяные так не повторяются. Тут система».'
+      <div class="adm-sec">Шкалы</div>
+      <div class="adm-scale">
+        <label>🎩 Отношения: <b id="adm-rap-val">50</b></label>
+        <input type="range" id="adm-rap" min="0" max="100" value="50" oninput="window.admSetRap&&admSetRap(this.value)">
+      </div>
+      <div class="adm-scale">
+        <label>🔍 Детектив: <b id="adm-skill-val">30</b></label>
+        <input type="range" id="adm-skill" min="0" max="100" value="30" oninput="window.admSetSkill&&admSetSkill(this.value)">
+      </div>
 
-# s2 — убрать "почерк/художник" пафос, сделать рабочим наблюдением
-E['s2']['text']='Сдвиг поддел носком ботинка осколок, присел, оглядел край стекла. Не любовался — работал.'
-E['s2']['dialogue']='Сдвиг: «Бьют всегда одну улицу. Всегда ночью. Ничего не берут. Это не кража и не пьянь».\nРекрут: «А что тогда?»\nСдвиг: «Кто-то кому-то что-то говорит. Стёклами. Пока не знаю что».'
+      <div class="adm-sec">Действия</div>
+      <div class="adm-actions">
+        <button onclick="window.admJump&&admJump(-1)">◄ Пред. уровень</button>
+        <button onclick="window.admJump&&admJump(1)">След. уровень ►</button>
+        <button onclick="window.admRestartLevel&&admRestartLevel()">↻ Перезапуск уровня</button>
+        <button onclick="window.admMaxScales&&admMaxScales()">Шкалы 100/100</button>
+        <button onclick="window.admMinScales&&admMinScales()">Шкалы 0/0</button>
+        <button class="adm-danger" onclick="window.admWipe&&admWipe()">⌫ Полный сброс</button>
+      </div>
 
-# end — УБРАТЬ "чует нутро / готовит сцену / музей". Сделать приземлённо, с недосказанностью БЕЗ указания на музей
-E['end']['text']='Парня усадили в машину. Он всю дорогу молчал, только тёр запястья. Сдвиг закурил, привалившись к капоту, и долго смотрел вдоль улицы — на тёмные витрины, на редкие фонари.'
-E['end']['dialogue']='Сдвиг: «Кто платит за разбитые стёкла и ничего не просит взамен? Не грабитель. Грабитель жадный. А этот — терпеливый».\nРекрут: «Думаешь, ещё что-то будет?»\nСдвиг: «Не думаю. Просто не люблю, когда не понимаю зачем».'
-E['end']['intro']='Дело формально закрыто — исполнитель пойман. Но вопрос «зачем» остался. Как поступишь?'
-E['end']['a']={'label':'◄ Закрыть, это пустяк','vtext':'Хулиган пойман, состава на большее нет. Закрыть и забыть.','set':{'next':'wait'},'dscore':1,'rapport':4,'to':'__resolve__'}
-E['end']['b']={'label':'Записать, что заказчик ушёл ►','vtext':'Исполнитель — пешка. Отметить в деле, что настоящий заказчик так и не найден.','set':{'next':'watch'},'dscore':6,'rapport':-1,'to':'__resolve__'}
-
-# s5/s6 — тень-чистильщик: ослабить, чтобы не было "о, это сеть Куратора следит". Сделать двусмысленным.
-E['s5']['text']='Сдвиг вдруг замедлился. Не остановился — просто чуть повернул голову к подворотне через дорогу. Там, в темноте, кто-то стоял. Не двигался.'
-E['s5']['dialogue']='Сдвиг: «Не пялься туда. Через дорогу, в подворотне, видишь?»\nРекрут: «Вижу. Может, бездомный?»\nСдвиг: «Может. Бездомные обычно сидят. А этот стоит и смотрит. Идём, не оборачивайся».'
-E['s6']['text']='Рекрут всё-таки оглянулся через десяток шагов. В подворотне было пусто — только мокрый асфальт блестел под фонарём. Ушёл, пока они отвлеклись. А может, и не было никого.'
-E['s6']['dialogue']='Рекрут: «Никого. Показалось?»\nСдвиг: «Может, и показалось. Запомни место. Если опять увидишь такого — скажешь мне сразу».'
-
-# concовка win — убрать музей-пафос
-d['endings']['win']['text']='Ты собрал картину: бьют по графику, ничего не крадут, исполнителю платят наличными за молчание. Это не хулиганство — кто-то методично давит на квартал, и пока непонятно зачем. «Хорошая работа, — Сдвиг бросил окурок в лужу. — Дело мелкое, а копать пришлось всерьёз. Запомни такие. Они потом обрастают».'
-d['endings']['partial']['text']='Исполнителя взяли, но кто и зачем его нанял — повисло. «Поймали руку, а голова ушла, — Сдвиг пожал плечами. — Бывает. Не последняя у нас странность в этом квартале». Купюры он всё же сунул в карман — как привычку, не как улику.'
-d['endings']['fail']['text']='Списали в хулиганство, закрыли, поехали дальше. Сдвиг ничего не сказал, только хмыкнул, заводя машину. «Может, и правда пустяк. А может, мы поленились. Поймём не сегодня».'
-
-json.dump(d,open(p,'w',encoding='utf-8'),ensure_ascii=False,indent=2)
-print("✓ level-1-1 отполирован")
-
-# ════════ LEVEL 1-3 «Бессонница» ════════
-p3="src/main/resources/static/scenarios/level-1-3.json"
-d3=json.load(open(p3,encoding='utf-8'))
-E3=d3['events']
-
-# end — УБРАТЬ "нутром чую / завтра что-то будет / прибежим да поздно" (главный штамп)
-E3['end']['text']='У выхода Эленор придержала дверь. «Если что-нибудь понадобится — я тут до утра, в мастерской». Сказала просто, но смотрела на Рекрута чуть дольше, чем нужно. Сдвиг застёгивал плащ, разглядывая мокрую площадь за стеклом.'
-E3['end']['dialogue']='Сдвиг: «Состава нет. Сторож слышит шаги, директор всё отрицает, а мы посередине».\nРекрут: «Тебе тут не нравится».\nСдвиг: «Мне не нравится, когда хозяин дома врёт полиции по мелочи. По мелочи врут, когда есть что покрупнее».'
-E3['end']['intro']='Зацепиться не за что — преступления нет. Уйти или оставить ниточку на всякий случай?'
-E3['end']['a']={'label':'◄ Уйти, оснований нет','vtext':'Состава нет. Попрощаться и уехать.','set':{'act':'leave'},'dscore':2,'rapport':2,'to':'__resolve__'}
-E3['end']['b']={'label':'Оставить Эленор контакт ►','vtext':'Дать Эленор номер: заметит неладное — позвонит.','set':{'act':'watch'},'dscore':5,'rapport':6,'to':'__resolve__'}
-
-# s1 — оживить вступление, убрать "камень под которым спит"
-E3['s1']['dialogue']='Рекрут: «Серьёзно? Нас вызвали из-за сторожа, которому мерещатся шаги?»\nСдвиг: «Тебя что-то другое ждало? Горячий ужин? Идём, послушаем старика. Заодно посмотрю на этот ваш храм искусства».'
-
-# s7 версия — убрать "репетирует/спектакль", сделать проще
-E3['s7']['text']='Они вышли в коридор. Аранделл сам запер зал — повозился с ключом, не доверил сторожу. Сдвиг проводил его взглядом.'
-E3['s7']['dialogue']='Сдвиг: «Директор запирает зал лично. Сторожу не доверяет, а сторож тут двадцать лет. О чём это говорит?»'
-E3['s7']['a']={'label':'◄ Просто перестраховка','vtext':'Директор дёрганый, вот и запирает сам. Ничего особенного.','set':{'detail':'nothing'},'bad':True,'dscore':-8,'rapport':-2,'to':'end'}
-E3['s7']['b']={'label':'Он чего-то боится ►','vtext':'Лично запирает, врёт про спокойствие, дёргается — Аранделл боится. И не призраков, а чего-то конкретного.','set':{'detail':'rehearsal'},'dscore':12,'rapport':3,'to':'end'}
-
-# концовки 1-3 — убрать "тишина перед бурей / завтра поздно / довольно улыбнулся"
-d3['endings']['win']['text']='Преступления не было, но ты уходишь с занозой: директор лжёт, в зале — след, которого там быть не должно, а реставратор боится не зря. «Иногда самое неудобное дело — то, где ещё ничего не случилось, — Сдвиг сунул руки в карманы. — Не за что зацепиться, а уходить не хочется». Аранделл смотрел им вслед из освещённого окна.'
-d3['endings']['partial']['text']='Что-то здесь было кривое, но ухватить не вышло. «Уходим ни с чем, — буркнул Сдвиг. — Зато я теперь знаю лицо вашего директора. Не понравилось мне это лицо». Он оглянулся на музей лишь раз.'
-d3['endings']['fail']['text']='Поверили директору, списали на нервы сторожа, уехали. Сдвиг вёл молча. «Может, я придираюсь к человеку за то, что он скользкий, — сказал наконец. — А может, зря мы так быстро поверили. Посмотрим».'
-
-json.dump(d3,open(p3,'w',encoding='utf-8'),ensure_ascii=False,indent=2)
-print("✓ level-1-3 отполирован")
-
-print("\n— проверка штампов после правки —")
-for f in ['level-1-1','level-1-3']:
-    dd=json.load(open(f'src/main/resources/static/scenarios/{f}.json',encoding='utf-8'))
-    txt=json.dumps(dd,ensure_ascii=False)
-    for pat in ['нутр','чует','готовит сцену','завтра','поздно','репетир']:
-        c=len(re.findall(pat,txt,re.I))
-        if c: print(f"  {f}: «{pat}» ×{c}")
-
-STORY_EOF
+      <div class="adm-info" id="adm-info"></div>
+    </div>
+  </div>
+</body>'''
+    txt=txt.replace("</body>",panel,1); n+=1; print("  + HTML админ-панели")
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ index.html: %d"%n)
+PYEOF
 
 
-echo ""; echo "══ 2/2  полировка level-1-2 + case001 ════════════"
-python3 - << 'STORY_EOF'
-# Полировка level-1-2 и case001 — ослабить привязку к Куратору, убрать повторы, добавить настоящесть
-import json, re
+echo ""; echo "══ 2/3  CSS админ-панели ═══════════════════════════"
+python3 - << 'PYEOF'
+path="src/main/resources/static/style.css"
+with open(path,encoding="utf-8") as f: txt=f.read()
+if ".admin-panel{" not in txt:
+    txt+='''
+/* ════ АДМИН-ПАНЕЛЬ ════ */
+.admin-panel{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);
+  display:flex;align-items:flex-end;justify-content:center;}
+.adm-sheet{width:100%;max-width:480px;max-height:85vh;overflow-y:auto;background:#12161e;
+  border-top:2px solid #c8860a;border-radius:18px 18px 0 0;padding:16px 18px 30px;}
+.adm-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;
+  font-family:Unbounded,sans-serif;font-weight:900;font-size:15px;color:#ffcf6b;letter-spacing:.05em;}
+.adm-close{background:rgba(255,255,255,.1);border:none;color:#fff;width:30px;height:30px;
+  border-radius:8px;font-size:14px;cursor:pointer;}
+.adm-sec{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#7a8494;
+  margin:16px 0 8px;font-weight:700;}
+.adm-levels{display:flex;flex-direction:column;gap:6px;}
+.adm-lvl{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#e8e2d4;
+  cursor:pointer;text-align:left;font-size:13px;transition:all .15s;}
+.adm-lvl:active{transform:scale(.98);}
+.adm-lvl.cur{border-color:#ffcf6b;background:rgba(200,134,10,.12);}
+.adm-lvl-idx{font-family:Unbounded,sans-serif;font-weight:800;color:#c8860a;min-width:32px;}
+.adm-lvl-sub{color:#7a8494;font-size:11px;}
+.adm-scale{margin-bottom:12px;}
+.adm-scale label{font-size:12px;color:#b8b0a0;display:block;margin-bottom:5px;}
+.adm-scale label b{color:#ffcf6b;}
+.adm-scale input[type=range]{width:100%;accent-color:#c8860a;}
+.adm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.adm-actions button{padding:11px;border-radius:9px;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);color:#e8e2d4;font-size:12px;cursor:pointer;
+  font-family:Unbounded,sans-serif;font-weight:600;}
+.adm-actions button:active{transform:scale(.97);}
+.adm-actions .adm-danger{grid-column:1/3;border-color:rgba(220,120,120,.4);color:#ff9b88;
+  background:rgba(176,80,80,.12);}
+.adm-info{margin-top:14px;font-size:11px;color:#7a8494;font-family:monospace;
+  background:rgba(0,0,0,.3);padding:8px 10px;border-radius:8px;}
+'''
+    with open(path,"w",encoding="utf-8") as f: f.write(txt)
+    print("  + CSS админ-панели")
+PYEOF
 
-# ════════ LEVEL 1-2 «Карманник» ════════
-p="src/main/resources/static/scenarios/level-1-2.json"
-d=json.load(open(p,encoding='utf-8'))
-E=d['events']
 
-# s1 — оживить, меньше "учительского" пафоса Сдвига
-E['s1']['dialogue']='Рекрут: «Вон он! Бежим?»\nСдвиг: «Беги, если хочешь поразмяться. Я уже не в том возрасте, чтобы носиться за щипачами».'
-
-# s2 — Сдвиг ловит вора не "зная маршрут заранее" (слишком крут), а по опыту
-E['s2']['text']='Вор юркнул в переулок. Сдвиг не побежал — срезал через проходной двор, не торопясь. Эти дворы он знал лучше, чем воришка. На той стороне мальчишка влетел ему прямо в руки.'
-E['s2']['dialogue']='Сдвиг: «Бегаешь резво. А вот дворы у нас знать надо. Карманы выворачивай».'
-
-# s6 — ОСЛАБИТЬ "глаза манекена" (слишком зловеще-кураторски). Сделать человечнее, тревожно, но не мистично.
-E['s6']['text']='Дэнни понизил голос, оглянулся.'
-E['s6']['dialogue']='Дэнни: «Высокий, в хорошем пальто. С виду приличный. Только смотрит странно — пусто так, мимо тебя. И не моргает почти. Жуткий тип. Я как бумажник вытащил — сразу понял, лучше б не трогал».'
-
-# s7 — ОСЛАБИТЬ "двое больших как мебель которая убьёт" (мелодрама). Проще, реалистичнее.
-E['s7']['text']='Дэнни помялся, потом добавил тише:'
-E['s7']['dialogue']='Дэнни: «С ним двое ходят. Молчаливые такие, крепкие. Может, охрана, может, кто. Но я к таким не лезу. Заберите карточку, а? Не хочу, чтоб этот тип меня вспомнил».'
-E['s7']['react']='Рекрут: «Богач с охраной. Может, и правда просто важная птица».\nСдвиг: «Может. А может, и нет. Карточку забери. Не для дела — просто не нравится она мне».'
-
-# s9 версия — ОСЛАБИТЬ прямое "кто-то выше в тени" (слишком указывает на Куратора)
-E['s9']['intro']='Пустой бумажник-футляр, карточка вместо денег, скрытный человек с охраной. Что это за фигура?'
-E['s9']['text']='Сдвиг разглядывал карточку под светом фонаря. Плотная бумага, тиснёная буква — заказывали не в типографии на углу.'
-E['s9']['dialogue']='Сдвиг: «Дорогая вещь. Кто кладёт в пустой бумажник одну карточку с буквой? Либо позёр, либо человек, которому важно, чтоб его узнавали по знаку».'
-E['s9']['a']={'label':'◄ Просто богатый позёр','vtext':'Эксцентричный богач с понтами. В большом городе таких хватает.','set':{'card':'random'},'bad':True,'dscore':-6,'rapport':-2,'to':'end'}
-E['s9']['b']={'label':'Знак вместо имени — это система ►','vtext':'Метка вместо имени, охрана, странный взгляд. Это не просто понты — человек живёт так, будто прячется. Стоит запомнить.','set':{'card':'curator'},'dscore':10,'rapport':3,'to':'end'}
-
-# end — убрать "свидимся ещё / кончик длинной нити" (слишком пророчески)
-E['end']['text']='Дэнни растворился в толпе — только его и видели. Сдвиг сунул карточку во внутренний карман, без особого значения, скорее по привычке собирать всё странное.'
-E['end']['dialogue']='Сдвиг: «Странный тип, странная карточка. Может, ничего. Но пусть полежит».\nРекрут: «Ты всё подряд в карман суёшь?»\nСдвиг: «Двадцать лет в розыске научили: выбросишь — обязательно пригодится через неделю».'
-E['end']['intro']='Карточка у тебя. Что с ней?'
-E['end']['a']={'label':'◄ В коробку к прочему','vtext':'Очередная городская странность. В коробку, к таким же необъяснимым мелочам.','set':{'kept':'archive'},'dscore':3,'rapport':3,'to':'__resolve__'}
-E['end']['b']={'label':'Пусть будет под рукой ►','vtext':'Что-то в ней цепляет. Держать при себе.','set':{'kept':'carry'},'dscore':5,'rapport':1,'to':'__resolve__'}
-
-# концовки — убрать "охота начинается / стеклянные глаза не растворяются"
-d['endings']['win']['text']='Ты сложил мелочи вместе: пустой бумажник-футляр, метка вместо имени, человек, что живёт скрытно. Не факт, что это важно. Но не похоже на случайность. «Хорошо смотришь, — Сдвиг кивнул. — Половина работы сыщика — заметить, что мелочь не на своём месте». Дэнни пропал в толпе — но обещал держать ухо востро.'
-d['endings']['partial']['text']='Воришку отпустили, карточку забрали, а что она значит — бог весть. «Может, пустышка, — Сдвиг повертел её и спрятал. — А может, нет. Время покажет, оно всегда показывает».'
-d['endings']['fail']['text']='Решили — чудак с понтами, и почти выкинули карточку. Дэнни ушёл со своим испугом. «Будничные вещи мы пропускаем легче всего, — обронил Сдвиг. — Потому что они будничные».'
-
-json.dump(d,open(p,'w',encoding='utf-8'),ensure_ascii=False,indent=2)
-print("✓ level-1-2 отполирован (привязка к Куратору ослаблена)")
-
-# ════════ CASE001 (музей) — точечно убрать повторы дождя/нутра ════════
-pc="src/main/resources/static/scenarios/case001.json"
-dc=json.load(open(pc,encoding='utf-8'))
-Ec=dc['events']
-
-# L1_c1 — убрать "Город тонул в дожде третьи сутки" (повтор мотива)
-Ec['L1_c1']['text']='Поздний вечер, окраина центра. Полицейский «Форд» свернул к музейному кварталу, фары выхватили из темноты колонны и афишу новой выставки. Внутри машины пахло остывшим кофе и чужой тревогой.'
-
-# L1_c3 — "изнутри" это норм (заперто изнутри), не трогаем. Но уберём лишний пафос если есть
-# eL2b — "смазывают сцену" дважды со словом сцена — заменим
-if 'сцену' in Ec.get('eL2b',{}).get('text',''):
-    Ec['eL2b']['text']=Ec['eL2b']['text'].replace('таким смазывают сцену, чтобы не скрипела','таким смазывают кулисы, чтобы не скрипели')
-
-json.dump(dc,open(pc,'w',encoding='utf-8'),ensure_ascii=False,indent=2)
-print("✓ case001 — повтор дождя убран из зачина")
-
-print("\n— финальная проверка штампов по всей главе —")
-allcnt={}
-for f in ['level-1-1','level-1-2','level-1-3','case001']:
-    dd=json.load(open(f'src/main/resources/static/scenarios/{f}.json',encoding='utf-8'))
-    txt=json.dumps(dd,ensure_ascii=False)
-    for pat in ['дожд','нутром чу','чует','готовит сцену','свидимся','охота начин','стеклянн','как мебель','глаза.{0,5}манекен']:
-        c=len(re.findall(pat,txt,re.I))
-        if c: allcnt[pat]=allcnt.get(pat,0)+c
-print("Осталось штампов:", allcnt if allcnt else "чисто ✓")
-
-STORY_EOF
+echo ""; echo "══ 3/3  логика админ-панели ════════════════════════"
+python3 - << 'PYEOF'
+path="src/main/resources/static/app.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
+if "window.openAdmin" not in txt:
+    code='''
+// ════ АДМИН-ПАНЕЛЬ (отладка) ════
+(function(){
+  var _admTaps=0, _admTimer=null;
+  // тайный триггер: 5 быстрых тапов по штампу версии
+  document.addEventListener('click', function(e){
+    var t=e.target.closest&&e.target.closest('#build-tag,.build-tag,[id^="build"]');
+    if(!t) return;
+    _admTaps++;
+    clearTimeout(_admTimer); _admTimer=setTimeout(function(){_admTaps=0;},800);
+    if(_admTaps>=5){ _admTaps=0; window.openAdmin&&window.openAdmin(); }
+  });
+})();
+window.openAdmin=function(){
+  var p=document.getElementById('admin-panel'); if(!p) return;
+  p.style.display='flex';
+  // список уровней
+  var box=document.getElementById('adm-levels');
+  if(box&&window.CAMPAIGN&&CAMPAIGN.cases){
+    box.innerHTML=CAMPAIGN.cases.map(function(c,i){
+      var cur=(i===_caseIdx)?' cur':'';
+      var sub=c.subtitle||c.title||'';
+      return '<button class="adm-lvl'+cur+'" onclick="window.admGoto&&admGoto('+i+')">'+
+        '<span class="adm-lvl-idx">'+(i+1)+'</span>'+
+        '<span>'+(c.id)+(sub?'<br><span class="adm-lvl-sub">'+sub+'</span>':'')+'</span></button>';
+    }).join('');
+  }
+  // текущие шкалы в ползунки
+  var p2=App.profile||{};
+  var r=document.getElementById('adm-rap'), s=document.getElementById('adm-skill');
+  if(r){ r.value=p2.rapport||50; document.getElementById('adm-rap-val').textContent=p2.rapport||50; }
+  if(s){ s.value=p2.skill||30; document.getElementById('adm-skill-val').textContent=p2.skill||30; }
+  _admUpdateInfo();
+};
+window.closeAdmin=function(){ var p=document.getElementById('admin-panel'); if(p)p.style.display='none'; };
+function _admUpdateInfo(){
+  var el=document.getElementById('adm-info'); if(!el) return;
+  var p=App.profile||{};
+  el.textContent='уровень: '+(_caseIdx+1)+'/'+((window.CAMPAIGN&&CAMPAIGN.cases.length)||'?')+
+    ' | id: '+((window.CAMPAIGN&&CAMPAIGN.cases[_caseIdx]&&CAMPAIGN.cases[_caseIdx].id)||'?')+
+    ' | 🎩'+(p.rapport||0)+' 🔍'+(p.skill||0)+' | build '+(window.SDVIG_BUILD||'?');
+}
+window.admGoto=function(i){
+  try{
+    _caseIdx=i;
+    try{ localStorage.setItem('sdvig_case', CAMPAIGN.cases[i].id); }catch(_){}
+    loadCaseByIndex(i);
+    if(window.Feed){ try{initCarousel_data();}catch(_){}; Feed.reset(); Feed.init(); }
+    closeAdmin();
+    if(window.toast) toast('Уровень '+(i+1),CAMPAIGN.cases[i].id,'⚙');
+  }catch(e){ alert('Ошибка перехода: '+e.message); }
+};
+window.admJump=function(d){
+  var ni=Math.max(0,Math.min((CAMPAIGN.cases.length-1),_caseIdx+d));
+  admGoto(ni);
+};
+window.admRestartLevel=function(){ admGoto(_caseIdx); };
+window.admSetRap=function(v){ if(App.profile){App.profile.rapport=+v;saveProfile();} var e=document.getElementById('adm-rap-val');if(e)e.textContent=v; try{updateScaleBars();}catch(_){}; _admUpdateInfo(); };
+window.admSetSkill=function(v){ if(App.profile){App.profile.skill=+v;saveProfile();} var e=document.getElementById('adm-skill-val');if(e)e.textContent=v; try{updateScaleBars();}catch(_){}; _admUpdateInfo(); };
+window.admMaxScales=function(){ admSetRap(100); admSetSkill(100); var r=document.getElementById('adm-rap'),s=document.getElementById('adm-skill'); if(r)r.value=100; if(s)s.value=100; };
+window.admMinScales=function(){ admSetRap(0); admSetSkill(0); var r=document.getElementById('adm-rap'),s=document.getElementById('adm-skill'); if(r)r.value=0; if(s)s.value=0; };
+window.admWipe=function(){
+  if(!confirm('Полный сброс прогресса и профиля?')) return;
+  try{ Object.keys(localStorage).filter(function(k){return k.indexOf('sdvig')===0;}).forEach(function(k){localStorage.removeItem(k);}); }catch(_){}
+  location.reload();
+};
+'''
+    # вставляем перед последним закрытием (после initEvPanel или в конец app)
+    txt=txt.replace("function initEvPanel(){", code+"\nfunction initEvPanel(){",1)
+    n+=1; print("  + логика админ-панели (переход, шкалы, сброс)")
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ app.js: %d"%n)
+PYEOF
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R67 — глава 1 отполирована (живой текст, меньше Куратора)"
-echo "   git add -A && git commit -m 'R67: polish ch1 text - kill cliches, authenticity, subtle Curator' && git push"
+echo "✅  R68 — админ-панель (5 тапов по штампу версии R68 внизу)"
+echo "   git add -A && git commit -m 'R68: hidden admin debug panel for level testing' && git push"
 echo "═══════════════════════════════════════════════════════"

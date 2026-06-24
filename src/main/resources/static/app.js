@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R67';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R68';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -1081,6 +1081,73 @@ function initResetProgress(){
     }
   });
 }
+
+
+// ════ АДМИН-ПАНЕЛЬ (отладка) ════
+(function(){
+  var _admTaps=0, _admTimer=null;
+  // тайный триггер: 5 быстрых тапов по штампу версии
+  document.addEventListener('click', function(e){
+    var t=e.target.closest&&e.target.closest('#build-tag,.build-tag,[id^="build"]');
+    if(!t) return;
+    _admTaps++;
+    clearTimeout(_admTimer); _admTimer=setTimeout(function(){_admTaps=0;},800);
+    if(_admTaps>=5){ _admTaps=0; window.openAdmin&&window.openAdmin(); }
+  });
+})();
+window.openAdmin=function(){
+  var p=document.getElementById('admin-panel'); if(!p) return;
+  p.style.display='flex';
+  // список уровней
+  var box=document.getElementById('adm-levels');
+  if(box&&window.CAMPAIGN&&CAMPAIGN.cases){
+    box.innerHTML=CAMPAIGN.cases.map(function(c,i){
+      var cur=(i===_caseIdx)?' cur':'';
+      var sub=c.subtitle||c.title||'';
+      return '<button class="adm-lvl'+cur+'" onclick="window.admGoto&&admGoto('+i+')">'+
+        '<span class="adm-lvl-idx">'+(i+1)+'</span>'+
+        '<span>'+(c.id)+(sub?'<br><span class="adm-lvl-sub">'+sub+'</span>':'')+'</span></button>';
+    }).join('');
+  }
+  // текущие шкалы в ползунки
+  var p2=App.profile||{};
+  var r=document.getElementById('adm-rap'), s=document.getElementById('adm-skill');
+  if(r){ r.value=p2.rapport||50; document.getElementById('adm-rap-val').textContent=p2.rapport||50; }
+  if(s){ s.value=p2.skill||30; document.getElementById('adm-skill-val').textContent=p2.skill||30; }
+  _admUpdateInfo();
+};
+window.closeAdmin=function(){ var p=document.getElementById('admin-panel'); if(p)p.style.display='none'; };
+function _admUpdateInfo(){
+  var el=document.getElementById('adm-info'); if(!el) return;
+  var p=App.profile||{};
+  el.textContent='уровень: '+(_caseIdx+1)+'/'+((window.CAMPAIGN&&CAMPAIGN.cases.length)||'?')+
+    ' | id: '+((window.CAMPAIGN&&CAMPAIGN.cases[_caseIdx]&&CAMPAIGN.cases[_caseIdx].id)||'?')+
+    ' | 🎩'+(p.rapport||0)+' 🔍'+(p.skill||0)+' | build '+(window.SDVIG_BUILD||'?');
+}
+window.admGoto=function(i){
+  try{
+    _caseIdx=i;
+    try{ localStorage.setItem('sdvig_case', CAMPAIGN.cases[i].id); }catch(_){}
+    loadCaseByIndex(i);
+    if(window.Feed){ try{initCarousel_data();}catch(_){}; Feed.reset(); Feed.init(); }
+    closeAdmin();
+    if(window.toast) toast('Уровень '+(i+1),CAMPAIGN.cases[i].id,'⚙');
+  }catch(e){ alert('Ошибка перехода: '+e.message); }
+};
+window.admJump=function(d){
+  var ni=Math.max(0,Math.min((CAMPAIGN.cases.length-1),_caseIdx+d));
+  admGoto(ni);
+};
+window.admRestartLevel=function(){ admGoto(_caseIdx); };
+window.admSetRap=function(v){ if(App.profile){App.profile.rapport=+v;saveProfile();} var e=document.getElementById('adm-rap-val');if(e)e.textContent=v; try{updateScaleBars();}catch(_){}; _admUpdateInfo(); };
+window.admSetSkill=function(v){ if(App.profile){App.profile.skill=+v;saveProfile();} var e=document.getElementById('adm-skill-val');if(e)e.textContent=v; try{updateScaleBars();}catch(_){}; _admUpdateInfo(); };
+window.admMaxScales=function(){ admSetRap(100); admSetSkill(100); var r=document.getElementById('adm-rap'),s=document.getElementById('adm-skill'); if(r)r.value=100; if(s)s.value=100; };
+window.admMinScales=function(){ admSetRap(0); admSetSkill(0); var r=document.getElementById('adm-rap'),s=document.getElementById('adm-skill'); if(r)r.value=0; if(s)s.value=0; };
+window.admWipe=function(){
+  if(!confirm('Полный сброс прогресса и профиля?')) return;
+  try{ Object.keys(localStorage).filter(function(k){return k.indexOf('sdvig')===0;}).forEach(function(k){localStorage.removeItem(k);}); }catch(_){}
+  location.reload();
+};
 
 function initEvPanel(){
   const chip=document.getElementById("ev-chip");

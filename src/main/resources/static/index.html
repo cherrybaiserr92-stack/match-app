@@ -12,7 +12,7 @@
 <script>window.SDVIG_BOT_USERNAME="sdvig_game_bot";</script>
 </head>
 <body>
-<div id="build-tag" style="position:fixed;bottom:2px;right:4px;z-index:9999;font-size:8px;color:rgba(200,160,90,.4);pointer-events:none;font-family:monospace">R67</div>
+<div id="build-tag" style="position:fixed;bottom:2px;right:4px;z-index:9999;font-size:8px;color:rgba(200,160,90,.4);pointer-events:none;font-family:monospace">R68</div>
 
 <!-- ══ АНИМИРОВАННЫЕ SVG-ГРАДИЕНТЫ (перелив самоцвета) ══ -->
 <svg id="gem-defs" width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -354,6 +354,41 @@
         </button>
       </div>
       <button class="gm-confirm" id="gm-confirm" disabled>Начать расследование</button>
+    </div>
+  </div>
+
+  <!-- СКРЫТАЯ АДМИН-ПАНЕЛЬ (5 тапов по штампу версии) -->
+  <div id="admin-panel" class="admin-panel" style="display:none">
+    <div class="adm-sheet">
+      <div class="adm-head">
+        <span>⚙ ОТЛАДКА</span>
+        <button class="adm-close" onclick="window.closeAdmin&&closeAdmin()">✕</button>
+      </div>
+
+      <div class="adm-sec">Перейти на уровень</div>
+      <div class="adm-levels" id="adm-levels"></div>
+
+      <div class="adm-sec">Шкалы</div>
+      <div class="adm-scale">
+        <label>🎩 Отношения: <b id="adm-rap-val">50</b></label>
+        <input type="range" id="adm-rap" min="0" max="100" value="50" oninput="window.admSetRap&&admSetRap(this.value)">
+      </div>
+      <div class="adm-scale">
+        <label>🔍 Детектив: <b id="adm-skill-val">30</b></label>
+        <input type="range" id="adm-skill" min="0" max="100" value="30" oninput="window.admSetSkill&&admSetSkill(this.value)">
+      </div>
+
+      <div class="adm-sec">Действия</div>
+      <div class="adm-actions">
+        <button onclick="window.admJump&&admJump(-1)">◄ Пред. уровень</button>
+        <button onclick="window.admJump&&admJump(1)">След. уровень ►</button>
+        <button onclick="window.admRestartLevel&&admRestartLevel()">↻ Перезапуск уровня</button>
+        <button onclick="window.admMaxScales&&admMaxScales()">Шкалы 100/100</button>
+        <button onclick="window.admMinScales&&admMinScales()">Шкалы 0/0</button>
+        <button class="adm-danger" onclick="window.admWipe&&admWipe()">⌫ Полный сброс</button>
+      </div>
+
+      <div class="adm-info" id="adm-info"></div>
     </div>
   </div>
 </body>
