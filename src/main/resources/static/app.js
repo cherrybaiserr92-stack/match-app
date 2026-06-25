@@ -1102,13 +1102,22 @@ window.openAdmin=function(){
   // список уровней
   var box=document.getElementById('adm-levels');
   if(box&&window.CAMPAIGN&&CAMPAIGN.cases){
-    box.innerHTML=CAMPAIGN.cases.map(function(c,i){
+    box.innerHTML='';
+    CAMPAIGN.cases.forEach(function(c,i){
       var cur=(i===_caseIdx)?' cur':'';
       var sub=c.subtitle||c.title||'';
-      return '<button class="adm-lvl'+cur+'" onclick="window.admGoto&&admGoto('+i+')">'+
-        '<span class="adm-lvl-idx">'+(i+1)+'</span>'+
-        '<span>'+(c.id)+(sub?'<br><span class="adm-lvl-sub">'+sub+'</span>':'')+'</span></button>';
-    }).join('');
+      var btn=document.createElement('button');
+      btn.className='adm-lvl'+cur;
+      btn.setAttribute('data-idx',i);
+      btn.innerHTML='<span class="adm-lvl-idx">'+(i+1)+'</span>'+
+        '<span>'+(c.id)+(sub?'<br><span class="adm-lvl-sub">'+sub+'</span>':'')+'</span>';
+      btn.addEventListener('click',function(ev){
+        ev.preventDefault(); ev.stopPropagation();
+        var idx=parseInt(this.getAttribute('data-idx'),10);
+        window.admGoto(idx);
+      });
+      box.appendChild(btn);
+    });
   }
   // текущие шкалы в ползунки
   var p2=App.profile||{};
