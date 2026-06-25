@@ -280,7 +280,7 @@
     }
     // прямая речь
     if(ev.dialogue){
-      var NMAP={'сдвиг':'shift','рекрут':'recruit','миллер':'miller','эленор':'eleanor','куратор':'kurator','патрульный':'cop','парень':'miller','старуха':'eleanor','аранделл':'arundel','директор':'arundel','печатник':'pocketman','старик':'miller','посредник':'pocketman','капитан':'captain','хейс':'hayes','дэнни':'danny'};
+      var NMAP={'сдвиг':'shift','рекрут':'recruit','миллер':'miller','эленор':'eleanor','куратор':'kurator','патрульный':'cop','парень':'miller','старуха':'eleanor','аранделл':'arundel','директор':'arundel','печатник':'pocketman','старик':'miller','посредник':'pocketman','кросс':'vivien','вивьен':'vivien','мадам':'vivien','капитан':'captain','хейс':'hayes','дэнни':'danny'};
       String(ev.dialogue).split('\n').forEach(function(line){
         line=line.trim(); if(!line) return;
         var m=line.match(/^([^:«»]{2,20}):\s*(.+)$/);
