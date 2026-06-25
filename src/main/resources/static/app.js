@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R73';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R74';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -406,6 +406,7 @@ let CASE=null,CAMPAIGN=null,_caseIdx=0;
   function xhrJson(u){try{var x=new XMLHttpRequest();x.open("GET",u,false);x.send();if(x.status===200)return JSON.parse(x.responseText);}catch(e){}return null;}
   CAMPAIGN=xhrJson("/scenarios/campaign.json");
   if(!CAMPAIGN)CAMPAIGN={cases:[{id:"case001"}]};
+  window.CAMPAIGN=CAMPAIGN;
   try{var s=localStorage.getItem("sdvig_case");if(s&&CAMPAIGN){var i=CAMPAIGN.cases.findIndex(function(c){return c.id===s;});if(i>=0)_caseIdx=i;}}catch(e){}
   loadCaseByIndex(_caseIdx);
 })();
@@ -1128,10 +1129,13 @@ window.admGoto=function(i){
   try{
     _caseIdx=i;
     try{ localStorage.setItem('sdvig_case', CAMPAIGN.cases[i].id); }catch(_){}
+    // синхронизируем карту: mapNode = индекс уровня (разблокируем путь до него)
+    if(App.profile){ App.profile.mapNode=i; saveProfile(); }
     loadCaseByIndex(i);
     if(window.Feed){ try{initCarousel_data();}catch(_){}; Feed.reset(); Feed.init(); }
+    try{ renderMap&&renderMap(); }catch(_){}
     closeAdmin();
-    if(window.toast) toast('Уровень '+(i+1),CAMPAIGN.cases[i].id,'⚙');
+    if(window.toast) toast('Уровень '+(i+1),(CAMPAIGN.cases[i].subtitle||CAMPAIGN.cases[i].id),'⚙');
   }catch(e){ alert('Ошибка перехода: '+e.message); }
 };
 window.admJump=function(d){
