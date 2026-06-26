@@ -85,10 +85,22 @@
       "subtitle": "Последний причал"
     },
     {
-      "id": "case004",
+      "id": "level-4-1",
       "chapter": 4,
-      "title": "Туманный лес",
-      "subtitle": "Санаторий"
+      "title": "Остров",
+      "subtitle": "Мёртвый сад"
+    },
+    {
+      "id": "level-4-2",
+      "chapter": 4,
+      "title": "Остров",
+      "subtitle": "Галерея"
+    },
+    {
+      "id": "level-4-3",
+      "chapter": 4,
+      "title": "Остров",
+      "subtitle": "Порог"
     },
     {
       "id": "case005",
