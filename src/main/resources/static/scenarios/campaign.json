@@ -103,10 +103,28 @@
       "subtitle": "Порог"
     },
     {
-      "id": "case005",
+      "id": "level-5-1",
       "chapter": 5,
-      "title": "Особняк",
-      "subtitle": "Последняя Выставка"
+      "title": "Усадьба",
+      "subtitle": "Дом-музей"
+    },
+    {
+      "id": "level-5-2",
+      "chapter": 5,
+      "title": "Усадьба",
+      "subtitle": "Коллекционер"
+    },
+    {
+      "id": "level-5-3",
+      "chapter": 5,
+      "title": "Усадьба",
+      "subtitle": "Цена"
+    },
+    {
+      "id": "level-5-4",
+      "chapter": 5,
+      "title": "Усадьба",
+      "subtitle": "Эпилог"
     }
   ]
 }
