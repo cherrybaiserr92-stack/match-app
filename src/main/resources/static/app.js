@@ -1409,13 +1409,25 @@ const CHARS={
   guests: {src:'/img/chars/char-guests.png',  side:'right'}
 };
 window.CHARS=CHARS; window.CHAR_VER=CHAR_VER;
-const CASE_BGS={
-  'case001':'/img/bg/bg-ch1-hall.png',
-  'case002':'/img/bg/bg-oldcity.jpg',
-  'case003':'/img/bg/bg-docks.jpg',
-  'case004':'/img/bg/bg-mansion-ext.jpg',
-  'case005':'/img/bg/bg-mansion-int.jpg'
+// фон ПО ГЛАВАМ (1 на главу; позже можно по уровням)
+const CHAPTER_BGS={
+  1:'/img/bg/bg-ch1-hall.png',     // Музейный квартал
+  2:'/img/bg/bg-oldcity.jpg',      // Старый город
+  3:'/img/bg/bg-docks.jpg',        // Ночные доки
+  4:'/img/bg/bg-forest.jpg',       // Остров (туманный лес/сад)
+  5:'/img/bg/bg-mansion-int.jpg'   // Усадьба
 };
+function bgForCase(cid){
+  if(!cid) return null;
+  // определяем главу по id уровня
+  var ch=1;
+  if(cid.indexOf('level-1')===0||cid==='case001') ch=1;
+  else if(cid.indexOf('level-2')===0) ch=2;
+  else if(cid.indexOf('level-3')===0) ch=3;
+  else if(cid.indexOf('level-4')===0) ch=4;
+  else if(cid.indexOf('level-5')===0) ch=5;
+  return CHAPTER_BGS[ch]||null;
+}
 function recruitSrc(){
   try{ return (App.profile&&App.profile.gender==='f')?'/img/chars/char-recruit-f.png':'/img/chars/char-recruit.png'; }
   catch(_){ return '/img/chars/char-recruit.png'; }
@@ -1467,19 +1479,59 @@ function installSceneParallax(){
     }
   };
 }
+
+// ── ПАРАЛЛАКС фона главы (наклон устройства + движение) ──
+(function(){
+  function _sceneParallax(nx,ny){
+    var sb=document.getElementById('scene-bg');
+    if(sb&&sb.classList.contains('on')){
+      sb.style.transform='translate3d('+(-nx*16)+'px,'+(-ny*12)+'px,0) scale(1.08)';
+    }
+  }
+  window._sceneParallax=_sceneParallax;
+  // device orientation (наклон телефона)
+  window.addEventListener('deviceorientation',function(e){
+    if(e.gamma==null||e.beta==null) return;
+    var nx=Math.max(-1,Math.min(1,(e.gamma||0)/30));
+    var ny=Math.max(-1,Math.min(1,((e.beta||0)-45)/30));
+    _sceneParallax(nx,ny);
+  },true);
+  // touch-move (палец по экрану слегка двигает фон)
+  document.addEventListener('touchmove',function(e){
+    if(!e.touches||!e.touches[0]) return;
+    var w=window.innerWidth,h=window.innerHeight;
+    var nx=(e.touches[0].clientX/w-0.5)*2;
+    var ny=(e.touches[0].clientY/h-0.5)*2;
+    _sceneParallax(nx,ny);
+  },{passive:true});
+  // мышь (для десктопа/превью)
+  document.addEventListener('mousemove',function(e){
+    var w=window.innerWidth,h=window.innerHeight;
+    var nx=(e.clientX/w-0.5)*2;
+    var ny=(e.clientY/h-0.5)*2;
+    _sceneParallax(nx,ny);
+  });
+})();
+
 function updateCaseBg(){
   try{
     const cid=CAMPAIGN&&CAMPAIGN.cases[_caseIdx]?CAMPAIGN.cases[_caseIdx].id:'';
-    const bg=CASE_BGS[cid]||null;
+    const bg=bgForCase(cid);
     const sb=document.getElementById('scene-bg');
     const st=document.getElementById('stage'); if(st)st.style.backgroundImage='';
     if(sb){
-      if(bg){ sb.style.backgroundImage="url('"+bg+"')"; sb.classList.add('on'); }
-      else { sb.style.backgroundImage=''; sb.classList.remove('on'); }
+      if(bg){
+        if(sb.getAttribute('data-bg')!==bg){
+          sb.style.backgroundImage="url('"+bg+"')";
+          sb.setAttribute('data-bg',bg);
+        }
+        sb.classList.add('on');
+      }
+      else { sb.style.backgroundImage=''; sb.classList.remove('on'); sb.removeAttribute('data-bg'); }
     }
-    /* прячем параллакс кабинета, когда показан фон дела */
+    /* СТАРЫЙ КАБИНЕТ (bg-fx) полностью убираем */
     var bf=document.getElementById('bg-fx');
-    if(bf) bf.style.opacity = bg ? '0' : '1';
+    if(bf){ bf.style.display='none'; bf.style.opacity='0'; }
   }catch(_){}
 }
 function initCarousel_data(){

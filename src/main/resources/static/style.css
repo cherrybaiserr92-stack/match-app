@@ -40,7 +40,7 @@ body{
 }
 
 /* фон Phaser — НИКОГДА не ловит клики */
-#bg-fx{
+#bg-fx{ display:none !important;
   position:fixed; inset:0; z-index:0;
   pointer-events:none;
 }
@@ -739,3 +739,19 @@ body::before{
   border:none;border-radius:30px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;
   font-family:'Unbounded',sans-serif;letter-spacing:.03em;transition:transform .15s;}
 .il-continue:active{transform:scale(.96);}
+
+/* ── ФОН ГЛАВЫ с параллаксом ── */
+.scene-bg{
+  position:fixed; inset:-6% -6% -6% -6%;
+  z-index:0; pointer-events:none;
+  background-size:cover; background-position:center center;
+  opacity:0; transition:opacity .9s ease;
+  will-change:transform;
+  transform:translate3d(0,0,0) scale(1.08);
+}
+.scene-bg.on{ opacity:.5; }
+/* затемнение поверх фона для читаемости ленты */
+.scene-bg.on::after{
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(8,10,14,.55) 0%, rgba(8,10,14,.78) 55%, rgba(8,10,14,.92) 100%);
+}
