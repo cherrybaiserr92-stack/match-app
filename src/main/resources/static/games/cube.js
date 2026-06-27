@@ -11,7 +11,7 @@
 
   const FACES=[
     {id:'match3',  name:'Улики дела', ico:'💎', sub:'Три в ряд', available:true,  c1:'#e0a020',c2:'#7a4e08'},
-    {id:'board',   name:'Доска улик', ico:'🧷', sub:'Связи',     available:false, c1:'#c86464',c2:'#5e2626'},
+    {id:'lockpick', name:'Взлом',     ico:'🔓', sub:'Код замка', available:true,  c1:'#c86464',c2:'#5e2626'},
     {id:'pursuit', name:'Слежка',     ico:'👁', sub:'Не упусти', available:true,  c1:'#5ab0a0',c2:'#1d4a43'},
     {id:'examine',  name:'Осмотр места',ico:'🔍', sub:'Поиск улик',available:true,  c1:'#6c8fc0',c2:'#28384f'},
     {id:'dossier', name:'Картотека',  ico:'🗂', sub:'Сортировка',available:false, c1:'#a78fc0',c2:'#4a3f5a'},
