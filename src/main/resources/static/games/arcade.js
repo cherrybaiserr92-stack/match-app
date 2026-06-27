@@ -1,7 +1,8 @@
 /* СДВИГ · arcade.js — независимый модуль аркад */
 (function(){
   const GAMES = [
-    { key:'Examine', canvas:true, name:'Осмотр места', desc:'Найди улики на сцене', icon:'🔍', opts:{ mission:{target:12} } }
+    { key:'Examine', canvas:true, name:'Осмотр места', desc:'Найди улики на сцене', icon:'🔍', opts:{ mission:{target:12} } },
+    { key:'Pursuit', canvas:true, name:'Слежка', desc:'Не упусти подозреваемого', icon:'👁', opts:{ mission:{target:20} } }
   ];
 
   let game=null;

@@ -1872,7 +1872,7 @@ function openHintGame(card){
   }
 
   $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); if(window.BgFx)BgFx.resume();
-    try{Examine&&Examine.stop();}catch(_){} try{Match3&&Match3.stop();}catch(_){} try{MiniCube&&MiniCube.close();}catch(_){} };
+    try{Examine&&Examine.stop();}catch(_){} try{Pursuit&&Pursuit.stop();}catch(_){} try{Match3&&Match3.stop();}catch(_){} try{MiniCube&&MiniCube.close();}catch(_){} };
 }
 
 function startMiniGame(gameId, card, mission, modal){
@@ -1886,6 +1886,8 @@ function startMiniGame(gameId, card, mission, modal){
   // роутер мини-игр (расширяемый)
   if(gameId==='examine' && window.Examine){
     Examine.start(vp, { mission, onWin, onLose });
+  } else if(gameId==='pursuit' && window.Pursuit){
+    Pursuit.start(vp, { mission, onWin, onLose });
   } else if(gameId==='match3' && window.Match3){
     Match3.start(vp, { mission, boosters:App.profile.boosters||0, onWin, onLose });
   } else if(window.Match3){
