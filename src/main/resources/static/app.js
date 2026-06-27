@@ -1872,7 +1872,7 @@ function openHintGame(card){
   }
 
   $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); if(window.BgFx)BgFx.resume();
-    try{Match3&&Match3.stop();}catch(_){} try{MiniCube&&MiniCube.close();}catch(_){} };
+    try{Examine&&Examine.stop();}catch(_){} try{Match3&&Match3.stop();}catch(_){} try{MiniCube&&MiniCube.close();}catch(_){} };
 }
 
 function startMiniGame(gameId, card, mission, modal){
@@ -1883,8 +1883,10 @@ function startMiniGame(gameId, card, mission, modal){
     try{ const p=App.profile; if(p){ p.energy=clamp(p.energy-1,0,p.maxEnergy); addRapport(-1); renderHUD(); saveProfile(); } }catch(_){}
     if(window.toast) toast('Улика ускользнула','Сдвиг недоволен. Попробуй снова.','\ud83d\udd0d');
   };
-  // роутер мини-игр (расширяемый): пока все ведут на match3
-  if(gameId==='match3' && window.Match3){
+  // роутер мини-игр (расширяемый)
+  if(gameId==='examine' && window.Examine){
+    Examine.start(vp, { mission, onWin, onLose });
+  } else if(gameId==='match3' && window.Match3){
     Match3.start(vp, { mission, boosters:App.profile.boosters||0, onWin, onLose });
   } else if(window.Match3){
     Match3.start(vp, { mission, boosters:App.profile.boosters||0, onWin, onLose });

@@ -1,9 +1,7 @@
 /* СДВИГ · arcade.js — независимый модуль аркад */
 (function(){
   const GAMES = [
-    { key:'DetectiveMahjong', name:'Детективный маджонг', desc:'Соединяй связанные улики', icon:'🀄', evt:'detective-mahjong-complete', opts:{ maxTime:140, maxErrors:5 } },
-    { key:'TornLetterScene',  name:'Разорванное письмо',  desc:'Собери письмо из кусков',  icon:'✉️', evt:'torn-letter-complete',      opts:{} },
-    { key:'CrimeBoardScene',  name:'Доска улик',          desc:'Построй цепочку связей',   icon:'🧩', evt:'crime-board-complete',     opts:{ maxTime:80 } }
+    { key:'Examine', canvas:true, name:'Осмотр места', desc:'Найди улики на сцене', icon:'🔍', opts:{ mission:{target:12} } }
   ];
 
   let game=null;
@@ -36,9 +34,36 @@
     if(list) renderInto(list);
   }
 
+
+  function launchCanvas(g){
+    try{ window.Sound && Sound.tap && Sound.tap(); }catch(e){}
+    if(window.BgFx && BgFx.pause) BgFx.pause();
+    const ov=document.createElement('div');
+    ov.id='arcade-overlay';
+    ov.innerHTML='<div class="arc-bar"><button class="arc-close" id="arc-close">‹ Выход</button>'+
+      '<div class="arc-title">'+g.name+'</div><div style="width:72px"></div></div>'+
+      '<div class="arc-stage" id="arc-stage" style="padding:16px;display:flex;align-items:center;justify-content:center"></div>';
+    document.body.appendChild(ov);
+    const stage=ov.querySelector('#arc-stage');
+    const host=document.createElement('div');
+    host.style.cssText='width:100%;max-width:520px;height:70vh;';
+    stage.appendChild(host);
+    function close(){ try{window[g.key]&&window[g.key].stop&&window[g.key].stop();}catch(_){} ov.remove(); if(window.BgFx&&BgFx.resume)BgFx.resume(); }
+    ov.querySelector('#arc-close').onclick=close;
+    var done=function(ok){ setTimeout(close,600); };
+    try{
+      window[g.key].start(host, Object.assign({}, g.opts, {
+        onWin:function(){ try{toast&&toast('Победа','Улики собраны','🔍');}catch(_){}; done(true); },
+        onLose:function(){ try{toast&&toast('Не вышло','Попробуй снова','🔍');}catch(_){}; done(false); }
+      }));
+    }catch(e){ console.error('canvas game',e); close(); }
+  }
+
   function launch(key){
     const g = GAMES.find(x=>x.key===key);
     if(!g) return;
+    // canvas-игры (новые, лёгкие) — запускаем напрямую, без Phaser
+    if(g.canvas){ launchCanvas(g); return; }
     if(!window.Phaser){ alert('Phaser не загружен'); return; }
     if(!window[key]){ alert('Игра не найдена: '+key); return; }
     try{ window.Sound && Sound.tap && Sound.tap(); }catch(e){}
