@@ -25,7 +25,7 @@ const DEFAULT_PROFILE = {
   casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
   achievements:[], dailyStreak:0, lastDaily:null, sound:true,
-  lastEnergyTs:0, rapport:50, skill:30, gender:'m', genderChosen:false, playerName:'', prologueSeen:false, onboarded:false
+  lastEnergyTs:0, rapport:50, skill:30, gender:'m', genderChosen:false, playerName:'', story:{}, prologueSeen:false, onboarded:false
 };
 
 /* ── DOM helpers ───────────────────────────────── */
@@ -441,9 +441,27 @@ function computeEnding(f){
   base.rap=rap; base.det=det;
   if(base.kind==='win'){
     if(rap>=60 && det>=60) base.epilogue='Сдвиг хлопнул тебя по плечу. «Напарник». Впервые это слово прозвучало всерьёз.';
-    else if(det>=60 && rap<40) base.epilogue='Ты раскрыл дело блестяще. Но Сдвиг смотрел на тебя холодно — машина, а не человек. «Берегись, рекрут. Лёд трескается изнутри».';
+    else if(det>=60 && rap<40) base.epilogue='Ты раскрыл дело блестяще. Но Сдвиг смотрел на тебя холодно — машина, а не человек. «Берегись. Лёд трескается изнутри».';
     else if(rap>=60 && det<40) base.epilogue='«Голова у тебя ещё сырая, но сердце на месте, — буркнул Сдвиг. — С этим можно работать».';
   }
+  // ── СЮЖЕТНЫЙ ИТОГ: на последнем уровне собираем последствия выборов всей игры ──
+  try{
+    var isFinale=(window.CAMPAIGN && _caseIdx===CAMPAIGN.cases.length-1);
+    if(isFinale){
+      var s=App.profile.story||{};
+      var threads=[];
+      if(s.danny==='ally') threads.push('Дэнни, которого ты однажды отпустил, выжил и держит твою сторону на улицах города.');
+      else if(s.danny==='jail') threads.push('Дэнни, которого ты сдал в участок, давно сгинул в системе — улицы не прощают.');
+      if(s.choice==='rescue') threads.push('Люди, которых ты спас на причале, живы — пусть и ценой упущенного следа.');
+      else if(s.choice==='track') threads.push('Те, кого ты не спас на причале ради нити, остались на твоей совести навсегда.');
+      if(s.pact==='trust'||s.vivien==='vendetta') threads.push('Вивьен Кросс сдержала слово — её месть и твоё дело сошлись в одной точке.');
+      else if(s.pact==='wary') threads.push('Вивьен ушла своей дорогой, и ты так и не узнал, кем она была на самом деле.');
+      if(s.cap_fate==='informant') threads.push('Капитан, ставший твоими глазами в порту, ещё пригодится.');
+      if(s.curator==='law') threads.push('Куратор предстанет перед судом — ты не стал палачом, и Сдвиг бы это одобрил.');
+      else if(s.curator==='fire') threads.push('Куратор сгорел в своём доме — справедливость это или твоя тьма, рассудит время.');
+      if(threads.length){ base.threads=threads; }
+    }
+  }catch(_){}
   return base;
 }
 function haptic(kind){
@@ -851,8 +869,20 @@ function addSkill(n){
   var p=App.profile; p.skill=clamp((p.skill||30)+n,0,100); saveProfile();
   try{ updateScaleBars&&updateScaleBars(); scalePop&&scalePop('det',n); }catch(_){}
 }
+// сюжетные флаги, влияющие на дальнейшую историю и финал
+window.STORY_KEYS=['danny','vivien','cap_fate','stance','pact','choice','curator','arundel','aesthetic','shift'];
+function _saveStoryFlags(set){
+  try{
+    if(!App.profile.story) App.profile.story={};
+    for(var k in set){
+      if(window.STORY_KEYS.indexOf(k)>=0){ App.profile.story[k]=set[k]; }
+    }
+    saveProfile();
+  }catch(_){}
+}
+window.storyFlag=function(k){ try{ return App.profile.story?App.profile.story[k]:undefined; }catch(_){ return undefined; } };
 function cApplyOption(o){
-  if(o.set) Object.assign(CState.flags,o.set);
+  if(o.set){ Object.assign(CState.flags,o.set); _saveStoryFlags(o.set); }
   if(o.evidence) cAddEvidence(o.evidence);
   if(o.clue && window.grantClue){ try{ grantClue(o.clue); }catch(_){} }
   // шкалы: dscore (детективность) + rapport из выбора
@@ -957,7 +987,22 @@ function showEnding(r){
     if(_te) _te.textContent=(r.text||'')+"\n\n"+r.epilogue;
   }
   if(_progEl)_progEl.style.width="100%";
-  haptic(r.kind==="fail"?"shift":"burn"); endEl.classList.add("show"); try{ _scaleWarning(r); }catch(_){} try{hideChar();}catch(_){} try{hideChar();}catch(_){}
+  haptic(r.kind==="fail"?"shift":"burn");
+  // сюжетный итог выборов (на финале)
+  try{
+    if(r.threads && r.threads.length){
+      var tEl=document.getElementById("ending-threads");
+      if(!tEl){
+        tEl=document.createElement("div");
+        tEl.id="ending-threads";
+        tEl.style.cssText="margin-top:16px;padding:14px 16px;background:rgba(200,134,10,.08);border-left:3px solid #c8860a;border-radius:8px;text-align:left;font-size:13px;line-height:1.7;color:#c8b89a;";
+        var ec=document.querySelector("#ending .ending-card,#ending .e-body,#ending");
+        if(ec) ec.appendChild(tEl);
+      }
+      tEl.innerHTML='<div style="color:#ffcf6b;font-weight:700;margin-bottom:8px;font-size:12px;letter-spacing:.05em">ЧТО ОСТАЛОСЬ ПОСЛЕ ТЕБЯ</div>'+r.threads.map(function(t){return '• '+t;}).join('<br>');
+    }
+  }catch(_){}
+  endEl.classList.add("show"); try{ _scaleWarning(r); }catch(_){} try{hideChar();}catch(_){} try{hideChar();}catch(_){}
   const _rb=document.getElementById("e-restart");
   if(_rb){
     const _hn=CAMPAIGN&&(_caseIdx+1)<CAMPAIGN.cases.length;

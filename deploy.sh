@@ -1,154 +1,130 @@
 #!/usr/bin/env bash
-# СДВИГ R86 — интерлюдии между главами (течение времени, заполнение обрывов)
+# СДВИГ R87 — сюжетные флаги: выборы сохраняются между уровнями и влияют на финал
 set -e
-echo "══ штамп → R86 ══"
-sed -i "s/SDVIG_BUILD='R85'/SDVIG_BUILD='R86'/" src/main/resources/static/app.js
-sed -i 's/>R85</>R86</' src/main/resources/static/index.html
+echo "══ штамп → R87 ══"
+sed -i "s/SDVIG_BUILD='R86'/SDVIG_BUILD='R87'/" src/main/resources/static/app.js
+sed -i 's/>R86</>R87</' src/main/resources/static/index.html
 
-echo ""; echo "══ 1/4  HTML экрана интерлюдии ════════════════════"
-python3 - << 'PYEOF'
-path="src/main/resources/static/index.html"
-with open(path,encoding="utf-8") as f: txt=f.read()
-n=0
-if 'id="interlude"' not in txt:
-    modal='''
-  <!-- ИНТЕРЛЮДИЯ между главами (течение времени) -->
-  <div id="interlude" class="interlude" style="display:none">
-    <div class="il-inner">
-      <div class="il-time" id="il-time"></div>
-      <div class="il-line"></div>
-      <div class="il-title" id="il-title"></div>
-      <div class="il-text" id="il-text"></div>
-      <button class="il-continue" id="il-continue">Продолжить</button>
-    </div>
-  </div>'''
-    end=txt.find('</body>')
-    txt=txt[:end]+modal+'\n'+txt[end:]
-    n+=1; print("  + HTML интерлюдии")
-with open(path,"w",encoding="utf-8") as f: f.write(txt)
-print("✓ index.html: %d"%n)
-PYEOF
-
-
-echo ""; echo "══ 2/4  CSS интерлюдии (кинематографично) ═════════"
-python3 - << 'PYEOF'
-path="src/main/resources/static/style.css"
-with open(path,encoding="utf-8") as f: txt=f.read()
-if ".interlude{" not in txt:
-    txt+='''
-/* ── ИНТЕРЛЮДИЯ между главами ── */
-.interlude{position:fixed;inset:0;z-index:9000;background:#080a0e;
-  display:flex;align-items:center;justify-content:center;padding:30px;
-  animation:ilFade .8s ease;}
-@keyframes ilFade{from{opacity:0}to{opacity:1}}
-.il-inner{max-width:540px;text-align:center;animation:ilRise 1.2s ease;}
-@keyframes ilRise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-.il-time{font-family:'Unbounded',sans-serif;font-weight:900;font-size:14px;
-  letter-spacing:.25em;color:#c8860a;margin-bottom:18px;}
-.il-line{width:60px;height:2px;background:linear-gradient(90deg,transparent,#c8860a,transparent);
-  margin:0 auto 24px;}
-.il-title{font-family:'Playfair Display',serif;font-size:30px;color:#ffd98a;margin-bottom:22px;}
-.il-text{color:#b8b8c0;font-size:16px;line-height:1.8;margin-bottom:34px;white-space:pre-line;
-  text-align:left;}
-.il-continue{padding:13px 40px;background:linear-gradient(135deg,#c8860a,#a06d08);
-  border:none;border-radius:30px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;
-  font-family:'Unbounded',sans-serif;letter-spacing:.03em;transition:transform .15s;}
-.il-continue:active{transform:scale(.96);}
-'''
-    with open(path,"w",encoding="utf-8") as f: f.write(txt)
-    print("  + CSS интерлюдии")
-PYEOF
-
-
-echo ""; echo "══ 3/4  данные интерлюдий + функция показа ════════"
+echo ""; echo "══ 1/4  поле story в профиль ══════════════════════"
 python3 - << 'PYEOF'
 path="src/main/resources/static/app.js"
 with open(path,encoding="utf-8") as f: txt=f.read()
 n=0
-if "window.INTERLUDES" not in txt:
-    il_js='{"2": {"time": "ДВЕ НЕДЕЛИ СПУСТЯ", "title": "Между делами", "text": "Дело музея закрыли, но оно не отпускало. Две недели Сдвиг и {name} складывали обрывки: свежие купюры, карточка с тиснёной буквой, «исчезнувший» директор. По отдельности — мелочи. Вместе — узор, который не давал спать.\\n\\nНить вела в Старый город — туда, где доживали свой век заброшенные типографии и где, по слухам, кто-то снова запустил печатные станки. Не для газет."}, "3": {"time": "ДВА МЕСЯЦА СПУСТЯ", "title": "По следу теней", "text": "Два месяца ушло на то, чтобы распутать клубок Старого города. Посредник заговорил, Аранделл дал показания в обмен на защиту, имя мадам Кросс всплывало снова и снова. Сеть оказалась глубже, чем думали, — щупальца тянулись через весь город к воде.\\n\\nК докам. Туда, где по ночам грузили на суда контейнеры, в которых что-то — или кто-то — дышало. {name} и Сдвиг знали: там, у чёрной воды, прячется ответ. И он им не понравится."}, "4": {"time": "ТОЙ ЖЕ НОЧЬЮ", "title": "Чёрная вода", "text": "Времени на передышку не было. Маршрут к острову был известен, корабль с грузом ушёл вперёд, и каждый час промедления стоил кому-то жизни или свободы.\\n\\nЛодка резала чёрную воду, унося Сдвига, {name} и Вивьен к острову, где гнила усадьба коллекционера. Позади остался город со всеми его тайнами. Впереди — логово человека, что собирал людей, как иные собирают бабочек."}, "5": {"time": "НА РАССВЕТЕ", "title": "У порога", "text": "Мёртвый сад остался позади. Оранжерея с её живыми картинами — тоже. Чистильщики, что гнали их от самого Старого города, пали в разгромленном холле.\\n\\nВпереди была последняя лестница и последняя дверь, за которой ждал хозяин острова — спокойный, любезный и безумный. {name} переступил порог его дома, зная: назад дороги нет. Только вперёд, к развязке, какой бы страшной она ни оказалась."}}'
-    code='''
-// ════ ИНТЕРЛЮДИИ между главами ════
-window.INTERLUDES=''' + il_js + ''';
-window._pendingInterludeNext=null;
-function showInterlude(chapter, onContinue){
-  var il=window.INTERLUDES[chapter];
-  if(!il){ onContinue&&onContinue(); return; }
-  var box=document.getElementById('interlude'); if(!box){ onContinue&&onContinue(); return; }
-  var nm='Детектив'; try{ nm=window.playerName?window.playerName():'Детектив'; }catch(_){}
-  document.getElementById('il-time').textContent=il.time||'';
-  document.getElementById('il-title').textContent=il.title||'';
-  document.getElementById('il-text').textContent=(il.text||'').replace(/\\{name\\}/g,nm);
-  box.style.display='flex';
-  window._pendingInterludeNext=onContinue;
-  var btn=document.getElementById('il-continue');
-  if(btn) btn.onclick=function(){
-    box.style.display='none';
-    var cb=window._pendingInterludeNext; window._pendingInterludeNext=null;
-    cb&&cb();
-  };
-}
-window.showInterlude=showInterlude;
-// определить главу уровня по индексу
-function chapterOfIndex(i){
-  try{
-    var cid=CAMPAIGN.cases[i].id;
-    // chapter хранится в файле — у нас есть в campaign.subtitle/title, но надёжнее карта
-    var map={'level-1':1,'case001':1,'level-2':2,'level-3':3,'level-4':4,'level-5':5};
-    for(var k in map){ if(cid.indexOf(k)===0) return map[k]; }
-  }catch(_){}
-  return 1;
-}
-window.chapterOfIndex=chapterOfIndex;
-'''
-    # вставляем перед showEnding
-    txt=txt.replace("function showEnding(r){", code+"\nfunction showEnding(r){",1)
-    n+=1; print("  + данные интерлюдий + showInterlude + chapterOfIndex")
+if "story:{}" not in txt:
+    txt=txt.replace("gender:'m', genderChosen:false, playerName:'',",
+                    "gender:'m', genderChosen:false, playerName:'', story:{},")
+    n+=1; print("  + story:{} в DEFAULT_PROFILE")
 with open(path,"w",encoding="utf-8") as f: f.write(txt)
 print("✓ app.js: %d"%n)
 PYEOF
 
 
-echo ""; echo "══ 4/4  вставка интерлюдии при переходе главы ═════"
+echo ""; echo "══ 2/4  сохранение ключевых флагов в profile.story ═"
 python3 - << 'PYEOF'
 path="src/main/resources/static/app.js"
 with open(path,encoding="utf-8") as f: txt=f.read()
 n=0
-old='''  const restartBtn=document.getElementById("e-restart");
-  if(restartBtn) restartBtn.addEventListener("click",function(){
-    const _hn=CAMPAIGN&&(_caseIdx+1)<CAMPAIGN.cases.length;
-    if(_hn){ loadCaseByIndex(_caseIdx+1); computeEnding._invalidate=true; }
-    if(window.Feed){ initCarousel_data(); Feed.reset(); Feed.init(); } else { restartCarousel(); }
-  });'''
-new='''  const restartBtn=document.getElementById("e-restart");
-  if(restartBtn) restartBtn.addEventListener("click",function(){
-    const _hn=CAMPAIGN&&(_caseIdx+1)<CAMPAIGN.cases.length;
-    if(_hn){
-      var curCh=chapterOfIndex(_caseIdx);
-      var nextCh=chapterOfIndex(_caseIdx+1);
-      var doLoad=function(){
-        loadCaseByIndex(_caseIdx+1); computeEnding._invalidate=true;
-        var endEl=document.getElementById("ending"); if(endEl)endEl.classList.remove("show");
-        if(window.Feed){ initCarousel_data(); Feed.reset(); Feed.init(); } else { restartCarousel(); }
-      };
-      // если переходим в НОВУЮ главу — показать интерлюдию
-      if(nextCh>curCh && window.INTERLUDES[nextCh]){
-        showInterlude(nextCh, doLoad);
-      } else { doLoad(); }
-    } else {
-      if(window.Feed){ initCarousel_data(); Feed.reset(); Feed.init(); } else { restartCarousel(); }
+old='''function cApplyOption(o){
+  if(o.set) Object.assign(CState.flags,o.set);'''
+new='''// сюжетные флаги, влияющие на дальнейшую историю и финал
+window.STORY_KEYS=['danny','vivien','cap_fate','stance','pact','choice','curator','arundel','aesthetic','shift'];
+function _saveStoryFlags(set){
+  try{
+    if(!App.profile.story) App.profile.story={};
+    for(var k in set){
+      if(window.STORY_KEYS.indexOf(k)>=0){ App.profile.story[k]=set[k]; }
     }
-  });'''
+    saveProfile();
+  }catch(_){}
+}
+window.storyFlag=function(k){ try{ return App.profile.story?App.profile.story[k]:undefined; }catch(_){ return undefined; } };
+function cApplyOption(o){
+  if(o.set){ Object.assign(CState.flags,o.set); _saveStoryFlags(o.set); }'''
 if old in txt:
-    txt=txt.replace(old,new,1); n+=1; print("  + интерлюдия при переходе в новую главу")
-else:
-    print("  ✗ обработчик не найден точно")
+    txt=txt.replace(old,new,1); n+=1; print("  + сохранение story-флагов + storyFlag()")
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ app.js: %d"%n)
+PYEOF
+
+
+echo ""; echo "══ 3/4  финал учитывает накопленные выборы ════════"
+python3 - << 'PYEOF'
+path="src/main/resources/static/app.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
+# в computeEnding добавляем сюжетный итог для последнего уровня (эпилог 5-4)
+old='''  base.rap=rap; base.det=det;
+  if(base.kind==='win'){
+    if(rap>=60 && det>=60) base.epilogue='Сдвиг хлопнул тебя по плечу. «Напарник». Впервые это слово прозвучало всерьёз.';
+    else if(det>=60 && rap<40) base.epilogue='Ты раскрыл дело блестяще. Но Сдвиг смотрел на тебя холодно — машина, а не человек. «Берегись, рекрут. Лёд трескается изнутри».';
+    else if(rap>=60 && det<40) base.epilogue='«Голова у тебя ещё сырая, но сердце на месте, — буркнул Сдвиг. — С этим можно работать».';
+  }
+  return base;'''
+new='''  base.rap=rap; base.det=det;
+  if(base.kind==='win'){
+    if(rap>=60 && det>=60) base.epilogue='Сдвиг хлопнул тебя по плечу. «Напарник». Впервые это слово прозвучало всерьёз.';
+    else if(det>=60 && rap<40) base.epilogue='Ты раскрыл дело блестяще. Но Сдвиг смотрел на тебя холодно — машина, а не человек. «Берегись. Лёд трескается изнутри».';
+    else if(rap>=60 && det<40) base.epilogue='«Голова у тебя ещё сырая, но сердце на месте, — буркнул Сдвиг. — С этим можно работать».';
+  }
+  // ── СЮЖЕТНЫЙ ИТОГ: на последнем уровне собираем последствия выборов всей игры ──
+  try{
+    var isFinale=(window.CAMPAIGN && _caseIdx===CAMPAIGN.cases.length-1);
+    if(isFinale){
+      var s=App.profile.story||{};
+      var threads=[];
+      if(s.danny==='ally') threads.push('Дэнни, которого ты однажды отпустил, выжил и держит твою сторону на улицах города.');
+      else if(s.danny==='jail') threads.push('Дэнни, которого ты сдал в участок, давно сгинул в системе — улицы не прощают.');
+      if(s.choice==='rescue') threads.push('Люди, которых ты спас на причале, живы — пусть и ценой упущенного следа.');
+      else if(s.choice==='track') threads.push('Те, кого ты не спас на причале ради нити, остались на твоей совести навсегда.');
+      if(s.pact==='trust'||s.vivien==='vendetta') threads.push('Вивьен Кросс сдержала слово — её месть и твоё дело сошлись в одной точке.');
+      else if(s.pact==='wary') threads.push('Вивьен ушла своей дорогой, и ты так и не узнал, кем она была на самом деле.');
+      if(s.cap_fate==='informant') threads.push('Капитан, ставший твоими глазами в порту, ещё пригодится.');
+      if(s.curator==='law') threads.push('Куратор предстанет перед судом — ты не стал палачом, и Сдвиг бы это одобрил.');
+      else if(s.curator==='fire') threads.push('Куратор сгорел в своём доме — справедливость это или твоя тьма, рассудит время.');
+      if(threads.length){ base.threads=threads; }
+    }
+  }catch(_){}
+  return base;'''
+if old in txt:
+    txt=txt.replace(old,new,1); n+=1; print("  + сюжетный итог выборов на финале")
+with open(path,"w",encoding="utf-8") as f: f.write(txt)
+print("✓ app.js: %d"%n)
+PYEOF
+
+
+echo ""; echo "══ 4/4  показ сюжетного итога в концовке ══════════"
+python3 - << 'PYEOF'
+path="src/main/resources/static/app.js"
+with open(path,encoding="utf-8") as f: txt=f.read()
+n=0
+# в showEnding добавляем вывод threads (последствия выборов)
+# найдём где выводится epilogue или текст концовки
+if 'r.threads' not in txt:
+    # вставляем после установки текста концовки в showEnding
+    anchor='haptic(r.kind==="fail"?"shift":"burn"); endEl.classList.add("show");'
+    inject='''haptic(r.kind==="fail"?"shift":"burn");
+  // сюжетный итог выборов (на финале)
+  try{
+    if(r.threads && r.threads.length){
+      var tEl=document.getElementById("ending-threads");
+      if(!tEl){
+        tEl=document.createElement("div");
+        tEl.id="ending-threads";
+        tEl.style.cssText="margin-top:16px;padding:14px 16px;background:rgba(200,134,10,.08);border-left:3px solid #c8860a;border-radius:8px;text-align:left;font-size:13px;line-height:1.7;color:#c8b89a;";
+        var ec=document.querySelector("#ending .ending-card,#ending .e-body,#ending");
+        if(ec) ec.appendChild(tEl);
+      }
+      tEl.innerHTML='<div style="color:#ffcf6b;font-weight:700;margin-bottom:8px;font-size:12px;letter-spacing:.05em">ЧТО ОСТАЛОСЬ ПОСЛЕ ТЕБЯ</div>'+r.threads.map(function(t){return '• '+t;}).join('<br>');
+    }
+  }catch(_){}
+  endEl.classList.add("show");'''
+    txt=txt.replace(anchor,inject,1); n+=1; print("  + вывод сюжетного итога в концовке")
 with open(path,"w",encoding="utf-8") as f: f.write(txt)
 print("✓ app.js: %d"%n)
 PYEOF
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R86 — интерлюдии между главами (2 нед / 2 мес / по горячему)"
-echo "   git add -A && git commit -m 'R86: chapter interludes with time passage' && git push"
+echo "✅  R87 — сюжетные флаги (выборы влияют на финал)"
+echo "   git add -A && git commit -m 'R87: persistent story flags affecting finale' && git push"
 echo "═══════════════════════════════════════════════════════"
