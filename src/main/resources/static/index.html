@@ -118,7 +118,6 @@
       <span class="gem-ico" data-gem="bucks"></span>
       <span id="hud-bucks">0</span>
     </div>
-    <button class="snd-btn" id="sound-btn" type="button">🔊</button>
   </div>
 
   <div class="tab-area">
@@ -205,6 +204,11 @@
 
       <!-- Действия -->
       <div class="ag-section-title">Игра</div>
+      <button class="ag-action" id="ag-sound-toggle" type="button">
+        <span class="ag-action-ico" id="ag-sound-ico"></span>
+        <span class="ag-action-txt"><b>Звук</b><small id="ag-sound-state">Включён</small></span>
+        <span class="ag-toggle" id="ag-sound-switch"><span class="ag-toggle-knob"></span></span>
+      </button>
       <button class="ag-action ag-danger" onclick="window.resetGameProgress&&window.resetGameProgress()">
         <span class="ag-action-ico">↺</span>
         <span class="ag-action-txt"><b>Начать сначала</b><small>Сбросить прогресс и улики</small></span>

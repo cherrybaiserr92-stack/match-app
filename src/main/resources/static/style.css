@@ -817,3 +817,24 @@ body:not(.app-ready)::before{
 /* пролог и сплэш — мгновенно непрозрачный фон, без просвета */
 #prologue{ background:#080a0e !important; }
 #splash-screen{ background:#080a0e; }
+
+/* ── переключатель звука в Агенте ── */
+.ag-action{ position:relative; }
+.ag-toggle{
+  margin-left:auto; flex:0 0 auto; width:48px; height:28px; border-radius:16px;
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);
+  position:relative; transition:background .3s ease, border-color .3s ease;
+}
+.ag-toggle.on{
+  background:linear-gradient(135deg, rgba(200,134,10,.5), rgba(255,207,107,.35));
+  border-color:rgba(255,207,107,.5);
+  box-shadow:0 0 14px rgba(200,134,10,.35), 0 0 0 1px rgba(255,207,107,.2) inset;
+}
+.ag-toggle-knob{
+  position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:50%;
+  background:linear-gradient(135deg,#fff,#d8dae0);
+  box-shadow:0 2px 5px rgba(0,0,0,.4);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.ag-toggle.on .ag-toggle-knob{ transform:translateX(20px); background:linear-gradient(135deg,#fff,#ffe8b8); }
+.ag-action-ico svg{ width:24px; height:24px; }

@@ -288,11 +288,26 @@ function bindNav(){
   });
 }
 
+
+// качественные SVG иконки звука
+var SND_ICON_ON='<svg viewBox="0 0 24 24" fill="none" stroke="#ffcf6b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z" fill="rgba(255,207,107,.18)"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M19 6.5a8 8 0 0 1 0 11"/></svg>';
+var SND_ICON_OFF='<svg viewBox="0 0 24 24" fill="none" stroke="#7d8699" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z" fill="rgba(125,134,153,.12)"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+
 function bindSoundBtn(){
-  const btn=$('#sound-btn');
-  if(!btn) return;
-  btn.textContent=Sound.isOn()?'🔊':'🔇';
-  btn.onclick=()=>{ const on=Sound.toggle(); btn.textContent=on?'🔊':'🔇'; if(on)Sound.tap(); };
+  // звук теперь в Агенте (переключатель)
+  var row=document.getElementById('ag-sound-toggle');
+  if(!row) return;
+  var ico=document.getElementById('ag-sound-ico');
+  var sw=document.getElementById('ag-sound-switch');
+  var st=document.getElementById('ag-sound-state');
+  function paint(){
+    var on=Sound.isOn();
+    if(ico) ico.innerHTML=on?SND_ICON_ON:SND_ICON_OFF;
+    if(sw) sw.classList.toggle('on',on);
+    if(st) st.textContent=on?'Включён':'Выключен';
+  }
+  paint();
+  row.onclick=function(){ var on=Sound.toggle(); if(on)Sound.tap(); paint(); try{navigator.vibrate&&navigator.vibrate(8);}catch(_){} };
 }
 
 function bindTools(){
