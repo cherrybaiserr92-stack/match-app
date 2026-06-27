@@ -1063,6 +1063,7 @@ function confirmName(){
     App.profile.onboarded=true;
     saveProfile();
   }
+  document.body.classList.add('app-ready');
   var nm=document.getElementById('name-select'); if(nm) nm.style.display='none';
   if(window.toast) toast('Добро пожаловать',v,'🕵');
   try{ if(window.Feed){ Feed.reset&&Feed.reset(); Feed.init&&Feed.init(); } }catch(_){}
@@ -1132,6 +1133,7 @@ function _refreshAgentGender(){
 function maybeShowGenderSelect(){
   try{
     applyRecruitGender();
+    if(App.profile && App.profile.genderChosen && App.profile.onboarded){ document.body.classList.add('app-ready'); }
     if(App.profile && !App.profile.genderChosen){
       // сначала пролог, потом выбор персонажа
       if(!App.profile.prologueSeen){ showPrologue(); }
@@ -1162,6 +1164,7 @@ window.prologueNext=function(skip){
 };
 function _finishPrologue(){
   var pr=document.getElementById('prologue'); if(pr) pr.style.display='none';
+  document.body.classList.add('app-ready');
   if(App.profile){ App.profile.prologueSeen=true; saveProfile(); }
   var m=document.getElementById('gender-select'); if(m){ m.style.display='flex'; initGenderSelect(); }
 }
@@ -1697,7 +1700,7 @@ window.setRecruitGender=function(g){
   if(App.profile){ App.profile.gender=g; App.profile.genderChosen=true; saveProfile(); }
   try{ applyRecruitGender(); }catch(_){}
   try{ renderProfile(); }catch(_){}
-  try{ if(window.toast) toast('Персонаж выбран', (g==='f'?'Детектив-женщина':'Детектив-мужчина')+'. Обновлено во всей игре.', '🕵️'); }catch(_){}
+  try{ if(window.toast) toast('Персонаж выбран', 'Обновлено во всей игре.', '🕵️'); }catch(_){}
 };
 window.resetGameProgress=function(){
   if(!confirm('Начать игру сначала? Прогресс, улики и шкалы сбросятся. Выбранный персонаж сохранится.')) return;
