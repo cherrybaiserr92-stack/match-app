@@ -1650,7 +1650,13 @@ function renderMap(){
 function drawDistrict(){ return ''; }
 
 function advanceMap(){ App.profile.mapNode=Math.min(totalLevels()-1,(App.profile.mapNode||0)+1); }
+function _navHaptic(){ try{ navigator.vibrate&&navigator.vibrate(8); }catch(_){} }
 function goToTab(t){ $('.nb[data-tab="'+t+'"]')?.click(); }
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('.nb').forEach(function(b){
+    b.addEventListener('click',_navHaptic);
+  });
+});
 
 /* ═══════════════════════════════════════════════
    ПРОФИЛЬ
