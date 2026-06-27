@@ -349,7 +349,18 @@ function paintGems(){
     if(window.GEM_SVG&&GEM_SVG[k]){ elx.innerHTML=GEM_SVG[k]; elx._painted=true; }
   }); }catch(e){}
 }
+
+// SVG-жетон валюты (Кредиты) в топбаре
+function renderTopCoin(){
+  var c=document.querySelector('.th-coin[data-tico="coin"]');
+  if(c && !c.getAttribute('data-filled')){
+    c.innerHTML='<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" fill="url(#coinG)" stroke="#8a6410" stroke-width="1"/><circle cx="12" cy="12" r="7" fill="none" stroke="#6a4810" stroke-width=".6" opacity=".5"/><path d="M12 7v10M9.5 9h3.5a1.8 1.8 0 0 1 0 3.6H9.5h3.5a1.8 1.8 0 0 1 0 3.6H9.5" stroke="#5a3e0a" stroke-width="1.3" stroke-linecap="round" fill="none"/><ellipse cx="9" cy="9" rx="2" ry="3" fill="rgba(255,255,255,.3)"/><defs><linearGradient id="coinG" x1="0" y1="0" x2="0" y2="24"><stop offset="0" stop-color="#ffe9a8"/><stop offset=".5" stop-color="#e0b057"/><stop offset="1" stop-color="#a06d08"/></linearGradient></defs></svg>';
+    c.setAttribute('data-filled','1');
+  }
+}
+
 function renderHUD(){
+  try{renderTopCoin();}catch(_){}
   setTimeout(paintGems,0);
   const p=App.profile;
   const en=$('#hud-energy'); if(en) en.textContent=p.energy;
@@ -1763,84 +1774,46 @@ var GEM_SVG={
 function gemIcon(k){ return GEM_SVG[k]||GEM_SVG.bucks; }
 
 const SHOP=[
-  /* ── За 📁 Зацепки (credits) — бесплатный контур ── */
-  {k:'energy',   svg:'energy',   name:'Чёрный кофе', desc:'+3 энергии', cur:'credits', price:30,
+  {k:'energy',   svg:'energy',   name:'Чёрный кофе',     desc:'+3 энергии — продолжить работу', cur:'credits', price:30,
     buy(){ addEnergy(3); }},
-  {k:'magnify',  svg:'magnify',  name:'Лупа',        desc:'Подсветит улику', cur:'credits', price:40,
+  {k:'hourglass',svg:'hourglass',name:'Второе дыхание',   desc:'Полный заряд энергии',           cur:'credits', price:80,
+    buy(){ var p=App.profile; addEnergy(p.maxEnergy); }},
+  {k:'magnify',  svg:'magnify',  name:'Лупа',             desc:'Подсветит улику в «Осмотре»',     cur:'credits', price:50,
     buy(){ App.profile.tMagnify=(App.profile.tMagnify||0)+1; saveProfile(); }},
-  {k:'file',     svg:'file',     name:'Досье',       desc:'Пропустить мини-игру', cur:'credits', price:60,
-    buy(){ App.profile.tFile=(App.profile.tFile||0)+1; saveProfile(); }},
-  {k:'hourglass',svg:'hourglass',name:'Песочные часы',desc:'+20 энергии', cur:'credits', price:30,
-    buy(){ addEnergy(20); }},
-  /* ── За 💵 Баксы (премиум-валюта) — бустеры match-3 ── */
-  {k:'ashtray',  svg:'ashtray',  name:'Тяжёлая пепельница', desc:'Разбить 1 камень', cur:'bucks', price:100,
-    buy(){ App.profile.boosters=(App.profile.boosters||0)+1; saveProfile(); }},
-  {k:'siren',    svg:'siren',    name:'Полицейская мигалка', desc:'Очистить ряд+столбец', cur:'bucks', price:150,
-    buy(){ App.profile.bSiren=(App.profile.bSiren||0)+1; saveProfile(); }},
-  {k:'tape',     svg:'tape',     name:'Плёнка диктофона', desc:'Перемешать поле', cur:'bucks', price:150,
-    buy(){ App.profile.bShuffle=(App.profile.bShuffle||0)+1; saveProfile(); }},
-  {k:'phone',    svg:'phone',    name:'Звонок информатору', desc:'Подсветит безопасный выбор', cur:'bucks', price:50,
-    buy(){ App.profile.tHint=(App.profile.tHint||0)+1; saveProfile(); }}
+  {k:'phone',    svg:'phone',    name:'Звонок информатору',desc:'Подсветит безопасный выбор',     cur:'credits', price:60,
+    buy(){ App.profile.tHint=(App.profile.tHint||0)+1; saveProfile(); }},
+  {k:'file',     svg:'file',     name:'Досье',            desc:'Пропустить мини-игру',            cur:'credits', price:100,
+    buy(){ App.profile.tFile=(App.profile.tFile||0)+1; saveProfile(); }}
 ];
 
-/* пакеты Баксов за реальные деньги (заглушка под платёж Telegram Stars / Wallet) */
-const BUCK_PACKS=[
-  {amount:500,  price:'$1.99'},
-  {amount:1400, price:'$4.99'},
-  {amount:6500, price:'$19.99'},
-  {amount:50000,price:'$99.99', label:'Чемодан с наличностью'}
-];
+/* премиум-валюта убрана — одна валюта (Кредиты) */
 
 function renderShop(){
   const g=$('#shop-grid'); if(!g) return; g.innerHTML='';
   SHOP.forEach(it=>{
-    const isBucks=it.cur==='bucks';
-    const curIco=isBucks?'<span class="gem-ico mini" data-gem="bucks"></span>':'◈';
-    const item=el('div','shop-item'+(isBucks?' premium':''),`
+    const item=el('div','shop-item',`
+      <div class="si-glow"></div>
       <div class="si-gem">${gemIcon(it.svg)}</div>
       <div class="si-name">${it.name}</div>
       <div class="si-desc">${it.desc}</div>
-      <div class="si-price ${isBucks?'pr-bucks':'pr-credits'}">${it.price} ${curIco}</div>`);
+      <div class="si-price"><span class="si-coin">${gemIcon('bucks')}</span>${it.price}</div>`);
     item.onclick=()=>{
-      const bal=isBucks?(App.profile.bucks||0):App.profile.credits;
-      if(bal<it.price){
-        Sound.error();
-        if(isBucks){ openBuckShop(); }
-        else toast('Мало зацепок','Нужно '+it.price+' ◈','✗');
+      if(App.profile.credits<it.price){
+        Sound.error(); vibrate([10,30,10]);
+        toast('Недостаточно кредитов','Нужно '+it.price,'✗');
         return;
       }
-      if(isBucks){ App.profile.bucks-=it.price; } else { addCredits(-it.price); }
-      it.buy(); Sound.coin(); vibrate(10);
+      addCredits(-it.price);
+      it.buy(); Sound.coin(); vibrate(12);
       toast('Куплено',it.name,'🛍'); renderHUD(); renderShop();
+      // вспышка успеха на карточке
+      item.classList.add('si-bought'); setTimeout(()=>item.classList.remove('si-bought'),500);
     };
     g.appendChild(item);
   });
 }
 
-/* окно покупки Баксов (заглушка платежа) */
-function openBuckShop(){
-  let html='<div class="buckshop-back" id="buckshop"><div class="buckshop-card">'
-    +'<div class="bs-title"><span class="gem-ico" data-gem="bucks"></span> Служебный бюджет</div>'
-    +'<div class="bs-sub">Баксы ускоряют расследование. Игра проходится и без них.</div>'
-    +'<div class="bs-list">';
-  BUCK_PACKS.forEach((p,i)=>{
-    html+='<button class="bs-pack" data-i="'+i+'"><span class="bs-amt"><span class="gem-ico mini" data-gem="bucks"></span> '+p.amount.toLocaleString('ru')+'</span>'
-      +(p.label?'<span class="bs-label">'+p.label+'</span>':'')
-      +'<span class="bs-price">'+p.price+'</span></button>';
-  });
-  html+='</div><button class="bs-close" id="bs-close">Закрыть</button></div></div>';
-  const wrap=document.createElement('div'); wrap.innerHTML=html; document.body.appendChild(wrap.firstChild);
-  const back=document.getElementById('buckshop');
-  back.querySelectorAll('.bs-pack').forEach(b=>b.onclick=()=>{
-    const p=BUCK_PACKS[+b.dataset.i];
-    /* TODO: реальный платёж (Telegram Stars / Wallet). Пока — выдаём для теста. */
-    addBucks(p.amount); Sound.coin(); vibrate([10,30,10]);
-    toast('Бюджет пополнен','+'+p.amount.toLocaleString('ru')+' баксов','💵');
-    back.remove(); renderShop();
-  });
-  back.querySelector('#bs-close').onclick=()=>{ Sound.tap(); back.remove(); };
-  back.onclick=(e)=>{ if(e.target===back){ back.remove(); } };
-}
+/* окно покупки премиума убрано */
 
 /* ═══════════════════════════════════════════════
    ЕЖЕДНЕВНЫЙ БОНУС
