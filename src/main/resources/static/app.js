@@ -907,6 +907,40 @@ function _scaleWarning(r){
     setTimeout(function(){ try{ toast('Предупреждение', msg, '⚠'); }catch(_){} }, 2600);
   }
 }
+
+// ════ ИНТЕРЛЮДИИ между главами ════
+window.INTERLUDES={"2": {"time": "ДВЕ НЕДЕЛИ СПУСТЯ", "title": "Между делами", "text": "Дело музея закрыли, но оно не отпускало. Две недели Сдвиг и {name} складывали обрывки: свежие купюры, карточка с тиснёной буквой, «исчезнувший» директор. По отдельности — мелочи. Вместе — узор, который не давал спать.\n\nНить вела в Старый город — туда, где доживали свой век заброшенные типографии и где, по слухам, кто-то снова запустил печатные станки. Не для газет."}, "3": {"time": "ДВА МЕСЯЦА СПУСТЯ", "title": "По следу теней", "text": "Два месяца ушло на то, чтобы распутать клубок Старого города. Посредник заговорил, Аранделл дал показания в обмен на защиту, имя мадам Кросс всплывало снова и снова. Сеть оказалась глубже, чем думали, — щупальца тянулись через весь город к воде.\n\nК докам. Туда, где по ночам грузили на суда контейнеры, в которых что-то — или кто-то — дышало. {name} и Сдвиг знали: там, у чёрной воды, прячется ответ. И он им не понравится."}, "4": {"time": "ТОЙ ЖЕ НОЧЬЮ", "title": "Чёрная вода", "text": "Времени на передышку не было. Маршрут к острову был известен, корабль с грузом ушёл вперёд, и каждый час промедления стоил кому-то жизни или свободы.\n\nЛодка резала чёрную воду, унося Сдвига, {name} и Вивьен к острову, где гнила усадьба коллекционера. Позади остался город со всеми его тайнами. Впереди — логово человека, что собирал людей, как иные собирают бабочек."}, "5": {"time": "НА РАССВЕТЕ", "title": "У порога", "text": "Мёртвый сад остался позади. Оранжерея с её живыми картинами — тоже. Чистильщики, что гнали их от самого Старого города, пали в разгромленном холле.\n\nВпереди была последняя лестница и последняя дверь, за которой ждал хозяин острова — спокойный, любезный и безумный. {name} переступил порог его дома, зная: назад дороги нет. Только вперёд, к развязке, какой бы страшной она ни оказалась."}};
+window._pendingInterludeNext=null;
+function showInterlude(chapter, onContinue){
+  var il=window.INTERLUDES[chapter];
+  if(!il){ onContinue&&onContinue(); return; }
+  var box=document.getElementById('interlude'); if(!box){ onContinue&&onContinue(); return; }
+  var nm='Детектив'; try{ nm=window.playerName?window.playerName():'Детектив'; }catch(_){}
+  document.getElementById('il-time').textContent=il.time||'';
+  document.getElementById('il-title').textContent=il.title||'';
+  document.getElementById('il-text').textContent=(il.text||'').replace(/\{name\}/g,nm);
+  box.style.display='flex';
+  window._pendingInterludeNext=onContinue;
+  var btn=document.getElementById('il-continue');
+  if(btn) btn.onclick=function(){
+    box.style.display='none';
+    var cb=window._pendingInterludeNext; window._pendingInterludeNext=null;
+    cb&&cb();
+  };
+}
+window.showInterlude=showInterlude;
+// определить главу уровня по индексу
+function chapterOfIndex(i){
+  try{
+    var cid=CAMPAIGN.cases[i].id;
+    // chapter хранится в файле — у нас есть в campaign.subtitle/title, но надёжнее карта
+    var map={'level-1':1,'case001':1,'level-2':2,'level-3':3,'level-4':4,'level-5':5};
+    for(var k in map){ if(cid.indexOf(k)===0) return map[k]; }
+  }catch(_){}
+  return 1;
+}
+window.chapterOfIndex=chapterOfIndex;
+
 function showEnding(r){
   const endEl=document.getElementById("ending");if(!endEl)return;
   const seal=document.getElementById("e-seal");if(seal){seal.className="seal "+r.kind;seal.textContent=r.mark;}
@@ -1220,8 +1254,21 @@ function initEvPanel(){
   const restartBtn=document.getElementById("e-restart");
   if(restartBtn) restartBtn.addEventListener("click",function(){
     const _hn=CAMPAIGN&&(_caseIdx+1)<CAMPAIGN.cases.length;
-    if(_hn){ loadCaseByIndex(_caseIdx+1); computeEnding._invalidate=true; }
-    if(window.Feed){ initCarousel_data(); Feed.reset(); Feed.init(); } else { restartCarousel(); }
+    if(_hn){
+      var curCh=chapterOfIndex(_caseIdx);
+      var nextCh=chapterOfIndex(_caseIdx+1);
+      var doLoad=function(){
+        loadCaseByIndex(_caseIdx+1); computeEnding._invalidate=true;
+        var endEl=document.getElementById("ending"); if(endEl)endEl.classList.remove("show");
+        if(window.Feed){ initCarousel_data(); Feed.reset(); Feed.init(); } else { restartCarousel(); }
+      };
+      // если переходим в НОВУЮ главу — показать интерлюдию
+      if(nextCh>curCh && window.INTERLUDES[nextCh]){
+        showInterlude(nextCh, doLoad);
+      } else { doLoad(); }
+    } else {
+      if(window.Feed){ initCarousel_data(); Feed.reset(); Feed.init(); } else { restartCarousel(); }
+    }
   });
 }
 
