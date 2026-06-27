@@ -17,6 +17,11 @@
   const NAMES={shift:'Сдвиг',recruit:'Рекрут',kurator:'Куратор',arundel:'Аранделл',
     miller:'Миллер',hayes:'Хейс',romero:'Ромеро',conroy:'Конрой',jiang:'Цзян',
     purcell:'Пёрселл',danny:'Дэнни',eleanor:'Эленор',cop:'Патрульный',captain:'Капитан',pocketman:'Свидетель',guests:'Гости'};
+  function speakerName(spk){
+    if(spk==='recruit'){ try{ return (window.playerName?window.playerName():'Рекрут'); }catch(_){ return 'Рекрут'; } }
+    return NAMES[spk]||spk;
+  }
+
   const CHARV=(window.CHAR_VER||'3');
   function avatar(id){
     var C=window.CHARS||(typeof CHARS!=='undefined'?CHARS:null);
@@ -223,7 +228,7 @@
       el.innerHTML='<div class="m2-av">🧠</div><div class="m2-body"><div class="m2-head"><span class="m2-nm">Дедукция</span></div><div class="m2-bubble">'+renderClues(m.text)+'</div></div>'; }
     else { var spk=m.speaker||'narrator'; var cls=(spk==='shift')?'shift':(spk==='recruit')?'recruit':'other';
       el.className='msg2 '+cls+' m2-past';
-      el.innerHTML='<div class="m2-av av-'+spk+'"><img src="'+avatar(spk)+'"></div><div class="m2-body"><div class="m2-head"><span class="m2-nm">'+(NAMES[spk]||spk)+'</span></div><div class="m2-bubble">'+renderClues(m.text)+'</div></div>'; }
+      el.innerHTML='<div class="m2-av av-'+spk+'"><img src="'+avatar(spk)+'"></div><div class="m2-body"><div class="m2-head"><span class="m2-nm">'+speakerName(spk)+'</span></div><div class="m2-bubble">'+renderClues(m.text)+'</div></div>'; }
     _wrap.appendChild(el);
     var b=el.querySelector('.m2-bubble,.m2-narr'); if(b) bindClues(b);
   }
@@ -324,7 +329,7 @@
       const av=avatar(spk);
       const moodHtml=m.mood?'<span class="m2-mood" style="background:'+m.moodc+'22;color:'+m.moodc+';border:1px solid '+m.moodc+'55">'+m.mood+'</span>':'';
       el.innerHTML='<div class="m2-av av-'+spk+'"><img src="'+av+'"><span class="m2-ring"></span></div>'+
-        '<div class="m2-body"><div class="m2-head"><span class="m2-nm">'+(NAMES[spk]||spk)+'</span>'+moodHtml+'</div>'+
+        '<div class="m2-body"><div class="m2-head"><span class="m2-nm">'+speakerName(spk)+'</span>'+moodHtml+'</div>'+
         '<div class="m2-bubble"></div></div>';
       _wrap.appendChild(el);
       typeInto(el.querySelector('.m2-bubble'), m.text, done);
@@ -367,7 +372,14 @@
     // {муж|жен} → выбираем по полу
     return String(text).replace(/\{([^|{}]*)\|([^|{}]*)\}/g, function(_,m,f){ return fem?f:m; });
   }
+  function _playerName(text){
+    if(!text) return text;
+    var nm='Рекрут';
+    try{ nm=(window.playerName?window.playerName():'Рекрут'); }catch(_){}
+    return text.replace(/Рекрут/g, nm);
+  }
   function renderClues(text){
+    text=_playerName(text);
     text=_genderText(text);
     return esc(text).replace(/\{([^|]+)\|([^}]+)\}/g,(m,disp,name)=>
       '<span class="m2-clue" data-clue="'+escAttr(name)+'">'+esc(disp)+'</span>');

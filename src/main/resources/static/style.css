@@ -710,3 +710,13 @@ body::before{
   background:rgba(176,80,80,.12);}
 .adm-info{margin-top:14px;font-size:11px;color:#7a8494;font-family:monospace;
   background:rgba(0,0,0,.3);padding:8px 10px;border-radius:8px;}
+
+/* ── ввод имени игрока ── */
+.name-input{width:100%;box-sizing:border-box;padding:16px 18px;margin:10px 0 6px;
+  background:rgba(0,0,0,.35);border:2px solid rgba(200,134,10,.3);border-radius:14px;
+  color:#fff;font-size:18px;font-family:'Playfair Display',serif;text-align:center;
+  outline:none;transition:border-color .2s;}
+.name-input:focus{border-color:#c8860a;}
+.name-input::placeholder{color:#5a6472;font-style:italic;}
+.name-hint{font-size:12px;color:#7a8494;min-height:16px;margin-bottom:14px;text-align:center;}
+.name-hint.err{color:#e08080;}

@@ -25,7 +25,7 @@ const DEFAULT_PROFILE = {
   casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
   achievements:[], dailyStreak:0, lastDaily:null, sound:true,
-  lastEnergyTs:0, rapport:50, skill:30, gender:'m', genderChosen:false, prologueSeen:false, onboarded:false
+  lastEnergyTs:0, rapport:50, skill:30, gender:'m', genderChosen:false, playerName:'', prologueSeen:false, onboarded:false
 };
 
 /* ── DOM helpers ───────────────────────────────── */
@@ -956,6 +956,40 @@ function restartCarousel(){
 }
 
 
+
+function initNameSelect(){
+  var inp=document.getElementById('name-input');
+  var btn=document.getElementById('name-confirm');
+  var hint=document.getElementById('name-hint');
+  if(!inp||!btn) return;
+  inp.value=''; btn.disabled=true;
+  setTimeout(function(){ try{inp.focus();}catch(_){} },100);
+  function validate(){
+    var v=inp.value.trim();
+    if(v.length<2){ btn.disabled=true; hint.textContent=''; hint.className='name-hint'; return; }
+    if(v.length>16){ btn.disabled=true; hint.textContent='Слишком длинно'; hint.className='name-hint err'; return; }
+    if(!/^[A-Za-zА-Яа-яЁё0-9 _-]+$/.test(v)){ btn.disabled=true; hint.textContent='Только буквы и цифры'; hint.className='name-hint err'; return; }
+    btn.disabled=false; hint.textContent='Хорошее имя'; hint.className='name-hint';
+  }
+  inp.oninput=validate;
+  inp.onkeydown=function(e){ if(e.key==='Enter'&&!btn.disabled) confirmName(); };
+  btn.onclick=confirmName;
+}
+function confirmName(){
+  var inp=document.getElementById('name-input');
+  var v=(inp&&inp.value.trim())||'Детектив';
+  if(App.profile){
+    App.profile.playerName=v;
+    App.profile.genderChosen=true;
+    App.profile.onboarded=true;
+    saveProfile();
+  }
+  var nm=document.getElementById('name-select'); if(nm) nm.style.display='none';
+  if(window.toast) toast('Добро пожаловать',v,'🕵');
+  try{ if(window.Feed){ Feed.reset&&Feed.reset(); Feed.init&&Feed.init(); } }catch(_){}
+}
+window.playerName=function(){ try{ return (App.profile&&App.profile.playerName)||'Детектив'; }catch(_){ return 'Детектив'; } };
+
 function initGenderSelect(){
   var modal=document.getElementById('gender-select'); if(!modal) return;
   var picked=null, confirm=document.getElementById('gm-confirm');
@@ -968,7 +1002,11 @@ function initGenderSelect(){
   });
   if(confirm) confirm.addEventListener('click',function(){
     if(!picked) return;
-    if(App.profile){ App.profile.gender=picked; App.profile.genderChosen=true; App.profile.onboarded=true; saveProfile(); }
+    if(App.profile){ App.profile.gender=picked; saveProfile(); }
+      // переход к вводу имени
+      var gm=document.getElementById('gender-select'); if(gm) gm.style.display='none';
+      var nm=document.getElementById('name-select'); if(nm){ nm.style.display='flex'; initNameSelect(); }
+      return;
     applyRecruitGender();
     modal.style.display='none';
     try{ updateProfileUI&&updateProfileUI(); }catch(_){}
