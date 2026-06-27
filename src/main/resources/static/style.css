@@ -767,3 +767,15 @@ body:not(.app-ready)::before{
 /* пролог и сплэш — мгновенно непрозрачный фон, без просвета */
 #prologue{ background:#080a0e !important; }
 #splash-screen{ background:#080a0e; }
+
+/* ── заслон от мелькания нутра до показа пролога/выбора ── */
+body:not(.app-ready) .stage,
+body:not(.app-ready) .bottom-nav,
+body:not(.app-ready) .topbar{ visibility:hidden !important; }
+body:not(.app-ready)::before{
+  content:''; position:fixed; inset:0; z-index:5;
+  background:#080a0e;
+}
+/* пролог и сплэш — мгновенно непрозрачный фон, без просвета */
+#prologue{ background:#080a0e !important; }
+#splash-screen{ background:#080a0e; }
