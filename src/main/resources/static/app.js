@@ -128,12 +128,15 @@ async function preload(){
 
 /* куда заходим после сплэша */
 function decideEntry(){
-  // 1) Telegram Mini App
+  // статический режим (Cloudflare Pages, без бэкенда): TG Mini App пропускаем,
+  // т.к. проверять initData некому. Работаем на гостевом профиле + localStorage.
   const tg = window.Telegram && window.Telegram.WebApp;
-  if(tg && tg.initData && tg.initData.length>0){
+  if(!window.SDVIG_STATIC && tg && tg.initData && tg.initData.length>0){
     tg.ready(); tg.expand();
     return tgWebAppLogin(tg);
   }
+  if(tg){ try{ tg.ready(); tg.expand(); }catch(_){}
+ }
   // 2) сохранённая сессия
   const saved=lsGet('sdvig_session',null);
   if(saved && saved.profile){
@@ -177,6 +180,11 @@ function initLogin(){
   if(gb){ gb.style.pointerEvents='auto'; gb.disabled=false;
     gb.onclick=()=>{ Sound.tap(); guestLogin(); }; }
 
+  // в статическом режиме — только гостевой вход (бэкенд проверки отсутствует)
+  if(window.SDVIG_STATIC){
+    if(status) status.textContent='';
+    return;
+  }
   // Telegram Login Widget для обычного браузера
   const BOT = window.SDVIG_BOT_USERNAME || '';   // имя бота без @
   const area=$('#tg-widget-area');
@@ -233,7 +241,8 @@ function persistSession(){
 let saveTimer=null;
 function saveProfile(){
   persistSession();
-  if(App.guest||!App.token) return;
+  // статический режим: сохраняем только в localStorage (без бэкенда)
+  if(window.SDVIG_STATIC||App.guest||!App.token) return;
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
     fetch('/api/profile',{
