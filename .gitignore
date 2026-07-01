@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+# Cloudflare Pages
+.wrangler/
+node_modules/
