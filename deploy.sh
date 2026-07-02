@@ -1,28 +1,34 @@
 #!/usr/bin/env bash
-# СДВИГ R99 — wrangler.toml в формате Workers-static-assets (новый Cloudflare 2026)
+# СДВИГ R100 — фикс _redirects (бесконечный цикл) → not_found_handling в конфиге
 set -e
-echo "══ штамп → R99 ══"
-sed -i "s/SDVIG_BUILD='R98'/SDVIG_BUILD='R99'/" src/main/resources/static/app.js
-sed -i 's/>R98</>R99</' src/main/resources/static/index.html
+echo "══ штамп → R100 ══"
+sed -i "s/SDVIG_BUILD='R99'/SDVIG_BUILD='R100'/" src/main/resources/static/app.js
+sed -i 's/>R99</>R100</' src/main/resources/static/index.html
 
-echo ""; echo "══ wrangler.toml → формат Worker+assets (не Pages) ═"
-# Новый Cloudflare: static-assets Worker вместо Pages.
-# Вместо pages_build_output_dir → [assets] directory
+echo ""; echo "══ 1/2  удаляем проблемный _redirects ═════════════"
+# _redirects с '/*  /index.html 200' вызывает бесконечный цикл в Workers.
+# SPA-фоллбэк теперь через not_found_handling в wrangler.toml
+if [ -f src/main/resources/static/_redirects ]; then
+  rm -f src/main/resources/static/_redirects
+  echo "  − _redirects удалён (заменён на not_found_handling)"
+else
+  echo "  (_redirects уже нет)"
+fi
+
+echo ""; echo "══ 2/2  wrangler.toml + not_found_handling=SPA ════"
 cat > wrangler.toml << 'CONF'
 name = "match-app"
 compatibility_date = "2026-07-01"
 
 [assets]
 directory = "./src/main/resources/static"
+not_found_handling = "single-page-application"
 CONF
-echo "  ✓ формат Workers-static-assets:"
+echo "  ✓ конфиг с SPA-фоллбэком:"
 cat wrangler.toml | sed 's/^/    /'
-echo ""
-echo "  ⚠ Deploy command в Cloudflare должна быть: npx wrangler deploy"
-echo "    (НЕ 'wrangler pages deploy' — теперь это обычный wrangler deploy)"
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "✅  R99 — конфиг под новый Cloudflare (Workers static assets)"
-echo "   git add -A && git commit -m 'R99: wrangler config for Workers static assets' && git push"
+echo "✅  R100 — _redirects убран, SPA-фоллбэк через конфиг"
+echo "   git add -A && git commit -m 'R100: fix redirects loop, SPA fallback via config' && git push"
 echo "═══════════════════════════════════════════════════════"

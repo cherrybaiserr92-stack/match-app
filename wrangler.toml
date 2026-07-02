@@ -3,3 +3,4 @@ compatibility_date = "2026-07-01"
 
 [assets]
 directory = "./src/main/resources/static"
+not_found_handling = "single-page-application"
