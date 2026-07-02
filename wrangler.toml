@@ -1,3 +1,5 @@
 name = "match-app"
-pages_build_output_dir = "src/main/resources/static"
-compatibility_date = "2024-01-01"
+compatibility_date = "2026-07-01"
+
+[assets]
+directory = "./src/main/resources/static"
