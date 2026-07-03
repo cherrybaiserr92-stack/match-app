@@ -94,17 +94,34 @@ body::before{
 .splash-emblem.visible{ opacity:1; transform:scale(1); }
 .splash-emblem.pulse{ animation:emPulse .22s ease; }
 @keyframes emPulse{ 50%{ transform:scale(1.06); } }
-.splash-title-row{ display:flex; gap:4px; }
+.splash-title-row{ display:none; }
 .title-letter{
   font-family:'Unbounded',sans-serif; font-weight:800; font-size:34px; letter-spacing:4px; color:var(--ink);
   opacity:0; transform:translateY(14px);
   transition:opacity .35s ease, transform .35s cubic-bezier(.22,1.1,.36,1);
 }
 .title-letter.in{ opacity:1; transform:none; }
-.splash-progress-wrap{ width:200px; display:flex; flex-direction:column; align-items:center; gap:10px; }
-.splash-track{ width:100%; height:4px; border-radius:4px; background:rgba(255,255,255,.08); overflow:hidden; }
-.splash-fill{ height:100%; width:0; border-radius:4px; background:linear-gradient(90deg,var(--acc-d),var(--acc-2)); transition:width .35s ease; }
-.splash-status{ font-size:11px; letter-spacing:2px; color:var(--ink3); text-transform:uppercase; font-family:'JetBrains Mono',monospace; }
+.splash-progress-wrap{ width:240px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+.splash-track{ position:relative; width:100%; height:8px; border-radius:6px;
+  background:rgba(0,0,0,.5); overflow:hidden;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.05);
+  border:1px solid rgba(176,38,66,.25); }
+.splash-fill{ position:relative; height:100%; width:0; border-radius:5px;
+  background:linear-gradient(90deg,#7a1020,#b02642 45%,#e0546e 80%,#ff9db2);
+  box-shadow:0 0 12px rgba(224,84,110,.6), 0 0 4px rgba(255,157,178,.8);
+  transition:width .5s cubic-bezier(.4,0,.2,1); overflow:hidden; }
+/* бегущий блик по заполненной части */
+.splash-fill::after{ content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);
+  transform:translateX(-100%); animation:splashSheen 1.3s ease-in-out infinite; }
+@keyframes splashSheen{ 0%{transform:translateX(-100%);} 60%,100%{transform:translateX(220%);} }
+/* тлеющий кончик полосы (как уголёк) */
+.splash-fill::before{ content:''; position:absolute; right:0; top:50%; transform:translateY(-50%);
+  width:10px; height:10px; border-radius:50%;
+  background:radial-gradient(circle,#fff,#ff9db2 40%,transparent 70%);
+  box-shadow:0 0 10px rgba(255,157,178,.9); }
+.splash-status{ font-size:11px; letter-spacing:3px; color:#c06478; text-transform:uppercase;
+  font-family:'Special Elite','JetBrains Mono',monospace; }
 .splash-flash{ position:absolute; inset:0; z-index:5; background:#fff; opacity:0; pointer-events:none; }
 
 /* ═══ LOGIN ═══ */

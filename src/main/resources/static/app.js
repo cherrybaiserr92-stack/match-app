@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R103';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R104';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -79,22 +79,20 @@ async function runSplash(){
   const fill=$('#splash-fill');
   const status=$('#splash-status');
 
-  // буквы СДВИГ
-  'СДВИГ'.split('').forEach(ch=>{ const s=el('span','title-letter',ch); titleRow.appendChild(s); });
-
+  // (надпись СДВИГ убрана — уже есть на логотипе)
   await wait(120);
   emblem.classList.add('visible');
   Sound.splashImpact();
 
-  await wait(380);
-  $$('.title-letter').forEach((l,i)=>setTimeout(()=>l.classList.add('in'),i*90));
+  await wait(280);
 
   // прогресс загрузки — плавный, без «лагов»
   const steps=[
-    [22,'Загрузка дел'],
-    [48,'Сбор улик'],
-    [74,'Калибровка'],
-    [100,'Готово']
+    [20,'Открываем архив'],
+    [44,'Раскладываем улики'],
+    [68,'Опрашиваем свидетелей'],
+    [88,'Выходим на след'],
+    [100,'Дело открыто']
   ];
   for(const [w,txt] of steps){
     await wait(360);
