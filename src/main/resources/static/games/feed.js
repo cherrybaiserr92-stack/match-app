@@ -119,6 +119,16 @@
     .decision-stage{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
       background:radial-gradient(80% 70% at 50% 45%,rgba(12,16,24,.55),rgba(8,11,18,.82));
       backdrop-filter:blur(3px);}
+.canvas-card{background:none!important;border:none!important;box-shadow:none!important;
+      width:min(90vw,350px)!important;overflow:visible!important;animation:none!important;}
+    .canvas-card canvas{border-radius:6px;filter:drop-shadow(0 22px 44px rgba(0,0,0,.7));}
+    .dc-stamp{position:absolute;top:12%;max-width:50%;padding:8px 13px;border-radius:8px;
+      font-family:'Special Elite',monospace;font-weight:700;font-size:13px;letter-spacing:.05em;
+      opacity:0;pointer-events:none;z-index:20;text-transform:uppercase;white-space:nowrap;
+      overflow:hidden;text-overflow:ellipsis;transition:opacity .1s;}
+    .dc-stamp.left{left:4%;transform:rotate(-12deg);color:#ffb0b0;border:3px solid rgba(224,106,106,.95);background:rgba(90,20,20,.65);}
+    .dc-stamp.right{right:4%;transform:rotate(12deg);color:#8ceed6;border:3px solid rgba(116,216,190,.95);background:rgba(20,70,58,.65);}
+    
     .dec-card{position:relative;width:min(80vw,320px);margin-top:56px;border-radius:18px;overflow:hidden;z-index:5;
       background:linear-gradient(165deg,#191216 0%,#100b0e 55%,#0b0709 100%);
       border:1.5px solid #b02642;box-shadow:0 18px 48px rgba(0,0,0,.65),0 0 30px rgba(176,38,66,.22),inset 0 1px 0 rgba(255,255,255,.06);
@@ -544,7 +554,7 @@
     const opts=ev.shift?{left:ev.a,right:ev.b}:{left:ev.left,right:ev.right};
     const stage=document.getElementById('stage');
     const dec=document.createElement('div'); dec.className='decision-stage'; dec.id='dec-stage';
-    dec.innerHTML='<div class="dec-card" id="dec-card">'+decCardInner(ev)+'</div>'+
+    dec.innerHTML='<div class="dec-card canvas-card" id="dec-card"></div>'+
       '<div class="dec-timer" id="dec-timer"><div class="dt-ring2"><svg viewBox="0 0 50 50">'+
       '<circle class="bg" cx="25" cy="25" r="21"/><circle class="fg" id="dec-fg" cx="25" cy="25" r="21"/></svg>'+
       '<div class="dt-n" id="dec-n">15</div></div></div><div class="oc-hint">← свайп решает →</div>';
@@ -566,6 +576,49 @@
         }
       }catch(_){}
     });
+    (function(){
+      try{
+        var host=document.getElementById('dec-card'); if(!host) return;
+        var spk=(ev.speaker||'').toLowerCase();
+        // портрет говорящего, если есть арт персонажа
+        var portraitSrc=null;
+        var CH={kurator:'/img/chars/char-kurator.png',shift:'/img/chars/char-shift.png',
+                vivien:'/img/chars/char-vivien.png',arundel:'/img/chars/char-arundel.png'};
+        for(var k in CH){ if(spk.indexOf(k)>=0){ portraitSrc=CH[k]; break; } }
+        var orient = portraitSrc ? 'v' : (Math.random()<0.5?'v':'h');
+        if(portraitSrc) orient='v';
+        var lL=(ev.left&&ev.left.label)||'', rL=(ev.right&&ev.right.label)||'';
+        function build(portrait){
+          var cv=CardGen.render({
+            orient:orient,
+            caseLabel:(window.currentCaseLabel||('ДЕЛО'))+'',
+            badge:ev.badge||'РЕШЕНИЕ',
+            speaker:ev.speaker||'',
+            title:ev.title||'',
+            body:ev.intro||ev.text||'',
+            portrait:portrait
+          });
+          cv.id='dec-canvas';
+          host.innerHTML=''; host.appendChild(cv);
+          // штампы поверх
+          var sl=document.createElement('div'); sl.className='dc-stamp left';
+          sl.textContent=lL.replace(/^◄\s*/,'').split(/\s+/).slice(0,2).join(' ');
+          var sr=document.createElement('div'); sr.className='dc-stamp right';
+          sr.textContent=rL.replace(/\s*►$/,'').split(/\s+/).slice(0,2).join(' ');
+          host.appendChild(sl); host.appendChild(sr);
+        }
+        function go(){
+          if(portraitSrc){
+            var im=new Image();
+            im.onload=function(){build(im);};
+            im.onerror=function(){build(null);};
+            im.src=portraitSrc;
+          } else build(null);
+        }
+        if(CardGen.isReady()) go();
+        else CardGen.preload().then(go);
+      }catch(e){ console.error('card build',e); }
+    })();
     bindDecisionSwipe(ev); startDecTimer();
   }
   function collectOutcomes(opt){
