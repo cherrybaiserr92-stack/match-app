@@ -119,9 +119,18 @@
     .decision-stage{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
       background:radial-gradient(80% 70% at 50% 45%,rgba(12,16,24,.55),rgba(8,11,18,.82));
       backdrop-filter:blur(3px);}
-.canvas-card{background:none!important;border:none!important;box-shadow:none!important;
-      width:min(90vw,350px)!important;overflow:visible!important;animation:none!important;}
+#dec-card.canvas-card{background:none!important;background-color:transparent!important;
+      border:none!important;box-shadow:none!important;border-radius:0!important;
+      width:min(90vw,350px)!important;overflow:visible!important;animation:none!important;margin-top:20px!important;}
     .canvas-card canvas{border-radius:6px;filter:drop-shadow(0 22px 44px rgba(0,0,0,.7));}
+.dec-stickers{position:absolute;left:0;right:0;bottom:11%;display:flex;gap:14px;
+      padding:0 18px;max-width:440px;margin:0 auto;z-index:15;}
+    .dec-sticker{flex:1;cursor:pointer;transition:transform .15s;transform-origin:center;}
+    .dec-sticker canvas{width:100%;height:auto;display:block;filter:drop-shadow(0 8px 16px rgba(0,0,0,.5));}
+    .dec-sticker:active{transform:scale(.96);}
+    .dec-sticker.lit{transform:scale(1.06) translateY(-4px);}
+    .dec-sticker.lit canvas{filter:drop-shadow(0 12px 22px rgba(0,0,0,.6)) brightness(1.08);}
+    
     .dc-stamp{position:absolute;top:12%;max-width:50%;padding:8px 13px;border-radius:8px;
       font-family:'Special Elite',monospace;font-weight:700;font-size:13px;letter-spacing:.05em;
       opacity:0;pointer-events:none;z-index:20;text-transform:uppercase;white-space:nowrap;
@@ -557,7 +566,7 @@
     dec.innerHTML='<div class="dec-card canvas-card" id="dec-card"></div>'+
       '<div class="dec-timer" id="dec-timer"><div class="dt-ring2"><svg viewBox="0 0 50 50">'+
       '<circle class="bg" cx="25" cy="25" r="21"/><circle class="fg" id="dec-fg" cx="25" cy="25" r="21"/></svg>'+
-      '<div class="dt-n" id="dec-n">15</div></div></div><div class="oc-hint">← свайп решает →</div>';
+      '<div class="dt-n" id="dec-n">15</div></div></div><div class="dec-stickers" id="dec-stickers"></div><div class="oc-hint">← свайп или тап →</div>';
     stage.appendChild(dec);
     requestAnimationFrame(()=>{
       dec.querySelectorAll('.outcome-cascade').forEach(c=>c.classList.add('show'));
@@ -600,6 +609,22 @@
           });
           cv.id='dec-canvas';
           host.innerHTML=''; host.appendChild(cv);
+          // плашки выбора (canvas-стикеры) под картой
+          try{
+            var box=document.getElementById('dec-stickers');
+            if(box){
+              box.innerHTML='';
+              var mkSticker=function(label,sub,side){
+                var wrap=document.createElement('div'); wrap.className='dec-sticker '+side;
+                var scv=CardGen.renderSticker(label.replace(/^[\u25c4\u25ba]\s*/,'').replace(/\s*[\u25c4\u25ba]$/,''), sub);
+                wrap.appendChild(scv);
+                wrap.onclick=function(){ commitDecision(ev, side==='l'?'left':'right'); };
+                return wrap;
+              };
+              box.appendChild(mkSticker(lL,'◄ РЕШЕНИЕ','l'));
+              box.appendChild(mkSticker(rL,'РЕШЕНИЕ ►','r'));
+            }
+          }catch(e){console.error('stickers',e);}
           // штампы поверх
           var sl=document.createElement('div'); sl.className='dc-stamp left';
           sl.textContent=lL.replace(/^◄\s*/,'').split(/\s+/).slice(0,2).join(' ');
@@ -715,13 +740,33 @@
     card.addEventListener('pointerup',onUp);
     card.addEventListener('pointercancel',onUp);
   }
+  function burnCard(card){
+    if(!card)return;
+    // свечение горящего края
+    var edge=document.createElement('div'); edge.className='burn-edge'; card.appendChild(edge);
+    // угольки
+    for(var i=0;i<14;i++){
+      (function(i){
+        var e=document.createElement('div'); e.className='burn-ember';
+        var sz=3+Math.random()*5;
+        e.style.width=sz+'px'; e.style.height=sz+'px';
+        e.style.left=(10+Math.random()*80)+'%';
+        e.style.top=(40+Math.random()*55)+'%';
+        e.style.animationDelay=(Math.random()*0.25)+'s';
+        card.appendChild(e);
+      })(i);
+    }
+    card.classList.add('burning');
+    try{Sound.burn&&Sound.burn();}catch(_){}
+  }
+
   function commitDecision(ev,dir,flew){
     if(_busy)return;_busy=true;clearInterval(_decTimer);
     const card=document.getElementById('dec-card');
     const opt=ev.shift?(dir==='left'?ev.a:ev.b):(dir==='left'?ev.left:ev.right);
     try{if(window.cApplyOption)cApplyOption(opt);}catch(_){}
     try{Sound.burn&&Sound.burn();vibrate&&vibrate(20);}catch(_){}
-    if(card&&!flew)card.classList.add(dir==='left'?'swipe-left':'swipe-right');
+    if(card)burnCard(card);
     CState.step=(CState.step||0)+1;
     try{if(window.cSetProgress)cSetProgress();}catch(_){}
     setTimeout(()=>{
@@ -729,7 +774,7 @@
       _decision=false;_busy=false;
       try{if(window.hideChar)hideChar();}catch(_){}
       if(opt.to==='__resolve__'||!opt.to){finish();}else pushEvent(opt.to);
-    },520);
+    },640);
   }
   function startDecTimer(){
     let left=15;const total=15;
