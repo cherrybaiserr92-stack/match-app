@@ -101,6 +101,16 @@
       // тело — вся ширина бумаги, выше печати (Y до ~64%)
       var bf=fitText(ctx, opts.body||'', W*0.60, H*0.20, W*0.052, W*0.032, BODY, '400');
       drawLines(ctx, bf, W*0.21, H*0.46, INK2);
+      // вопросительный знак в пустой полароид (нет подозреваемого)
+      if(!opts.portrait){
+        var qx=W*0.585, qy=H*0.135, qw=W*0.255, qh=H*0.235;
+        ctx.save();
+        ctx.font='900 '+(qh*0.6)+'px '+SERIF; ctx.fillStyle='rgba(90,70,55,.55)';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('?', qx+qw/2, qy+qh/2);
+        ctx.restore();
+        ctx.textAlign='left'; ctx.textBaseline='top';
+      }
       // портрет в полароид
       if(opts.portrait){
         var px=W*0.585, py=H*0.135, pw=W*0.255, ph=H*0.235;
@@ -134,20 +144,26 @@
   }
 
   // стикер-кнопка выбора с текстом
-  function renderSticker(label, sub){
+  function renderSticker(label, arrow){
     var art=ART.sticker;
     var DPR=Math.min(window.devicePixelRatio||1,2.5);
     var W=art?art.width:480, H=art?art.height:316;
     var cv=document.createElement('canvas');
     cv.width=W*DPR; cv.height=H*DPR; cv.style.width='100%'; cv.style.height='auto'; cv.style.display='block';
-    var ctx=cv.getContext('2d'); ctx.scale(DPR,DPR); ctx.textBaseline='top';
+    var ctx=cv.getContext('2d'); ctx.scale(DPR,DPR); ctx.textBaseline='middle';
     if(art)ctx.drawImage(art,0,0,W,H);
-    var MONO="'Special Elite','Courier New',monospace", SERIF="'Playfair Display',Georgia,serif";
-    ctx.font='400 '+(W*0.05)+'px '+MONO; ctx.fillStyle='#7a5a2a';
-    ctx.fillText(sub||'РЕШЕНИЕ', W*0.10, H*0.24);
-    var tf=fitText(ctx,label||'',W*0.80,H*0.42,W*0.085,W*0.05,SERIF,'800');
+    var SERIF="'Playfair Display',Georgia,serif";
+    // стрелка (крупная, слева или справа)
+    var isLeft=(arrow==='left');
+    ctx.font='800 '+(W*0.13)+'px '+SERIF; ctx.fillStyle='#8e2434'; ctx.textAlign='center';
+    ctx.fillText(isLeft?'‹':'›', isLeft?W*0.14:W*0.86, H*0.5);
+    // текст выбора — по центру, с авто-вписыванием
+    ctx.textAlign='left'; ctx.textBaseline='top';
+    var tx=isLeft?W*0.24:W*0.08, tw=W*0.68;
+    var tf=fitText(ctx,label||'',tw,H*0.62,W*0.08,W*0.048,SERIF,'800');
     ctx.fillStyle='#241811';
-    for(var i=0;i<tf.lines.length;i++) ctx.fillText(tf.lines[i],W*0.10,H*0.40+i*tf.lh);
+    var totalH=tf.lines.length*tf.lh, sy=(H-totalH)/2;
+    for(var i=0;i<tf.lines.length;i++) ctx.fillText(tf.lines[i],tx,sy+i*tf.lh);
     return cv;
   }
 

@@ -25,6 +25,15 @@
   const CHARV=(window.CHAR_VER||'3');
   function avatar(id){
     var C=window.CHARS||(typeof CHARS!=='undefined'?CHARS:null);
+    // рекрут — иконка по полу игрока
+    if(id==='recruit'){
+      try{
+        var fem=(window.App&&App.profile&&App.profile.gender==='f');
+        var key=fem?'recruit-f':'recruit';
+        if(C&&C[key]) return C[key].src+'?v='+CHARV;
+        return (fem?'/img/chars/char-recruit-f.png':'/img/chars/char-recruit.png')+'?v='+CHARV;
+      }catch(_){}
+    }
     if(id&&C&&C[id]) return C[id].src+'?v='+CHARV;
     return '';
   }
@@ -118,8 +127,8 @@
       font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(200,134,10,.32);}
     .decision-stage{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;
       align-items:center;justify-content:center;gap:0;padding:20px 14px;
-      background:radial-gradient(80% 70% at 50% 45%,rgba(12,16,24,.55),rgba(8,11,18,.82));
-      backdrop-filter:blur(3px);}
+      background:radial-gradient(70% 55% at 50% 45%,rgba(10,7,9,.35),rgba(10,7,9,.62));
+      backdrop-filter:blur(2px);}
 #dec-card.canvas-card{background:none!important;background-color:transparent!important;
       border:none!important;box-shadow:none!important;border-radius:0!important;
       width:min(84vw,330px)!important;overflow:visible!important;animation:none!important;
@@ -142,10 +151,11 @@
       background:radial-gradient(120% 90% at 50% 100%,rgba(255,120,40,.55),transparent 55%);
       animation:burnGlow .62s ease-out forwards;}
     @keyframes burnGlow{0%{opacity:0;}40%{opacity:1;}100%{opacity:0;}}
-.dec-stickers{position:relative;display:flex;gap:12px;width:min(84vw,330px);
+.dec-stickers{position:relative;display:flex;gap:10px;width:min(78vw,300px);
       margin:0 auto;z-index:15;flex:0 0 auto;}
-    .dec-sticker{flex:1;cursor:pointer;transition:transform .15s;transform-origin:center;max-width:50%;}
-    .dec-sticker canvas{width:100%;height:auto;display:block;filter:drop-shadow(0 6px 12px rgba(0,0,0,.5));}
+    .dec-sticker{flex:1;cursor:pointer;transition:transform .15s;transform-origin:center;
+      max-width:50%;max-height:66px;overflow:hidden;border-radius:8px;}
+    .dec-sticker canvas{width:100%;height:auto;display:block;filter:drop-shadow(0 5px 10px rgba(0,0,0,.5));}
     .dec-sticker:active{transform:scale(.96);}
     .dec-sticker.lit{transform:scale(1.06) translateY(-4px);}
     .dec-sticker.lit canvas{filter:drop-shadow(0 12px 22px rgba(0,0,0,.6)) brightness(1.08);}
@@ -642,8 +652,8 @@
                 wrap.onclick=function(){ commitDecision(ev, side==='l'?'left':'right'); };
                 return wrap;
               };
-              box.appendChild(mkSticker(lL,'◄ РЕШЕНИЕ','l'));
-              box.appendChild(mkSticker(rL,'РЕШЕНИЕ ►','r'));
+              box.appendChild(mkSticker(lL,'left','l'));
+              box.appendChild(mkSticker(rL,'right','r'));
             }
           }catch(e){console.error('stickers',e);}
           // штампы поверх
@@ -770,14 +780,15 @@
     // свечение горящего края
     var edge=document.createElement('div'); edge.className='burn-edge'; card.appendChild(edge);
     // угольки
-    for(var i=0;i<14;i++){
+    for(var i=0;i<30;i++){
       (function(i){
         var e=document.createElement('div'); e.className='burn-ember';
-        var sz=3+Math.random()*5;
+        var sz=3+Math.random()*7;
         e.style.width=sz+'px'; e.style.height=sz+'px';
-        e.style.left=(10+Math.random()*80)+'%';
-        e.style.top=(40+Math.random()*55)+'%';
-        e.style.animationDelay=(Math.random()*0.25)+'s';
+        e.style.left=(6+Math.random()*88)+'%';
+        e.style.top=(30+Math.random()*65)+'%';
+        e.style.animationDelay=(Math.random()*0.4)+'s';
+        e.style.setProperty('--dx',((Math.random()-0.5)*60)+'px');
         card.appendChild(e);
       })(i);
     }
@@ -799,7 +810,7 @@
       _decision=false;_busy=false;
       try{if(window.hideChar)hideChar();}catch(_){}
       if(opt.to==='__resolve__'||!opt.to){finish();}else pushEvent(opt.to);
-    },640);
+    },900);
   }
   function startDecTimer(){
     let left=15;const total=15;
