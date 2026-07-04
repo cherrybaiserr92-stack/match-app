@@ -116,27 +116,46 @@
     .feed2-find{align-self:center;margin-top:8px;padding:13px 28px;border:none;border-radius:13px;cursor:pointer;
       background:linear-gradient(180deg,#ffe09a,#c8860a);color:#241701;font-family:Unbounded,sans-serif;
       font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(200,134,10,.32);}
-    .decision-stage{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
+    .decision-stage{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:0;padding:20px 14px;
       background:radial-gradient(80% 70% at 50% 45%,rgba(12,16,24,.55),rgba(8,11,18,.82));
       backdrop-filter:blur(3px);}
 #dec-card.canvas-card{background:none!important;background-color:transparent!important;
       border:none!important;box-shadow:none!important;border-radius:0!important;
-      width:min(90vw,350px)!important;overflow:visible!important;animation:none!important;margin-top:20px!important;}
+      width:min(84vw,330px)!important;overflow:visible!important;animation:none!important;
+      margin:0 0 14px 0!important;flex:0 0 auto;position:relative;}
+    #dec-card.canvas-card canvas{width:100%;height:auto;display:block;
+      filter:drop-shadow(0 20px 40px rgba(0,0,0,.7));border-radius:4px;}
     .canvas-card canvas{border-radius:6px;filter:drop-shadow(0 22px 44px rgba(0,0,0,.7));}
-.dec-stickers{position:absolute;left:0;right:0;bottom:11%;display:flex;gap:14px;
-      padding:0 18px;max-width:440px;margin:0 auto;z-index:15;}
-    .dec-sticker{flex:1;cursor:pointer;transition:transform .15s;transform-origin:center;}
-    .dec-sticker canvas{width:100%;height:auto;display:block;filter:drop-shadow(0 8px 16px rgba(0,0,0,.5));}
+    #dec-card canvas.burning{animation:cardBurn .62s ease-in forwards!important;}
+    @keyframes cardBurn{
+      0%{filter:brightness(1);}
+      30%{filter:brightness(1.25) sepia(.4);}
+      60%{filter:brightness(.7) sepia(.85) contrast(1.4) hue-rotate(-18deg);}
+      100%{filter:brightness(.15) sepia(1) contrast(2.2);opacity:0;transform:scale(.9) translateY(24px) rotate(-3deg);}}
+    .burn-ember{position:absolute;pointer-events:none;border-radius:50%;z-index:30;
+      background:radial-gradient(circle,#ffd07a,#ff6a2a 50%,#8a1a0a);
+      animation:emberFly 1s ease-out forwards;}
+    @keyframes emberFly{0%{opacity:1;transform:translateY(0) scale(1);}
+      100%{opacity:0;transform:translateY(-90px) scale(.2);}}
+    .burn-edge{position:absolute;inset:0;pointer-events:none;z-index:25;opacity:0;border-radius:6px;
+      background:radial-gradient(120% 90% at 50% 100%,rgba(255,120,40,.55),transparent 55%);
+      animation:burnGlow .62s ease-out forwards;}
+    @keyframes burnGlow{0%{opacity:0;}40%{opacity:1;}100%{opacity:0;}}
+.dec-stickers{position:relative;display:flex;gap:12px;width:min(84vw,330px);
+      margin:0 auto;z-index:15;flex:0 0 auto;}
+    .dec-sticker{flex:1;cursor:pointer;transition:transform .15s;transform-origin:center;max-width:50%;}
+    .dec-sticker canvas{width:100%;height:auto;display:block;filter:drop-shadow(0 6px 12px rgba(0,0,0,.5));}
     .dec-sticker:active{transform:scale(.96);}
     .dec-sticker.lit{transform:scale(1.06) translateY(-4px);}
     .dec-sticker.lit canvas{filter:drop-shadow(0 12px 22px rgba(0,0,0,.6)) brightness(1.08);}
     
-    .dc-stamp{position:absolute;top:12%;max-width:50%;padding:8px 13px;border-radius:8px;
-      font-family:'Special Elite',monospace;font-weight:700;font-size:13px;letter-spacing:.05em;
+    .dc-stamp{position:absolute;top:26%;max-width:42%;padding:7px 11px;border-radius:8px;
+      font-family:'Special Elite',monospace;font-weight:700;font-size:13px;letter-spacing:.04em;
       opacity:0;pointer-events:none;z-index:20;text-transform:uppercase;white-space:nowrap;
-      overflow:hidden;text-overflow:ellipsis;transition:opacity .1s;}
-    .dc-stamp.left{left:4%;transform:rotate(-12deg);color:#ffb0b0;border:3px solid rgba(224,106,106,.95);background:rgba(90,20,20,.65);}
-    .dc-stamp.right{right:4%;transform:rotate(12deg);color:#8ceed6;border:3px solid rgba(116,216,190,.95);background:rgba(20,70,58,.65);}
+      overflow:hidden;text-overflow:ellipsis;transition:opacity .08s;}
+    .dc-stamp.left{left:8%;transform:rotate(-11deg);color:#ffb0b0;border:3px solid rgba(224,106,106,.95);background:rgba(90,20,20,.72);}
+    .dc-stamp.right{right:8%;transform:rotate(11deg);color:#8ceed6;border:3px solid rgba(116,216,190,.95);background:rgba(20,70,58,.72);}
     
     .dec-card{position:relative;width:min(80vw,320px);margin-top:56px;border-radius:18px;overflow:hidden;z-index:5;
       background:linear-gradient(165deg,#191216 0%,#100b0e 55%,#0b0709 100%);
@@ -563,10 +582,12 @@
     const opts=ev.shift?{left:ev.a,right:ev.b}:{left:ev.left,right:ev.right};
     const stage=document.getElementById('stage');
     const dec=document.createElement('div'); dec.className='decision-stage'; dec.id='dec-stage';
-    dec.innerHTML='<div class="dec-card canvas-card" id="dec-card"></div>'+
-      '<div class="dec-timer" id="dec-timer"><div class="dt-ring2"><svg viewBox="0 0 50 50">'+
+    dec.innerHTML='<div class="dec-timer" id="dec-timer"><div class="dt-ring2"><svg viewBox="0 0 50 50">'+
       '<circle class="bg" cx="25" cy="25" r="21"/><circle class="fg" id="dec-fg" cx="25" cy="25" r="21"/></svg>'+
-      '<div class="dt-n" id="dec-n">15</div></div></div><div class="dec-stickers" id="dec-stickers"></div><div class="oc-hint">← свайп или тап →</div>';
+      '<div class="dt-n" id="dec-n">15</div></div></div>'+
+      '<div class="dec-card canvas-card" id="dec-card"></div>'+
+      '<div class="dec-stickers" id="dec-stickers"></div>'+
+      '<div class="oc-hint">← свайп или тап →</div>';
     stage.appendChild(dec);
     requestAnimationFrame(()=>{
       dec.querySelectorAll('.outcome-cascade').forEach(c=>c.classList.add('show'));
@@ -742,6 +763,8 @@
   }
   function burnCard(card){
     if(!card)return;
+    var cv=card.querySelector('canvas'); var target=cv||card;
+    if(cv){ cv.classList.add('burning'); }
     // свечение горящего края
     var edge=document.createElement('div'); edge.className='burn-edge'; card.appendChild(edge);
     // угольки
