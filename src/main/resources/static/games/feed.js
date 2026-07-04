@@ -167,10 +167,25 @@
     .dc-stamp.left{left:8%;transform:rotate(-11deg);color:#ffb0b0;border:3px solid rgba(224,106,106,.95);background:rgba(90,20,20,.72);}
     .dc-stamp.right{right:8%;transform:rotate(11deg);color:#8ceed6;border:3px solid rgba(116,216,190,.95);background:rgba(20,70,58,.72);}
     
-    .dec-card{position:relative;width:min(80vw,320px);margin-top:56px;border-radius:18px;overflow:hidden;z-index:5;
-      background:linear-gradient(165deg,#191216 0%,#100b0e 55%,#0b0709 100%);
-      border:1.5px solid #b02642;box-shadow:0 18px 48px rgba(0,0,0,.65),0 0 30px rgba(176,38,66,.22),inset 0 1px 0 rgba(255,255,255,.06);
-      animation:decT 2.8s ease-in-out infinite;touch-action:none;will-change:transform;cursor:grab;}
+    .dec-card{position:relative;width:min(86vw,340px);margin-top:20px;border-radius:22px;z-index:5;
+      background:linear-gradient(165deg,#241922 0%,#17101a 55%,#0f0912 100%);
+      border:1px solid rgba(224,84,110,.45);
+      box-shadow:0 20px 50px rgba(0,0,0,.65),0 0 0 1px rgba(0,0,0,.4),
+        0 0 34px rgba(176,38,66,.22),inset 0 1px 0 rgba(255,255,255,.08);
+      touch-action:none;will-change:transform;cursor:grab;overflow:hidden;
+      animation:cardIdle 3.5s ease-in-out infinite;}
+    /* тонкая светящаяся рамка-обводка */
+    .dec-card::before{content:'';position:absolute;inset:0;border-radius:22px;padding:1px;pointer-events:none;
+      background:linear-gradient(150deg,rgba(224,84,110,.5),rgba(176,38,66,.1) 40%,transparent 70%);
+      -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+      -webkit-mask-composite:xor;mask-composite:exclude;}
+    @keyframes cardIdle{0%,100%{transform:translateY(0) rotate(0);}50%{transform:translateY(-4px) rotate(.3deg);}}
+    .dec-card.grabbed{animation:none;cursor:grabbing;
+      box-shadow:0 28px 62px rgba(0,0,0,.72),0 0 46px rgba(224,84,110,.34),inset 0 1px 0 rgba(255,255,255,.1);}
+    .dec-card.spring{transition:transform .5s cubic-bezier(.34,1.56,.64,1);}
+    .dec-card.shake{animation:cardShake .4s ease;}
+    @keyframes cardShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px) rotate(-1deg);}
+      40%{transform:translateX(8px) rotate(1deg);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}}
     .dec-card.grabbed{animation:none;cursor:grabbing;
       box-shadow:0 26px 60px rgba(0,0,0,.72),0 0 42px rgba(176,38,66,.32),inset 0 1px 0 rgba(255,255,255,.08);}
     .dec-card.spring{transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
@@ -185,24 +200,35 @@
     .dec-card.swipe-right{animation:decFR .5s ease-in forwards;}
     @keyframes decFL{to{transform:translateX(-140%) rotate(-18deg);opacity:0}}
     @keyframes decFR{to{transform:translateX(140%) rotate(18deg);opacity:0}}
-    .dc-inner{padding:18px 16px 20px;text-align:center;overflow:hidden;box-sizing:border-box;width:100%;}
+    .dc-inner{padding:22px 20px 20px;position:relative;}
     .dc-badge{display:inline-block;font-family:Unbounded,sans-serif;font-weight:700;font-size:10px;
-      letter-spacing:.14em;color:#fff;padding:5px 13px;border-radius:8px;
-      background:linear-gradient(180deg,#e0546e,#8e1e36);box-shadow:0 3px 10px rgba(142,30,54,.4);margin-bottom:12px;}
-    .dc-title{font-family:Unbounded,sans-serif;font-weight:900;font-size:clamp(16px,4.6vw,19px);line-height:1.24;color:#fff;margin-bottom:8px;overflow-wrap:break-word;hyphens:none;text-wrap:balance;}
-    .dc-intro{font-size:13.5px;line-height:1.58;color:#c2bab0;font-style:italic;margin-bottom:18px;overflow-wrap:break-word;hyphens:none;text-wrap:pretty;}
-    .dc-choices{display:flex;align-items:stretch;gap:8px;}
-    .dc-choice{flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding:12px 11px;border-radius:12px;
-      font-family:Unbounded,sans-serif;font-weight:700;font-size:11px;line-height:1.3;transition:transform .15s,box-shadow .2s;
-      overflow-wrap:break-word;hyphens:none;box-sizing:border-box;}
+      letter-spacing:.14em;color:#fff;padding:5px 13px;border-radius:20px;
+      background:linear-gradient(135deg,#e0546e,#8e1e36);box-shadow:0 3px 12px rgba(142,30,54,.4);margin-bottom:14px;}
+    .dc-title{font-family:Unbounded,sans-serif;font-weight:800;font-size:22px;line-height:1.15;
+      color:#fff;margin-bottom:10px;overflow-wrap:break-word;text-wrap:balance;}
+    .dc-intro{font-size:14.5px;line-height:1.62;color:#c8bcc2;margin-bottom:20px;text-wrap:pretty;}
+    .dc-choices{display:flex;gap:10px;align-items:stretch;margin-top:4px;}
+    .dc-choice{flex:1;min-width:0;display:flex;align-items:center;gap:7px;padding:13px 12px;border-radius:14px;
+      font-family:Unbounded,sans-serif;font-weight:700;font-size:11.5px;line-height:1.3;cursor:pointer;
+      transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .25s,border-color .25s,background .25s;
+      box-sizing:border-box;justify-content:center;text-align:center;}
+    .dc-choice.left{background:linear-gradient(150deg,rgba(120,32,44,.35),rgba(60,16,24,.5));
+      border:1px solid rgba(220,100,116,.4);color:#ffb9c4;}
+    .dc-choice.right{background:linear-gradient(150deg,rgba(28,74,88,.35),rgba(14,38,46,.5));
+      border:1px solid rgba(110,190,205,.4);color:#a8e2e8;}
+    .dc-choice:active{transform:scale(.95);}
+    /* подсветка при свайпе в сторону */
+    .dc-choice.left.lit{transform:scale(1.06);box-shadow:0 0 26px rgba(220,100,116,.55),inset 0 0 20px rgba(220,100,116,.15);
+      border-color:rgba(255,157,178,.9);background:linear-gradient(150deg,rgba(160,44,60,.55),rgba(90,24,36,.6));}
+    .dc-choice.right.lit{transform:scale(1.06);box-shadow:0 0 26px rgba(110,190,205,.55),inset 0 0 20px rgba(110,190,205,.15);
+      border-color:rgba(168,226,232,.9);background:linear-gradient(150deg,rgba(38,94,108,.55),rgba(20,52,62,.6));}
     .dc-choice.left{background:linear-gradient(135deg,rgba(176,80,80,.28),rgba(120,45,45,.16));
       border:1.5px solid rgba(220,120,120,.45);color:#ffb3a0;justify-content:flex-start;text-align:left;}
     .dc-choice.right{background:linear-gradient(135deg,rgba(74,170,150,.28),rgba(40,110,95,.16));
       border:1.5px solid rgba(110,210,185,.45);color:#9fe8d4;justify-content:flex-end;text-align:right;}
-    .dc-arrow{font-size:18px;opacity:.8;flex-shrink:0;}
+    .dc-arrow{font-size:15px;flex-shrink:0;opacity:.7;}
     .dc-lbl{flex:1;min-width:0;word-wrap:break-word;overflow-wrap:break-word;}
-    .dc-or{display:flex;align-items:center;font-size:10px;color:#7a7264;font-family:Unbounded,sans-serif;
-      text-transform:uppercase;letter-spacing:.08em;}
+    .dc-or{align-self:center;font-family:Unbounded,sans-serif;font-size:10px;color:#7d7080;flex-shrink:0;}
     .dc-choice.left.lit{transform:scale(1.04);box-shadow:0 0 18px rgba(220,120,120,.4);}
     .dc-choice.right.lit{transform:scale(1.04);box-shadow:0 0 18px rgba(110,210,185,.4);}
     .dec-card .fc-pad{padding:18px 18px 20px;}
@@ -595,9 +621,7 @@
     dec.innerHTML='<div class="dec-timer" id="dec-timer"><div class="dt-ring2"><svg viewBox="0 0 50 50">'+
       '<circle class="bg" cx="25" cy="25" r="21"/><circle class="fg" id="dec-fg" cx="25" cy="25" r="21"/></svg>'+
       '<div class="dt-n" id="dec-n">15</div></div></div>'+
-      '<div class="dec-card canvas-card" id="dec-card"></div>'+
-      '<div class="dec-stickers" id="dec-stickers"></div>'+
-      '';
+      '<div class="dec-card" id="dec-card">'+decCardInner(ev)+'</div>';
     stage.appendChild(dec);
     requestAnimationFrame(()=>{
       dec.querySelectorAll('.outcome-cascade').forEach(c=>c.classList.add('show'));
@@ -616,65 +640,6 @@
         }
       }catch(_){}
     });
-    (function(){
-      try{
-        var host=document.getElementById('dec-card'); if(!host) return;
-        var spk=(ev.speaker||'').toLowerCase();
-        // портрет говорящего, если есть арт персонажа
-        var portraitSrc=null;
-        var CH={kurator:'/img/chars/char-kurator.png',shift:'/img/chars/char-shift.png',
-                vivien:'/img/chars/char-vivien.png',arundel:'/img/chars/char-arundel.png'};
-        for(var k in CH){ if(spk.indexOf(k)>=0){ portraitSrc=CH[k]; break; } }
-        var orient = portraitSrc ? 'v' : (Math.random()<0.5?'v':'h');
-        if(portraitSrc) orient='v';
-        var lL=ev.shift?((ev.a&&ev.a.label)||''):((ev.left&&ev.left.label)||''), rL=ev.shift?((ev.b&&ev.b.label)||''):((ev.right&&ev.right.label)||'');
-        function build(portrait){
-          var cv=CardGen.render({
-            orient:orient,
-            caseLabel:(window.currentCaseLabel||('ДЕЛО'))+'',
-            badge:ev.badge||'РЕШЕНИЕ',
-            speaker:ev.speaker||'',
-            title:ev.title||'',
-            body:ev.intro||ev.text||'',
-            portrait:portrait
-          });
-          cv.id='dec-canvas';
-          host.innerHTML=''; host.appendChild(cv);
-          // плашки выбора (canvas-стикеры) под картой
-          try{
-            var box=document.getElementById('dec-stickers');
-            if(box){
-              box.innerHTML='';
-              var mkSticker=function(label,sub,side){
-                var wrap=document.createElement('div'); wrap.className='dec-sticker '+side;
-                var scv=CardGen.renderSticker(label.replace(/^[\u25c4\u25ba]\s*/,'').replace(/\s*[\u25c4\u25ba]$/,''), sub);
-                wrap.appendChild(scv);
-                wrap.onclick=function(){ commitDecision(ev, side==='l'?'left':'right'); };
-                return wrap;
-              };
-              box.appendChild(mkSticker(lL,'left','l'));
-              box.appendChild(mkSticker(rL,'right','r'));
-            }
-          }catch(e){console.error('stickers',e);}
-          // штампы поверх
-          var sl=document.createElement('div'); sl.className='dc-stamp left';
-          sl.textContent=lL.replace(/^◄\s*/,'').split(/\s+/).slice(0,2).join(' ');
-          var sr=document.createElement('div'); sr.className='dc-stamp right';
-          sr.textContent=rL.replace(/\s*►$/,'').split(/\s+/).slice(0,2).join(' ');
-          host.appendChild(sl); host.appendChild(sr);
-        }
-        function go(){
-          if(portraitSrc){
-            var im=new Image();
-            im.onload=function(){build(im);};
-            im.onerror=function(){build(null);};
-            im.src=portraitSrc;
-          } else build(null);
-        }
-        if(CardGen.isReady()) go();
-        else CardGen.preload().then(go);
-      }catch(e){ console.error('card build',e); }
-    })();
     bindDecisionSwipe(ev); startDecTimer();
   }
   function collectOutcomes(opt){
