@@ -765,6 +765,8 @@
     if(!card)return;
     var cv=card.querySelector('canvas'); var target=cv||card;
     if(cv){ cv.classList.add('burning'); }
+    var cv=card.querySelector('canvas'); var target=cv||card;
+    if(cv){ cv.classList.add('burning'); }
     // свечение горящего края
     var edge=document.createElement('div'); edge.className='burn-edge'; card.appendChild(edge);
     // угольки
