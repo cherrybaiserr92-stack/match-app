@@ -127,8 +127,8 @@
       font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(200,134,10,.32);}
     .decision-stage{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;
       align-items:center;justify-content:center;gap:0;padding:20px 14px;
-      background:radial-gradient(60% 50% at 50% 42%,rgba(10,7,9,.12),rgba(10,7,9,.42));
-      backdrop-filter:blur(2px);}
+      background:transparent;pointer-events:none;}
+    .decision-stage>*{pointer-events:auto;}
 #dec-card.canvas-card{background:none!important;background-color:transparent!important;
       border:none!important;box-shadow:none!important;border-radius:0!important;
       width:min(84vw,330px)!important;overflow:visible!important;animation:none!important;
@@ -167,21 +167,42 @@
     .dc-stamp.left{left:8%;transform:rotate(-11deg);color:#ffb0b0;border:3px solid rgba(224,106,106,.95);background:rgba(90,20,20,.72);}
     .dc-stamp.right{right:8%;transform:rotate(11deg);color:#8ceed6;border:3px solid rgba(116,216,190,.95);background:rgba(20,70,58,.72);}
     
-    .dec-card{position:relative;width:min(86vw,340px);margin-top:20px;border-radius:22px;z-index:5;
-      background:linear-gradient(165deg,#241922 0%,#17101a 55%,#0f0912 100%);
-      border:1px solid rgba(224,84,110,.45);
-      box-shadow:0 20px 50px rgba(0,0,0,.65),0 0 0 1px rgba(0,0,0,.4),
-        0 0 34px rgba(176,38,66,.22),inset 0 1px 0 rgba(255,255,255,.08);
+    .dec-card{position:relative;width:min(86vw,340px);margin-top:20px;border-radius:24px;z-index:5;
+      background:
+        linear-gradient(165deg,#2a1e28 0%,#1a1220 55%,#100a14 100%);
+      box-shadow:
+        /* глубокая отбрасываемая тень (карта парит) */
+        0 30px 60px -12px rgba(0,0,0,.8),
+        0 18px 36px -8px rgba(0,0,0,.6),
+        /* багровое свечение */
+        0 0 40px rgba(176,38,66,.25),
+        /* bevel: светлый кант сверху, тёмный снизу (объём) */
+        inset 0 2px 1px rgba(255,255,255,.14),
+        inset 0 -2px 2px rgba(0,0,0,.5),
+        inset 0 0 0 1px rgba(224,84,110,.3);
       touch-action:none;will-change:transform;cursor:grab;overflow:hidden;
       animation:cardIdle 3.5s ease-in-out infinite;}
     /* тонкая светящаяся рамка-обводка */
-    .dec-card::before{content:'';position:absolute;inset:0;border-radius:22px;padding:1px;pointer-events:none;
-      background:linear-gradient(150deg,rgba(224,84,110,.5),rgba(176,38,66,.1) 40%,transparent 70%);
+    .dec-card::before{content:'';position:absolute;inset:0;border-radius:24px;padding:1.5px;pointer-events:none;z-index:1;
+      background:linear-gradient(155deg,
+        rgba(255,180,200,.7) 0%,
+        rgba(224,84,110,.5) 25%,
+        rgba(176,38,66,.15) 50%,
+        transparent 75%);
       -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
       -webkit-mask-composite:xor;mask-composite:exclude;}
+    .dec-card::after{content:'';position:absolute;top:0;left:0;right:0;height:45%;border-radius:24px 24px 0 0;
+      pointer-events:none;z-index:0;
+      background:linear-gradient(180deg,rgba(255,255,255,.06),transparent);}
     @keyframes cardIdle{0%,100%{transform:translateY(0) rotate(0);}50%{transform:translateY(-4px) rotate(.3deg);}}
     .dec-card.grabbed{animation:none;cursor:grabbing;
-      box-shadow:0 28px 62px rgba(0,0,0,.72),0 0 46px rgba(224,84,110,.34),inset 0 1px 0 rgba(255,255,255,.1);}
+      box-shadow:
+        0 40px 80px -12px rgba(0,0,0,.85),
+        0 24px 48px -8px rgba(0,0,0,.7),
+        0 0 54px rgba(224,84,110,.4),
+        inset 0 2px 1px rgba(255,255,255,.18),
+        inset 0 -2px 2px rgba(0,0,0,.55),
+        inset 0 0 0 1px rgba(224,84,110,.45);}
     .dec-card.spring{transition:transform .5s cubic-bezier(.34,1.56,.64,1);}
     .dec-card.shake{animation:cardShake .4s ease;}
     @keyframes cardShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px) rotate(-1deg);}
