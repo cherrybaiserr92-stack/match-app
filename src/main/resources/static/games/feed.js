@@ -127,7 +127,7 @@
       font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(200,134,10,.32);}
     .decision-stage{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;
       align-items:center;justify-content:center;gap:0;padding:20px 14px;
-      background:radial-gradient(70% 55% at 50% 45%,rgba(10,7,9,.35),rgba(10,7,9,.62));
+      background:radial-gradient(60% 50% at 50% 42%,rgba(10,7,9,.12),rgba(10,7,9,.42));
       backdrop-filter:blur(2px);}
 #dec-card.canvas-card{background:none!important;background-color:transparent!important;
       border:none!important;box-shadow:none!important;border-radius:0!important;
@@ -597,7 +597,7 @@
       '<div class="dt-n" id="dec-n">15</div></div></div>'+
       '<div class="dec-card canvas-card" id="dec-card"></div>'+
       '<div class="dec-stickers" id="dec-stickers"></div>'+
-      '<div class="oc-hint">← свайп или тап →</div>';
+      '';
     stage.appendChild(dec);
     requestAnimationFrame(()=>{
       dec.querySelectorAll('.outcome-cascade').forEach(c=>c.classList.add('show'));
@@ -627,7 +627,7 @@
         for(var k in CH){ if(spk.indexOf(k)>=0){ portraitSrc=CH[k]; break; } }
         var orient = portraitSrc ? 'v' : (Math.random()<0.5?'v':'h');
         if(portraitSrc) orient='v';
-        var lL=(ev.left&&ev.left.label)||'', rL=(ev.right&&ev.right.label)||'';
+        var lL=ev.shift?((ev.a&&ev.a.label)||''):((ev.left&&ev.left.label)||''), rL=ev.shift?((ev.b&&ev.b.label)||''):((ev.right&&ev.right.label)||'');
         function build(portrait){
           var cv=CardGen.render({
             orient:orient,
@@ -774,7 +774,16 @@
   function burnCard(card){
     if(!card)return;
     var cv=card.querySelector('canvas'); var target=cv||card;
-    if(cv){ cv.classList.add('burning'); }
+    if(cv){
+      cv.classList.add('burning');
+      // гарантированное обугливание через JS (не зависит от CSS-класса)
+      cv.style.transition='filter .6s ease-in, opacity .6s ease-in, transform .6s ease-in';
+      requestAnimationFrame(function(){
+        cv.style.filter='brightness(.2) sepia(1) contrast(2.2) hue-rotate(-15deg)';
+        cv.style.opacity='0';
+        cv.style.transform='scale(.9) translateY(20px)';
+      });
+    }
     var cv=card.querySelector('canvas'); var target=cv||card;
     if(cv){ cv.classList.add('burning'); }
     // свечение горящего края
