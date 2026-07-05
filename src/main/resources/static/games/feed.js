@@ -167,91 +167,57 @@
     .dc-stamp.left{left:8%;transform:rotate(-11deg);color:#ffb0b0;border:3px solid rgba(224,106,106,.95);background:rgba(90,20,20,.72);}
     .dc-stamp.right{right:8%;transform:rotate(11deg);color:#8ceed6;border:3px solid rgba(116,216,190,.95);background:rgba(20,70,58,.72);}
     
-    .dec-card{position:relative;width:min(86vw,340px);margin-top:20px;border-radius:24px;z-index:5;
-      background:
-        linear-gradient(165deg,#2a1e28 0%,#1a1220 55%,#100a14 100%);
-      box-shadow:
-        /* глубокая отбрасываемая тень (карта парит) */
-        0 30px 60px -12px rgba(0,0,0,.8),
-        0 18px 36px -8px rgba(0,0,0,.6),
-        /* багровое свечение */
-        0 0 40px rgba(176,38,66,.25),
-        /* bevel: светлый кант сверху, тёмный снизу (объём) */
-        inset 0 2px 1px rgba(255,255,255,.14),
-        inset 0 -2px 2px rgba(0,0,0,.5),
-        inset 0 0 0 1px rgba(224,84,110,.3);
-      touch-action:none;will-change:transform;cursor:grab;overflow:hidden;
-      animation:cardIdle 3.5s ease-in-out infinite;}
-    /* тонкая светящаяся рамка-обводка */
-    .dec-card::before{content:'';position:absolute;inset:0;border-radius:24px;padding:1.5px;pointer-events:none;z-index:1;
-      background:linear-gradient(155deg,
-        rgba(255,180,200,.7) 0%,
-        rgba(224,84,110,.5) 25%,
-        rgba(176,38,66,.15) 50%,
-        transparent 75%);
-      -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-      -webkit-mask-composite:xor;mask-composite:exclude;}
-    .dec-card::after{content:'';position:absolute;top:0;left:0;right:0;height:45%;border-radius:24px 24px 0 0;
-      pointer-events:none;z-index:0;
-      background:linear-gradient(180deg,rgba(255,255,255,.06),transparent);}
-    @keyframes cardIdle{0%,100%{transform:translateY(0) rotate(0);}50%{transform:translateY(-4px) rotate(.3deg);}}
-    .dec-card.grabbed{animation:none;cursor:grabbing;
-      box-shadow:
-        0 40px 80px -12px rgba(0,0,0,.85),
-        0 24px 48px -8px rgba(0,0,0,.7),
-        0 0 54px rgba(224,84,110,.4),
-        inset 0 2px 1px rgba(255,255,255,.18),
-        inset 0 -2px 2px rgba(0,0,0,.55),
-        inset 0 0 0 1px rgba(224,84,110,.45);}
+    /* ═══ BLACK-КАРТА: чёрная рамка + переливы + огонь ═══ */
+    .dec-cardbox{position:relative;flex:0 0 auto;margin-top:20px;}
+    .dec-card{position:relative;width:min(86vw,340px);border-radius:24px;z-index:5;padding:3px;
+      background:linear-gradient(160deg,#2a2a2e,#0a0a0c 55%,#000);border:1.5px solid #000;
+      box-shadow:0 24px 60px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.04),
+        inset 0 1px 0 rgba(255,255,255,.08),inset 0 -2px 4px rgba(0,0,0,.6);
+      touch-action:none;will-change:transform;cursor:grab;transform-style:preserve-3d;}
+    .dec-card.grabbed{cursor:grabbing;}
     .dec-card.spring{transition:transform .5s cubic-bezier(.34,1.56,.64,1);}
     .dec-card.shake{animation:cardShake .4s ease;}
     @keyframes cardShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px) rotate(-1deg);}
       40%{transform:translateX(8px) rotate(1deg);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}}
-    .dec-card.grabbed{animation:none;cursor:grabbing;
-      box-shadow:0 26px 60px rgba(0,0,0,.72),0 0 42px rgba(176,38,66,.32),inset 0 1px 0 rgba(255,255,255,.08);}
-    .dec-card.spring{transition:transform .45s cubic-bezier(.34,1.56,.64,1);}
-    .dc-stamp{position:absolute;top:14px;max-width:46%;padding:6px 11px;border-radius:9px;
-      font-family:Unbounded,sans-serif;font-weight:900;font-size:12px;line-height:1.15;letter-spacing:.06em;
-      opacity:0;pointer-events:none;z-index:6;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .dc-stamp.left{left:12px;transform:rotate(-11deg);color:#ffa1a1;border:2.5px solid rgba(224,106,106,.95);background:rgba(122,32,32,.32);}
-    .dc-stamp.right{right:12px;transform:rotate(11deg);color:#8ceed6;border:2.5px solid rgba(116,216,190,.95);background:rgba(30,92,76,.32);}
-    @keyframes decT{0%,100%{transform:rotate(0) translate(0,0)}25%{transform:rotate(-.3deg) translate(-1.5px,1px)}
-      50%{transform:rotate(.3deg) translate(1.5px,-1.5px)}75%{transform:rotate(-.15deg) translate(-1px,0)}}
-    .dec-card.swipe-left{animation:decFL .5s ease-in forwards;}
-    .dec-card.swipe-right{animation:decFR .5s ease-in forwards;}
-    @keyframes decFL{to{transform:translateX(-140%) rotate(-18deg);opacity:0}}
-    @keyframes decFR{to{transform:translateX(140%) rotate(18deg);opacity:0}}
-    .dc-inner{padding:22px 20px 20px;position:relative;}
-    .dc-badge{display:inline-block;font-family:Unbounded,sans-serif;font-weight:700;font-size:10px;
-      letter-spacing:.14em;color:#fff;padding:5px 13px;border-radius:20px;
-      background:linear-gradient(135deg,#e0546e,#8e1e36);box-shadow:0 3px 12px rgba(142,30,54,.4);margin-bottom:14px;}
-    .dc-title{font-family:Unbounded,sans-serif;font-weight:800;font-size:22px;line-height:1.15;
-      color:#fff;margin-bottom:10px;overflow-wrap:break-word;text-wrap:balance;}
-    .dc-intro{font-size:14.5px;line-height:1.62;color:#c8bcc2;margin-bottom:20px;text-wrap:pretty;}
-    .dc-choices{display:flex;gap:10px;align-items:stretch;margin-top:4px;}
-    .dc-choice{flex:1;min-width:0;display:flex;align-items:center;gap:7px;padding:13px 12px;border-radius:14px;
-      font-family:Unbounded,sans-serif;font-weight:700;font-size:11.5px;line-height:1.3;cursor:pointer;
-      transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .25s,border-color .25s,background .25s;
-      box-sizing:border-box;justify-content:center;text-align:center;}
-    .dc-choice.left{background:linear-gradient(150deg,rgba(120,32,44,.35),rgba(60,16,24,.5));
-      border:1px solid rgba(220,100,116,.4);color:#ffb9c4;}
-    .dc-choice.right{background:linear-gradient(150deg,rgba(28,74,88,.35),rgba(14,38,46,.5));
-      border:1px solid rgba(110,190,205,.4);color:#a8e2e8;}
-    .dc-choice:active{transform:scale(.95);}
-    /* подсветка при свайпе в сторону */
-    .dc-choice.left.lit{transform:scale(1.06);box-shadow:0 0 26px rgba(220,100,116,.55),inset 0 0 20px rgba(220,100,116,.15);
-      border-color:rgba(255,157,178,.9);background:linear-gradient(150deg,rgba(160,44,60,.55),rgba(90,24,36,.6));}
-    .dc-choice.right.lit{transform:scale(1.06);box-shadow:0 0 26px rgba(110,190,205,.55),inset 0 0 20px rgba(110,190,205,.15);
-      border-color:rgba(168,226,232,.9);background:linear-gradient(150deg,rgba(38,94,108,.55),rgba(20,52,62,.6));}
-    .dc-choice.left{background:linear-gradient(135deg,rgba(176,80,80,.28),rgba(120,45,45,.16));
-      border:1.5px solid rgba(220,120,120,.45);color:#ffb3a0;justify-content:flex-start;text-align:left;}
-    .dc-choice.right{background:linear-gradient(135deg,rgba(74,170,150,.28),rgba(40,110,95,.16));
-      border:1.5px solid rgba(110,210,185,.45);color:#9fe8d4;justify-content:flex-end;text-align:right;}
-    .dc-arrow{font-size:15px;flex-shrink:0;opacity:.7;}
-    .dc-lbl{flex:1;min-width:0;word-wrap:break-word;overflow-wrap:break-word;}
-    .dc-or{align-self:center;font-family:Unbounded,sans-serif;font-size:10px;color:#7d7080;flex-shrink:0;}
-    .dc-choice.left.lit{transform:scale(1.04);box-shadow:0 0 18px rgba(220,120,120,.4);}
-    .dc-choice.right.lit{transform:scale(1.04);box-shadow:0 0 18px rgba(110,210,185,.4);}
+    .dc-inner{border-radius:21px;padding:24px 22px;position:relative;overflow:hidden;
+      background:linear-gradient(165deg,rgba(26,22,28,.95),rgba(14,10,16,.98));
+      border:1px solid rgba(255,255,255,.06);transition:filter .5s;}
+    /* переливы (голографический блик) */
+    .dc-inner::before{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.55;mix-blend-mode:color-dodge;
+      background:linear-gradient(115deg,transparent 25%,rgba(224,84,110,.35) 42%,rgba(120,180,220,.4) 50%,rgba(224,180,110,.35) 58%,transparent 75%);
+      background-size:250% 250%;animation:sheenMove 5s ease-in-out infinite;}
+    @keyframes sheenMove{0%,100%{background-position:0% 0%;}50%{background-position:100% 100%;}}
+    .dc-inner::after{content:'';position:absolute;top:0;left:0;right:0;height:45%;z-index:1;pointer-events:none;
+      background:linear-gradient(180deg,rgba(255,255,255,.06),transparent);}
+    .dc-badge,.dc-title,.dc-intro{position:relative;z-index:2;}
+    .dc-badge{display:inline-block;font-family:Unbounded,sans-serif;font-weight:700;font-size:10px;letter-spacing:.14em;
+      color:#fff;padding:5px 13px;border-radius:20px;background:linear-gradient(135deg,#e0546e,#8e1e36);
+      box-shadow:0 3px 12px rgba(142,30,54,.4);margin-bottom:14px;}
+    .dc-title{font-family:Unbounded,sans-serif;font-weight:900;font-size:22px;line-height:1.13;color:#fff;
+      margin-bottom:10px;overflow-wrap:break-word;text-wrap:balance;}
+    .dc-intro{font-size:14.5px;line-height:1.6;color:#c8bcc2;text-wrap:pretty;}
+    /* огонь-спрайт (языки снизу) */
+    .dc-fire{position:absolute;left:0;right:0;bottom:-8%;height:120%;z-index:20;pointer-events:none;opacity:0;
+      background-image:url(/img/cards/fire-sheet.png);background-repeat:no-repeat;
+      mix-blend-mode:screen;transition:opacity .3s ease;}
+    /* ПЛАШКИ выбора в стиле карты */
+    .dc-choices{display:flex;gap:12px;width:min(86vw,340px);margin:16px auto 0;z-index:15;flex:0 0 auto;}
+    .dc-choice{flex:1;min-width:0;border-radius:16px;padding:2px;cursor:pointer;
+      transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .25s;
+      background:linear-gradient(160deg,#2a2a2e,#0a0a0c 55%,#000);border:1px solid #000;
+      box-shadow:0 8px 20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06);}
+    .dc-choice-in{border-radius:14px;padding:13px 10px;text-align:center;position:relative;overflow:hidden;
+      background:linear-gradient(165deg,rgba(26,22,28,.95),rgba(14,10,16,.98));
+      font-family:Unbounded,sans-serif;font-weight:700;font-size:11.5px;line-height:1.25;}
+    .dc-choice-in::before{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.5;mix-blend-mode:color-dodge;
+      background:linear-gradient(115deg,transparent 30%,rgba(224,84,110,.3) 45%,rgba(120,180,220,.35) 52%,rgba(224,180,110,.3) 60%,transparent 75%);
+      background-size:250% 250%;animation:sheenMove 5s ease-in-out infinite;}
+    .dc-choice-in span{position:relative;z-index:2;}
+    .dc-choice.left .dc-choice-in span{color:#ffb9c4;}
+    .dc-choice.right .dc-choice-in span{color:#a8e2e8;}
+    .dc-choice:active{transform:scale(.96);}
+    .dc-choice.left.lit{transform:scale(1.06);box-shadow:0 10px 24px rgba(0,0,0,.6),0 0 22px rgba(224,84,110,.5);}
+    .dc-choice.right.lit{transform:scale(1.06);box-shadow:0 10px 24px rgba(0,0,0,.6),0 0 22px rgba(90,180,200,.5);}
     .dec-card .fc-pad{padding:18px 18px 20px;}
     .dec-card .fc-badge{display:inline-block;font-family:Unbounded,sans-serif;font-weight:700;font-size:10px;
       letter-spacing:.12em;color:#ff9db2;padding:5px 11px;border-radius:8px;
@@ -642,7 +608,8 @@
     dec.innerHTML='<div class="dec-timer" id="dec-timer"><div class="dt-ring2"><svg viewBox="0 0 50 50">'+
       '<circle class="bg" cx="25" cy="25" r="21"/><circle class="fg" id="dec-fg" cx="25" cy="25" r="21"/></svg>'+
       '<div class="dt-n" id="dec-n">15</div></div></div>'+
-      '<div class="dec-card" id="dec-card">'+decCardInner(ev)+'</div>';
+      '<div class="dec-cardbox" id="dec-cardbox"><div class="dec-card" id="dec-card">'+decCardInner(ev)+'</div></div>'+
+      '<div class="dc-choices" id="dec-choices">'+decChoicesInner(ev)+'</div>';
     stage.appendChild(dec);
     requestAnimationFrame(()=>{
       dec.querySelectorAll('.outcome-cascade').forEach(c=>c.classList.add('show'));
@@ -661,6 +628,12 @@
         }
       }catch(_){}
     });
+    (function(){
+      var box=document.getElementById('dec-choices');
+      if(box){ box.querySelectorAll('.dc-choice').forEach(function(c){
+        c.addEventListener('click',function(){ commitDecision(ev, c.getAttribute('data-side')); });
+      }); }
+    })();
     bindDecisionSwipe(ev); startDecTimer();
   }
   function collectOutcomes(opt){
@@ -759,45 +732,47 @@
   }
   function burnCard(card){
     if(!card)return;
-    var cv=card.querySelector('canvas'); var target=cv||card;
-    if(cv){
-      cv.classList.add('burning');
-      // гарантированное обугливание через JS (не зависит от CSS-класса)
-      cv.style.transition='filter .6s ease-in, opacity .6s ease-in, transform .6s ease-in';
-      requestAnimationFrame(function(){
-        cv.style.filter='brightness(.2) sepia(1) contrast(2.2) hue-rotate(-15deg)';
-        cv.style.opacity='0';
-        cv.style.transform='scale(.9) translateY(20px)';
-      });
+    var box=document.getElementById('dec-cardbox');
+    var inner=card.querySelector('.dc-inner');
+    var fire=card.querySelector('.dc-fire');
+    var COLS=5,ROWS=4,NFR=20;
+    if(fire){
+      var fw=fire.offsetWidth,fh=fire.offsetHeight;
+      fire.style.backgroundSize=(fw*COLS)+'px '+(fh*ROWS)+'px';
+      var frame=0;
+      var iv=setInterval(function(){
+        var cx=(frame%COLS)*fw,cy=Math.floor(frame/COLS)*fh;
+        fire.style.backgroundPosition=(-cx)+'px '+(-cy)+'px';
+        frame++; if(frame>=NFR)frame=0;
+      },1000/24);
+      fire.style.opacity='1';
+      setTimeout(function(){clearInterval(iv);},1400);
     }
-    var cv=card.querySelector('canvas'); var target=cv||card;
-    if(cv){ cv.classList.add('burning'); }
-    // свечение горящего края
-    var edge=document.createElement('div'); edge.className='burn-edge'; card.appendChild(edge);
-    // угольки
-    for(var i=0;i<30;i++){
-      (function(i){
-        var e=document.createElement('div'); e.className='burn-ember';
-        var sz=3+Math.random()*7;
-        e.style.width=sz+'px'; e.style.height=sz+'px';
-        e.style.left=(6+Math.random()*88)+'%';
-        e.style.top=(30+Math.random()*65)+'%';
-        e.style.animationDelay=(Math.random()*0.4)+'s';
-        e.style.setProperty('--dx',((Math.random()-0.5)*60)+'px');
-        card.appendChild(e);
-      })(i);
+    if(inner){
+      inner.style.filter='brightness(.6)';
+      setTimeout(function(){inner.style.filter='brightness(.35) contrast(1.3) sepia(.4)';},300);
     }
-    card.classList.add('burning');
     try{Sound.burn&&Sound.burn();}catch(_){}
   }
 
-  function commitDecision(ev,dir,flew){
+  function commitDecision(ev,dir,flew,swipeDir){
     if(_busy)return;_busy=true;clearInterval(_decTimer);
     const card=document.getElementById('dec-card');
     const opt=ev.shift?(dir==='left'?ev.a:ev.b):(dir==='left'?ev.left:ev.right);
     try{if(window.cApplyOption)cApplyOption(opt);}catch(_){}
     try{Sound.burn&&Sound.burn();vibrate&&vibrate(20);}catch(_){}
     if(card)burnCard(card);
+    // вылет карты в сторону свайпа (одновременно с огнём)
+    var box=document.getElementById('dec-cardbox');
+    if(box&&flew){
+      var dirs=(swipeDir||(dir==='left'?-1:1));
+      var dist=window.innerWidth*1.3;
+      box.style.transition='transform .85s cubic-bezier(.4,0,.6,1),opacity .7s ease-in .15s';
+      requestAnimationFrame(function(){
+        box.style.transform='translate3d('+(dirs*dist)+'px,-30px,0) rotate('+(dirs*24)+'deg) scale(.85)';
+        box.style.opacity='0';
+      });
+    }
     CState.step=(CState.step||0)+1;
     try{if(window.cSetProgress)cSetProgress();}catch(_){}
     setTimeout(()=>{
