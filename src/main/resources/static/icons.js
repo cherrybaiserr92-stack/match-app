@@ -17,7 +17,8 @@
     file:'<path d="M6 3h8l4 4v14a0 0 0 01 0 0H6a1 1 0 01-1-1V4a1 1 0 011-1z" fill="currentColor" opacity=".18" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v4h4M8.5 12h7M8.5 15.5h7M8.5 9h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
     hourglass:'<path d="M7 3h10M7 21h10M8 3c0 4 8 5 8 9s-8 5-8 9M16 3c0 4-8 5-8 9s8 5 8 9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 18.5h5L12 15z" fill="currentColor"/>',
     plus:'<path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
-    coin:'<circle cx="12" cy="12" r="9" fill="currentColor" opacity=".18" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v10M9.5 9.5h4a1.8 1.8 0 010 3.5h-3a1.8 1.8 0 000 3.5h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>'
+    /* жетон детектива: стальной токен с лупой */
+    coin:'<circle cx="12" cy="12" r="9" fill="currentColor" opacity=".14" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="6.6" fill="none" stroke="currentColor" stroke-width=".9" opacity=".5"/><circle cx="10.8" cy="10.8" r="2.9" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M13 13l2.6 2.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
   };
   function paint(){
     document.querySelectorAll('[data-ico]').forEach(el=>{

@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R112';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R113';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -355,11 +355,11 @@ function paintGems(){
   }); }catch(e){}
 }
 
-// SVG-жетон валюты (Кредиты) в топбаре
+// SVG-жетон валюты (Кредиты) в топбаре — стальной жетон детектива
 function renderTopCoin(){
   var c=document.querySelector('.th-coin[data-tico="coin"]');
   if(c && !c.getAttribute('data-filled')){
-    c.innerHTML='<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" fill="url(#coinG)" stroke="#8a6410" stroke-width="1"/><circle cx="12" cy="12" r="7" fill="none" stroke="#6a4810" stroke-width=".6" opacity=".5"/><path d="M12 7v10M9.5 9h3.5a1.8 1.8 0 0 1 0 3.6H9.5h3.5a1.8 1.8 0 0 1 0 3.6H9.5" stroke="#5a3e0a" stroke-width="1.3" stroke-linecap="round" fill="none"/><ellipse cx="9" cy="9" rx="2" ry="3" fill="rgba(255,255,255,.3)"/><defs><linearGradient id="coinG" x1="0" y1="0" x2="0" y2="24"><stop offset="0" stop-color="#ffe9a8"/><stop offset=".5" stop-color="#e0b057"/><stop offset="1" stop-color="#a06d08"/></linearGradient></defs></svg>';
+    c.innerHTML='<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" fill="url(#coinSteel)" stroke="#3d4655" stroke-width="1"/><circle cx="12" cy="12" r="7" fill="none" stroke="#4a5261" stroke-width=".7" opacity=".65"/><circle cx="10.6" cy="10.6" r="3.1" fill="none" stroke="#39424f" stroke-width="1.4"/><path d="M13 13l3 3" stroke="#39424f" stroke-width="1.7" stroke-linecap="round"/><ellipse cx="9" cy="8.6" rx="2" ry="3" fill="rgba(255,255,255,.4)"/><defs><linearGradient id="coinSteel" x1="0" y1="0" x2="0" y2="24"><stop offset="0" stop-color="#f0f4f9"/><stop offset=".5" stop-color="#b6c2cf"/><stop offset="1" stop-color="#77879a"/></linearGradient></defs></svg>';
     c.setAttribute('data-filled','1');
   }
 }
@@ -1776,7 +1776,7 @@ function unlockAch(k){ if(!App.profile.achievements.includes(k)){ App.profile.ac
 
 /* ═══ Анимированные SVG-иконки товаров (R18) ═══ */
 var GEM_SVG={
-  bucks:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><path d="M20 3l9 6v14l-9 6-9-6V9z" fill="url(#gemShine)" stroke="#6a4810" stroke-width="1"/><path d="M20 3v34M11 9l9 5 9-5M11 23l9-5 9 5" fill="none" stroke="#8a6410" stroke-width=".7" opacity=".55"/><ellipse cx="16" cy="12" rx="3" ry="5" fill="url(#gemSpark)"/></svg>',
+  bucks:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><circle cx="20" cy="20" r="15" fill="url(#bucksSteel)" stroke="#3d4655" stroke-width="1.3"/><circle cx="20" cy="20" r="11" fill="none" stroke="#4a5261" stroke-width="1" opacity=".65"/><circle cx="17.8" cy="17.8" r="5" fill="none" stroke="#39424f" stroke-width="2"/><path d="M21.6 21.6l4.8 4.8" stroke="#39424f" stroke-width="2.6" stroke-linecap="round"/><ellipse cx="15" cy="13" rx="3" ry="4.6" fill="rgba(255,255,255,.4)"/><defs><linearGradient id="bucksSteel" x1="0" y1="0" x2="0" y2="40"><stop offset="0" stop-color="#f0f4f9"/><stop offset=".5" stop-color="#b6c2cf"/><stop offset="1" stop-color="#77879a"/></linearGradient></defs></svg>',
   energy:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><path d="M12 14h16v8a8 8 0 0 1-16 0z" fill="url(#gemShine)" stroke="#6a4810" stroke-width="1"/><path d="M28 16h3a4 4 0 0 1 0 8h-3" fill="none" stroke="#8a6410" stroke-width="1.4"/><path d="M16 6c-1 2 1 3 0 5M20 5c-1 2 1 3 0 5M24 6c-1 2 1 3 0 5" fill="none" stroke="url(#gemShine)" stroke-width="1.6" stroke-linecap="round"><animate attributeName="opacity" values=".4;1;.4" dur="1.5s" repeatCount="indefinite"/></path><ellipse cx="17" cy="17" rx="2.5" ry="4" fill="url(#gemSpark)"/></svg>',
   magnify:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><circle cx="17" cy="17" r="10" fill="url(#gemCyan)" stroke="#1b6fa8" stroke-width="1.2" opacity=".92"/><circle cx="17" cy="17" r="6" fill="none" stroke="#d6f4ff" stroke-width="1" opacity=".6"/><path d="M25 25l9 9" stroke="url(#gemShine)" stroke-width="2.6" stroke-linecap="round"/><ellipse cx="14" cy="13" rx="2.5" ry="4" fill="url(#gemSpark)"/></svg>',
   file:'<svg viewBox="0 0 40 40" filter="url(#gemGlow)"><path d="M11 6h12l6 6v22H11z" fill="url(#gemShine)" stroke="#6a4810" stroke-width="1"/><path d="M23 6v6h6" fill="none" stroke="#6a4810" stroke-width="1"/><path d="M15 19h11M15 24h11M15 29h7" stroke="#6a4810" stroke-width="1.2" opacity=".5"/><ellipse cx="16" cy="11" rx="2" ry="3.5" fill="url(#gemSpark)"/></svg>',
