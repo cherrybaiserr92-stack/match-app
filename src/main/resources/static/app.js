@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R110';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R111';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -650,17 +650,26 @@ function unlockSwipe(){
   App.swipeUnlocked=true;
   vibrate(20); try{Sound.booster();}catch(_){}
   try{removeLockOverlay();}catch(_){}
+  var _showDecisionCard=function(){
+    if(window.Feed){
+      try{ Feed.enterDecision(); }catch(e){ console.error('enterDecision fail',e); }
+      // гарантия: если карта не появилась за 400мс — повторить
+      setTimeout(function(){
+        if(!document.getElementById('dec-stage')){
+          console.warn('карта не появилась — повтор');
+          try{ Feed.enterDecision(); }catch(_){}
+        }
+      },400);
+    } else { try{ startDecisionMode(); }catch(_){} }
+  };
   var _goDecision=function(){
     // показываем реакцию персонажей на находку (если есть), потом решение
     if(window._pendingReact && window.Feed && Feed.pushReaction){
       var rc=window._pendingReact; window._pendingReact=null;
-      Feed.pushReaction(rc, function(){
-        if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} } else { try{ startDecisionMode(); }catch(_){} }
-      });
+      Feed.pushReaction(rc, function(){ _showDecisionCard(); });
       return;
     }
-    if(window.Feed){ try{ Feed.enterDecision(); }catch(_){} }
-    else { try{ startDecisionMode(); }catch(_){} }
+    _showDecisionCard();
   };
   if(window._pendingClue){
     // показываем улику, а карту решения — ТОЛЬКО после её закрытия

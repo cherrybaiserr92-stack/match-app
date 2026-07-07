@@ -604,6 +604,9 @@
     _decision=true;
     const opts=ev.shift?{left:ev.a,right:ev.b}:{left:ev.left,right:ev.right};
     const stage=document.getElementById('stage');
+    if(!stage){ console.error('enterDecision: нет stage'); return; }
+    // убрать старую карту решения если осталась (чинит пустой экран после мини-игры)
+    var _oldDec=document.getElementById('dec-stage'); if(_oldDec)_oldDec.remove();
     const dec=document.createElement('div'); dec.className='decision-stage'; dec.id='dec-stage';
     dec.innerHTML='<div class="dec-timer" id="dec-timer"><div class="dt-ring2"><svg viewBox="0 0 50 50">'+
       '<circle class="bg" cx="25" cy="25" r="21"/><circle class="fg" id="dec-fg" cx="25" cy="25" r="21"/></svg>'+
