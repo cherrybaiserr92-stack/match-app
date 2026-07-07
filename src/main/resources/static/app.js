@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R111';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R112';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -119,9 +119,8 @@ async function runSplash(){
   await wait(380);
 }
 
-/* предзагрузка: профиль из кэша, сценарий */
+/* предзагрузка: сценарий уже грузится синхронным IIFE ниже, тут ничего не нужно */
 async function preload(){
-  await loadScenario().catch(()=>{});
 }
 
 /* куда заходим после сплэша */
@@ -268,7 +267,6 @@ function enterMain(){
   try{ Sound.ambientOn(); }catch(_){}
   try{ regenEnergy(); if(!App._energyTimer) App._energyTimer=setInterval(regenEnergy,60*1000); }catch(_){}
   try{ renderHUD(); }catch(e){ console.error('renderHUD',e); }
-  try{ renderGameList(); }catch(e){ console.error('renderGameList',e); }
   try{ renderProfile(); }catch(e){ console.error('renderProfile',e); }
   try{ renderShop(); }catch(e){ console.error('renderShop',e); }
   try{ checkDaily(); }catch(e){ console.error('checkDaily',e); }

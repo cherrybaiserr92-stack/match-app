@@ -661,11 +661,16 @@
       '<span class="dc-badge">'+esc(ev.badge||'РЕШЕНИЕ')+'</span>'+
       '<div class="dc-title">'+esc(ev.title||'')+'</div>'+
       '<div class="dc-intro">'+esc(intro)+'</div>'+
-      '<div class="dc-choices">'+
-        '<div class="dc-choice left"><span class="dc-arrow">◄</span><span class="dc-lbl">'+esc(lL.replace(/^◄\s*/,''))+'</span></div>'+
-        '<div class="dc-or">или</div>'+
-        '<div class="dc-choice right"><span class="dc-lbl">'+esc(rL.replace(/\s*►$/,''))+'</span><span class="dc-arrow">►</span></div>'+
-      '</div></div>';
+      '<div class="dc-fire"></div>'+
+      '</div>';
+  }
+  // плашки выбора ПОД картой (чёрная рамка + переливы, клик = commitDecision)
+  function decChoicesInner(ev){
+    const lL=ev.shift?(ev.a&&ev.a.label||''):(ev.left&&ev.left.label||'');
+    const rL=ev.shift?(ev.b&&ev.b.label||''):(ev.right&&ev.right.label||'');
+    const clean=s=>esc((s||'').replace(/^◄\s*/,'').replace(/\s*►$/,''));
+    return '<div class="dc-choice left" data-side="left"><div class="dc-choice-in"><span>'+clean(lL)+'</span></div></div>'+
+      '<div class="dc-choice right" data-side="right"><div class="dc-choice-in"><span>'+clean(rL)+'</span></div></div>';
   }
   function bindDecisionSwipe(ev){
     const card=document.getElementById('dec-card'); if(!card) return;
@@ -681,7 +686,8 @@
       const sl=card.querySelector('.dc-stamp.left'),sr=card.querySelector('.dc-stamp.right');
       if(sl)sl.style.opacity=dx<0?p:0;
       if(sr)sr.style.opacity=dx>0?p:0;
-      const cl=card.querySelector('.dc-choice.left'),cr=card.querySelector('.dc-choice.right');
+      const box=document.getElementById('dec-choices');
+      const cl=box&&box.querySelector('.dc-choice.left'),cr=box&&box.querySelector('.dc-choice.right');
       if(cl)cl.classList.toggle('lit',dx<-TH*0.4);
       if(cr)cr.classList.toggle('lit',dx>TH*0.4);
       const over=Math.abs(dx)>TH;
@@ -714,7 +720,7 @@
         card.style.transform='';
         const sl=card.querySelector('.dc-stamp.left'),sr=card.querySelector('.dc-stamp.right');
         if(sl)sl.style.opacity=0; if(sr)sr.style.opacity=0;
-        card.querySelectorAll('.dc-choice.lit').forEach(c=>c.classList.remove('lit'));
+        document.querySelectorAll('#dec-choices .dc-choice.lit').forEach(c=>c.classList.remove('lit'));
         armed=false;
         setTimeout(()=>card.classList.remove('spring'),470);
       }
