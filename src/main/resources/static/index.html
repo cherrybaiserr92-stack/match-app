@@ -12,7 +12,7 @@
 <script>window.SDVIG_BOT_USERNAME="sdvig_game_bot";</script>
 </head>
 <body>
-<div id="build-tag" style="position:fixed;bottom:6px;right:6px;z-index:99998;font-size:9px;color:rgba(200,160,90,.45);font-family:monospace;padding:10px 14px;cursor:default;-webkit-tap-highlight-color:transparent;user-select:none">R114</div>
+<div id="build-tag" style="position:fixed;bottom:6px;right:6px;z-index:99998;font-size:9px;color:rgba(200,160,90,.45);font-family:monospace;padding:10px 14px;cursor:default;-webkit-tap-highlight-color:transparent;user-select:none">R115</div>
 
 <!-- ══ АНИМИРОВАННЫЕ SVG-ГРАДИЕНТЫ (перелив самоцвета) ══ -->
 <svg id="gem-defs" width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -134,18 +134,18 @@
           <div class="gscale-pop" id="rap-pop"></div>
           <div class="gscale-top">
             <span class="gscale-name"><img class="gscale-ico-img" src="/img/icons/ico-hat.png" alt="">Сдвиг</span>
-            <span class="gscale-num" id="rap-num">50</span>
+            <span class="gscale-num" id="rap-num">5<em>/10</em></span>
           </div>
-          <div class="gscale-track"><div class="gscale-fill" id="rap-fill" style="width:50%"></div></div>
+          <div class="gscale-seg" id="rap-seg"></div>
           <div class="gscale-stat" id="rap-stat">Напарник</div>
         </div>
         <div class="gscale detective">
           <div class="gscale-pop" id="det-pop"></div>
           <div class="gscale-top">
             <span class="gscale-name"><img class="gscale-ico-img" src="/img/icons/ico-magnify.png" alt="">Детектив</span>
-            <span class="gscale-num" id="det-num">30</span>
+            <span class="gscale-num" id="det-num">3<em>/10</em></span>
           </div>
-          <div class="gscale-track"><div class="gscale-fill" id="det-fill" style="width:30%"></div></div>
+          <div class="gscale-seg" id="det-seg"></div>
           <div class="gscale-stat" id="det-stat">Стажёр</div>
         </div>
         <button class="tools-mini" id="ev-chip" title="Досье улик">
@@ -377,12 +377,12 @@
 
       <div class="adm-sec">Шкалы</div>
       <div class="adm-scale">
-        <label>🎩 Отношения: <b id="adm-rap-val">50</b></label>
-        <input type="range" id="adm-rap" min="0" max="100" value="50" oninput="window.admSetRap&&admSetRap(this.value)">
+        <label>🎩 Отношения: <b id="adm-rap-val">5</b></label>
+        <input type="range" id="adm-rap" min="0" max="10" value="5" oninput="window.admSetRap&&admSetRap(this.value)">
       </div>
       <div class="adm-scale">
-        <label>🔍 Детектив: <b id="adm-skill-val">30</b></label>
-        <input type="range" id="adm-skill" min="0" max="100" value="30" oninput="window.admSetSkill&&admSetSkill(this.value)">
+        <label>🔍 Детектив: <b id="adm-skill-val">3</b></label>
+        <input type="range" id="adm-skill" min="0" max="10" value="3" oninput="window.admSetSkill&&admSetSkill(this.value)">
       </div>
 
       <div class="adm-sec">Действия</div>

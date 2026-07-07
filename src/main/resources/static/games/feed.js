@@ -115,14 +115,14 @@
     .m2-clue.collected{background:rgba(70,216,155,.3);opacity:.8;}
     .m2-clue::before{content:'🔍';font-size:10px;}
 
-    .feed2-next{align-self:center;margin-top:6px;font-size:11px;color:#93a1b3;font-family:Unbounded,sans-serif;
+    .feed2-next{align-self:center;flex:0 0 auto;margin-top:6px;font-size:11px;color:#93a1b3;font-family:Unbounded,sans-serif;
       letter-spacing:.05em;opacity:.7;animation:f2tap 1.5s ease-in-out infinite;padding:8px;cursor:pointer;}
     @keyframes f2tap{0%,100%{opacity:.4}50%{opacity:.8}}
-    .feed2-hint{align-self:center;max-width:88%;margin:4px auto;padding:10px 14px;border-radius:12px;
+    .feed2-hint{align-self:center;flex:0 0 auto;max-width:88%;margin:4px auto;padding:10px 14px;border-radius:12px;
       background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:#cfd8e3;
       font-size:12.5px;line-height:1.45;display:flex;gap:8px;align-items:flex-start;font-style:italic;}
     .feed2-hint .fh-ico{font-size:14px;flex-shrink:0;}
-    .feed2-find{align-self:center;margin-top:8px;padding:2px;border:1px solid #000;border-radius:15px;cursor:pointer;
+    .feed2-find{align-self:center;flex:0 0 auto;margin-top:8px;padding:2px;border:1px solid #000;border-radius:15px;cursor:pointer;
       background:linear-gradient(160deg,#2a2a2e,#0a0a0c 55%,#000);position:relative;overflow:hidden;
       box-shadow:0 10px 26px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.05),inset 0 1px 0 rgba(255,255,255,.08);}
     .feed2-find span{display:block;padding:12px 26px;border-radius:13px;
@@ -221,6 +221,10 @@
       background-size:250% 250%;animation:sheenMove 5s ease-in-out infinite;}
     .dc-choice-in span{position:relative;z-index:2;}
     .dc-choice.left .dc-choice-in span{color:#ffb9c4;}
+    .dc-fx{display:flex;gap:4px;justify-content:center;margin-top:6px;position:relative;z-index:2;}
+    .dc-fx i{width:6px;height:6px;border-radius:50%;}
+    .dc-fx .fx-rap{background:#ff8fb0;box-shadow:0 0 6px rgba(255,143,176,.7);}
+    .dc-fx .fx-det{background:#46d89b;box-shadow:0 0 6px rgba(70,216,155,.7);}
     .dc-choice.right .dc-choice-in span{color:#a8e2e8;}
     .dc-choice:active{transform:scale(.96);}
     .dc-choice.left.lit{transform:scale(1.06);box-shadow:0 10px 24px rgba(0,0,0,.6),0 0 22px rgba(224,84,110,.5);}
@@ -672,12 +676,20 @@
       '</div>';
   }
   // плашки выбора ПОД картой (чёрная рамка + переливы, клик = commitDecision)
+  // точки-предвестники (Reigns): выбор заденет Сдвига (розовая) / Детектива (зелёная)
+  function fxDots(opt){
+    if(!opt) return '';
+    var d='';
+    if(typeof opt.rapport==='number'&&opt.rapport!==0) d+='<i class="fx-rap"></i>';
+    if(typeof opt.dscore==='number'&&opt.dscore!==0) d+='<i class="fx-det"></i>';
+    return d?'<span class="dc-fx">'+d+'</span>':'';
+  }
   function decChoicesInner(ev){
-    const lL=ev.shift?(ev.a&&ev.a.label||''):(ev.left&&ev.left.label||'');
-    const rL=ev.shift?(ev.b&&ev.b.label||''):(ev.right&&ev.right.label||'');
+    const oL=ev.shift?ev.a:ev.left, oR=ev.shift?ev.b:ev.right;
+    const lL=oL&&oL.label||'', rL=oR&&oR.label||'';
     const clean=s=>esc((s||'').replace(/^◄\s*/,'').replace(/\s*►$/,''));
-    return '<div class="dc-choice left" data-side="left"><div class="dc-choice-in"><span>'+clean(lL)+'</span></div></div>'+
-      '<div class="dc-choice right" data-side="right"><div class="dc-choice-in"><span>'+clean(rL)+'</span></div></div>';
+    return '<div class="dc-choice left" data-side="left"><div class="dc-choice-in"><span>'+clean(lL)+'</span>'+fxDots(oL)+'</div></div>'+
+      '<div class="dc-choice right" data-side="right"><div class="dc-choice-in"><span>'+clean(rL)+'</span>'+fxDots(oR)+'</div></div>';
   }
   function bindDecisionSwipe(ev){
     const card=document.getElementById('dec-card'); if(!card) return;

@@ -650,17 +650,19 @@ body::before{
   font-size:10px;letter-spacing:.02em;text-transform:uppercase;}
 .gscale-ico{font-size:13px;}
 .gscale-num{font-family:Unbounded,sans-serif;font-weight:900;font-size:15px;}
-.gscale-track{height:6px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;}
-.gscale-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.3,1,.4,1);position:relative;}
-.gscale-fill::after{content:'';position:absolute;inset:0;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);
-  animation:gscaleShine 2.4s ease-in-out infinite;}
-@keyframes gscaleShine{0%{transform:translateX(-100%)}60%,100%{transform:translateX(100%)}}
+/* сегментная шкала 0-10: каждая ячейка = 1 очко */
+.gscale-seg{display:flex;gap:3px;height:8px;}
+.gscale-seg i{flex:1;border-radius:2px;background:rgba(255,255,255,.08);
+  transform:skewX(-14deg);box-shadow:inset 0 1px 1px rgba(0,0,0,.5);
+  transition:background .35s,box-shadow .35s;}
+.gscale-num em{font-style:normal;font-size:10px;opacity:.55;font-weight:700;}
 .gscale-stat{font-size:9px;margin-top:4px;opacity:.65;font-style:italic;}
 .gscale.rapport .gscale-name,.gscale.rapport .gscale-num{color:#ff8fb0;}
-.gscale.rapport .gscale-fill{background:linear-gradient(90deg,#c44569,#ff8fb0);}
+.gscale.rapport .gscale-seg i.on{background:linear-gradient(180deg,#ff8fb0,#c44569);
+  box-shadow:0 0 6px rgba(255,143,176,.55),inset 0 1px 0 rgba(255,255,255,.35);}
 .gscale.detective .gscale-name,.gscale.detective .gscale-num{color:#46d89b;}
-.gscale.detective .gscale-fill{background:linear-gradient(90deg,#2a9d6f,#46d89b);}
+.gscale.detective .gscale-seg i.on{background:linear-gradient(180deg,#46d89b,#2a9d6f);
+  box-shadow:0 0 6px rgba(70,216,155,.55),inset 0 1px 0 rgba(255,255,255,.35);}
 .gscale-pop{position:absolute;top:-6px;right:10px;font-family:Unbounded,sans-serif;font-weight:800;
   font-size:13px;opacity:0;pointer-events:none;z-index:5;}
 .gscale-pop.show{animation:gscalePop 1.2s ease forwards;}
