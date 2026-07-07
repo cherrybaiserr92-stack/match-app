@@ -194,22 +194,41 @@ body::before{
   background:linear-gradient(180deg, rgba(8,10,16,.78), transparent);
   position:relative; z-index:20;
 }
-.th-level{ flex:1; display:flex; align-items:center; gap:10px; min-width:0; }
+/* круговой прогресс уровня (Homescapes-стиль) */
+.th-lvlring{ position:relative; width:46px; height:46px; flex:0 0 auto; }
+.th-lvlring svg{ position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg); }
+.th-lvlring .ring-bg{ fill:none; stroke:rgba(255,255,255,.09); stroke-width:3.5; }
+.th-lvlring .ring-fg{ fill:none; stroke:url(#xpGrad); stroke:var(--crim); stroke-width:3.5;
+  stroke-linecap:round; stroke-dasharray:125.6; stroke-dashoffset:125.6;
+  filter:drop-shadow(0 0 4px rgba(224,84,110,.6)); transition:stroke-dashoffset .5s ease; }
 .th-lvl-badge{
-  width:38px; height:38px; flex:0 0 auto; border-radius:50%;
+  position:absolute; inset:5px; border-radius:50%;
   display:flex; align-items:center; justify-content:center;
   background:var(--blk-frame); color:#fff; border:1px solid #000;
-  font-family:'Unbounded',sans-serif; font-weight:800; font-size:16px;
-  box-shadow:0 4px 14px rgba(0,0,0,.55), 0 0 0 1px rgba(224,84,110,.35),
-    0 0 14px rgba(142,30,54,.35), inset 0 1px 0 rgba(255,255,255,.12);
+  font-family:'Unbounded',sans-serif; font-weight:800; font-size:15px;
+  box-shadow:0 4px 12px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12);
 }
-.th-xp{ flex:1; min-width:0; }
-.th-xp-track{ height:8px; border-radius:8px; background:rgba(255,255,255,.08);
-  overflow:hidden; box-shadow:inset 0 1px 2px rgba(0,0,0,.4); }
-.th-xp-fill{ height:100%; border-radius:8px;
-  background:linear-gradient(90deg,var(--crim-d),var(--crim));
-  box-shadow:0 0 8px rgba(224,84,110,.5); transition:width .5s ease; }
-.th-xp-info{ font-size:10px; color:var(--ink3); margin-top:3px; font-family:'JetBrains Mono',monospace; }
+/* шкала «Чутьё» — восполняется со временем, тратится на дела */
+.th-flair{
+  flex:1; min-width:0; position:relative; overflow:hidden;
+  padding:6px 13px 7px; border-radius:16px;
+  background:var(--blk-glass); border:1px solid #000;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 4px 12px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04);
+}
+.th-flair::before{ content:''; position:absolute; inset:0; pointer-events:none;
+  opacity:.3; mix-blend-mode:color-dodge; background:var(--blk-sheen);
+  background-size:250% 250%; animation:sheenMove 5s ease-in-out infinite; }
+.th-flair-top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.th-flair-name{ font-family:'Unbounded',sans-serif; font-weight:700; font-size:9.5px;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--crim-2); }
+.th-flair-num{ font-family:'Unbounded',sans-serif; font-weight:800; font-size:12px; color:var(--ink); }
+.th-flair-pips{ display:flex; gap:5px; margin-top:5px; }
+.th-flair-pips i{ flex:1; height:5px; border-radius:3px; background:rgba(255,255,255,.09);
+  box-shadow:inset 0 1px 1px rgba(0,0,0,.5); transition:background .3s, box-shadow .3s; }
+.th-flair-pips i.on{ background:linear-gradient(90deg,var(--crim-d),var(--crim));
+  box-shadow:0 0 6px rgba(224,84,110,.55); }
+.th-flair-timer{ margin-top:4px; font-size:9px; color:var(--ink3);
+  font-family:'JetBrains Mono',monospace; letter-spacing:.03em; min-height:11px; }
 .th-money{
   flex:0 0 auto; display:flex; align-items:center; gap:7px;
   position:relative; overflow:hidden;

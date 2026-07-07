@@ -122,9 +122,16 @@
       background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:#cfd8e3;
       font-size:12.5px;line-height:1.45;display:flex;gap:8px;align-items:flex-start;font-style:italic;}
     .feed2-hint .fh-ico{font-size:14px;flex-shrink:0;}
-    .feed2-find{align-self:center;margin-top:8px;padding:13px 28px;border:none;border-radius:13px;cursor:pointer;
-      background:linear-gradient(135deg,#e0546e,#8e1e36);color:#fff;font-family:Unbounded,sans-serif;
-      font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(142,30,54,.4);}
+    .feed2-find{align-self:center;margin-top:8px;padding:2px;border:1px solid #000;border-radius:15px;cursor:pointer;
+      background:linear-gradient(160deg,#2a2a2e,#0a0a0c 55%,#000);position:relative;overflow:hidden;
+      box-shadow:0 10px 26px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.05),inset 0 1px 0 rgba(255,255,255,.08);}
+    .feed2-find span{display:block;padding:12px 26px;border-radius:13px;
+      background:linear-gradient(165deg,rgba(26,22,28,.95),rgba(14,10,16,.98));
+      color:#ff8fa8;font-family:Unbounded,sans-serif;font-weight:800;font-size:14px;}
+    .feed2-find::before{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.5;mix-blend-mode:color-dodge;
+      background:linear-gradient(115deg,transparent 25%,rgba(224,84,110,.35) 42%,rgba(120,180,220,.4) 50%,rgba(224,180,110,.35) 58%,transparent 75%);
+      background-size:250% 250%;animation:sheenMove 5s ease-in-out infinite;}
+    .feed2-find:active{transform:scale(.96);}
     .decision-stage{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;
       align-items:center;justify-content:center;gap:0;padding:20px 14px;
       background:transparent;pointer-events:none;}
@@ -531,7 +538,7 @@
           }
         }
         const btn=document.createElement('button'); btn.className='feed2-find';
-        btn.textContent='🔍 Найти улики';
+        btn.innerHTML='<span>🔍 Найти улики</span>';
         btn.onclick=()=>{ openMiniGame(ev); };
         _wrap.appendChild(btn);
       }

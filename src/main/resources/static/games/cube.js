@@ -50,36 +50,42 @@
     const s=document.createElement('style'); s.id='minicube-css';
     s.textContent=`
     .mc-root{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-      background:radial-gradient(circle at 50% 38%,#1c1812,#0a0806);overflow:hidden;}
-    .mc-title{font-family:Unbounded,sans-serif;font-weight:800;font-size:15px;letter-spacing:.05em;color:#f3d27a;
+      background:radial-gradient(circle at 50% 38%,#16141a,#050507);overflow:hidden;}
+    .mc-title{font-family:Unbounded,sans-serif;font-weight:800;font-size:15px;letter-spacing:.05em;color:#f2f5fb;
       text-align:center;opacity:0;animation:mcIn .5s .1s forwards;}
-    .mc-sub{font-size:11px;color:#9aa3b2;margin-bottom:30px;opacity:0;animation:mcIn .5s .25s forwards;text-align:center;}
+    .mc-sub{font-size:11px;color:#93a1b3;margin-bottom:30px;opacity:0;animation:mcIn .5s .25s forwards;text-align:center;}
     @keyframes mcIn{to{opacity:1}}
     .mc-stage{perspective:760px;perspective-origin:50% 50%;position:relative;}
     .mc-cube{position:relative;transform-style:preserve-3d;}
-    .mc-face{position:absolute;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
-      border:2px solid rgba(255,255,255,.16);overflow:hidden;
-      box-shadow:inset 0 0 36px rgba(0,0,0,.5);}
-    .mcf-glow{position:absolute;inset:0;}
-    .mcf-sheen{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.22),transparent 45%);}
-    .mcf-ico{font-size:46px;line-height:1;z-index:2;filter:drop-shadow(0 3px 8px rgba(0,0,0,.6));}
+    /* грань куба = мини-карта black-стиля: чёрная рамка + тёмное стекло + цветное свечение */
+    .mc-face{position:absolute;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+      border:2px solid #000;overflow:hidden;
+      background:linear-gradient(165deg,rgba(26,22,28,.97),rgba(10,8,12,.99));
+      box-shadow:inset 0 0 40px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.09),0 0 0 1px rgba(255,255,255,.05);}
+    .mcf-glow{position:absolute;inset:0;opacity:.5;}
+    /* голографический перелив как у карты решения */
+    .mcf-sheen{position:absolute;inset:0;mix-blend-mode:color-dodge;opacity:.45;
+      background:linear-gradient(115deg,transparent 25%,rgba(224,84,110,.35) 42%,rgba(120,180,220,.4) 50%,rgba(224,180,110,.35) 58%,transparent 75%);
+      background-size:250% 250%;animation:sheenMove 5s ease-in-out infinite;}
+    @keyframes sheenMove{0%,100%{background-position:0% 0%;}50%{background-position:100% 100%;}}
+    .mcf-ico{font-size:46px;line-height:1;z-index:2;filter:drop-shadow(0 4px 10px rgba(0,0,0,.7));}
     .mcf-name{font-family:Unbounded,sans-serif;font-weight:800;font-size:13px;color:#fff;z-index:2;
-      text-shadow:0 2px 6px rgba(0,0,0,.7);text-align:center;padding:0 6px;}
-    .mcf-sub{font-size:10px;color:rgba(255,255,255,.85);z-index:2;letter-spacing:.06em;}
+      text-shadow:0 2px 6px rgba(0,0,0,.8);text-align:center;padding:0 6px;}
+    .mcf-sub{font-size:10px;color:rgba(255,255,255,.75);z-index:2;letter-spacing:.06em;}
     .mcf-lock{position:absolute;top:9px;right:11px;font-size:12px;z-index:3;opacity:.75;}
-    .mc-face.dim .mcf-glow{filter:saturate(.5) brightness(.7);}
-    .mc-face.dim::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:1;}
-    .mc-hint{margin-top:34px;font-size:12px;color:#c8a05a;letter-spacing:.06em;height:16px;
+    .mc-face.dim .mcf-glow{filter:saturate(.4) brightness(.6);}
+    .mc-face.dim::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:1;}
+    .mc-hint{margin-top:34px;font-size:12px;color:#93a1b3;letter-spacing:.06em;height:16px;
       opacity:0;animation:mcPulse 1.6s ease-in-out infinite;}
     @keyframes mcPulse{0%,100%{opacity:.4}50%{opacity:1}}
     .mc-hint.hide{opacity:0 !important;animation:none;}
     .mc-result{position:absolute;bottom:16%;left:0;right:0;text-align:center;
-      font-family:Unbounded,sans-serif;font-weight:900;font-size:21px;color:#ffcf6b;
-      text-shadow:0 0 22px #c8860a;opacity:0;}
+      font-family:Unbounded,sans-serif;font-weight:900;font-size:21px;color:#ff8fa8;
+      text-shadow:0 0 22px #8e1e36;opacity:0;}
     .mc-result.show{animation:mcRes .5s ease forwards;}
     @keyframes mcRes{0%{opacity:0;transform:translateY(14px) scale(.85)}100%{opacity:1;transform:none}}
     .mc-flash{position:absolute;inset:0;pointer-events:none;opacity:0;
-      background:radial-gradient(circle at 50% 45%,rgba(255,207,107,.55),transparent 55%);}
+      background:radial-gradient(circle at 50% 45%,rgba(224,84,110,.5),transparent 55%);}
     .mc-flash.go{animation:mcFl .5s ease;}
     @keyframes mcFl{0%{opacity:0}28%{opacity:1}100%{opacity:0}}
     `;
@@ -112,7 +118,7 @@
   function faceHtml(f,i,side){
     return '<div class="mc-face'+(f.available?'':' dim')+'" '+
       'style="width:'+side+'px;height:'+side+'px;transform:'+FACE_POS[i]+' translateZ('+_half+'px)">'+
-      '<div class="mcf-glow" style="background:radial-gradient(circle at 50% 32%,'+f.c1+','+f.c2+')"></div>'+
+      '<div class="mcf-glow" style="background:radial-gradient(circle at 50% 26%,'+f.c1+' 0%,transparent 72%)"></div>'+
       '<div class="mcf-sheen"></div>'+
       (f.available?'':'<span class="mcf-lock">🔒</span>')+
       '<span class="mcf-ico">'+f.ico+'</span>'+

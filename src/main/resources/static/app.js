@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R113';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R114';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -266,6 +266,9 @@ function enterMain(){
   try{ if(window.Feed){ initCarousel_data(); Feed.init(); } else { initCarousel(); } }catch(e){ console.error('feed init',e); try{initCarousel();}catch(_){} }
   try{ Sound.ambientOn(); }catch(_){}
   try{ regenEnergy(); if(!App._energyTimer) App._energyTimer=setInterval(regenEnergy,60*1000); }catch(_){}
+  try{ if(!App._flairTick) App._flairTick=setInterval(function(){
+    try{ if(energyMsLeft()<1000) regenEnergy(); renderFlairTimer(); }catch(_){}
+  },1000); }catch(_){}
   try{ renderHUD(); }catch(e){ console.error('renderHUD',e); }
   try{ renderProfile(); }catch(e){ console.error('renderProfile',e); }
   try{ renderShop(); }catch(e){ console.error('renderShop',e); }
@@ -341,7 +344,7 @@ function refreshTools(){
 function useTool(t){
   const T=App.profile.tools||(App.profile.tools={});
   if((T[t]||0)<=0){ toast('Инструменты','Нет в наличии — загляни в Лавку','🛠️'); return; }
-  if(t==='hourglass'){ T[t]--; addEnergy(20); toast('Песочные часы','+20 энергии','⏳'); }
+  if(t==='hourglass'){ T[t]--; addEnergy(20); toast('Песочные часы','+20 чутья','⏳'); }
   else if(t==='magnify'){ T[t]--; App.flags.hintNext=true; toast('Лупа','Подсказка активна','🔍'); }
   else if(t==='file'){ T[t]--; unlockSwipe(); toast('Досье','Свайп разблокирован','📁'); }
   refreshTools(); saveProfile();
@@ -372,8 +375,32 @@ function renderHUD(){
   const cr=$('#hud-credits'); if(cr) cr.textContent=p.credits;
   const bk=$('#hud-bucks'); if(bk) bk.textContent=p.bucks||0;
   const need=xpNeeded(p.level);
-  const xf=$('#xp-fill'); if(xf) xf.style.width=clamp(p.xp/need*100,0,100)+'%';
-  const xi=$('#xp-info'); if(xi) xi.textContent=`УР ${p.level} · ${p.xp}/${need}`;
+  const lv=$('#hud-level'); if(lv) lv.textContent=p.level;
+  /* круговой XP-прогресс вокруг бейджа уровня */
+  const ring=$('#xp-ring');
+  if(ring){ const C=2*Math.PI*20; ring.style.strokeDashoffset=C*(1-clamp(p.xp/need,0,1)); }
+  /* шкала «Чутьё» (энергия): пипсы + счётчик + таймер восполнения */
+  renderFlair();
+}
+function renderFlair(){
+  const p=App.profile; if(!p) return;
+  const num=$('#flair-num'); if(num) num.textContent=p.energy+'/'+p.maxEnergy;
+  const pips=$('#flair-pips');
+  if(pips){
+    if(pips.childElementCount!==p.maxEnergy){
+      pips.innerHTML=Array.from({length:p.maxEnergy},()=>'<i></i>').join('');
+    }
+    [...pips.children].forEach((el,i)=>el.classList.toggle('on', i<p.energy));
+  }
+  renderFlairTimer();
+}
+function renderFlairTimer(){
+  const p=App.profile; if(!p) return;
+  const t=$('#flair-timer'); if(!t) return;
+  if(p.energy>=p.maxEnergy){ t.textContent='полный запас'; return; }
+  const ms=energyMsLeft();
+  const m=Math.floor(ms/60000), s=Math.floor(ms%60000/1000);
+  t.textContent='+1 через '+m+':'+String(s).padStart(2,'0');
 }
 function xpNeeded(lvl){ return 100+(lvl-1)*60; }
 
@@ -640,7 +667,7 @@ function addLockOverlay(cardEl){
 function showNoEnergy(){
   try{haptic('shift');}catch(_){}
   const mins=Math.ceil(energyMsLeft()/60000);
-  if(window.toast) toast('Термос пуст','Сдвиг: «Без кофе ты проспишь улику». +1 \u2615 через '+mins+' мин','\u2615');
+  if(window.toast) toast('Чутьё иссякло','Сдвиг: «Без кофе ты проспишь улику». +1 чутьё через '+mins+' мин','\u2615');
   const tab=document.getElementById('tab-cases');
   if(tab){ var b=document.createElement('div'); b.className='noenergy-flash'; tab.appendChild(b); setTimeout(function(){b.remove();},900); }
 }
@@ -1789,9 +1816,9 @@ var GEM_SVG={
 function gemIcon(k){ return GEM_SVG[k]||GEM_SVG.bucks; }
 
 const SHOP=[
-  {k:'energy',   svg:'energy',   name:'Чёрный кофе',     desc:'+3 энергии — продолжить работу', cur:'credits', price:30,
+  {k:'energy',   svg:'energy',   name:'Чёрный кофе',     desc:'+3 чутья — продолжить работу', cur:'credits', price:30,
     buy(){ addEnergy(3); }},
-  {k:'hourglass',svg:'hourglass',name:'Второе дыхание',   desc:'Полный заряд энергии',           cur:'credits', price:80,
+  {k:'hourglass',svg:'hourglass',name:'Второе дыхание',   desc:'Полный запас чутья',           cur:'credits', price:80,
     buy(){ var p=App.profile; addEnergy(p.maxEnergy); }},
   {k:'magnify',  svg:'magnify',  name:'Лупа',             desc:'Подсветит улику в «Осмотре»',     cur:'credits', price:50,
     buy(){ App.profile.tMagnify=(App.profile.tMagnify||0)+1; saveProfile(); }},

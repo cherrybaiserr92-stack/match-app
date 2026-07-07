@@ -12,7 +12,7 @@
 <script>window.SDVIG_BOT_USERNAME="sdvig_game_bot";</script>
 </head>
 <body>
-<div id="build-tag" style="position:fixed;bottom:6px;right:6px;z-index:99998;font-size:9px;color:rgba(200,160,90,.45);font-family:monospace;padding:10px 14px;cursor:default;-webkit-tap-highlight-color:transparent;user-select:none">R113</div>
+<div id="build-tag" style="position:fixed;bottom:6px;right:6px;z-index:99998;font-size:9px;color:rgba(200,160,90,.45);font-family:monospace;padding:10px 14px;cursor:default;-webkit-tap-highlight-color:transparent;user-select:none">R114</div>
 
 <!-- ══ АНИМИРОВАННЫЕ SVG-ГРАДИЕНТЫ (перелив самоцвета) ══ -->
 <svg id="gem-defs" width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -103,12 +103,17 @@
 <div id="main-screen" class="screen">
 
   <div class="top-hud">
-    <div class="th-level">
+    <div class="th-lvlring" id="th-lvlring">
+      <svg viewBox="0 0 46 46"><circle class="ring-bg" cx="23" cy="23" r="20"/><circle class="ring-fg" id="xp-ring" cx="23" cy="23" r="20"/></svg>
       <div class="th-lvl-badge"><span id="hud-level">1</span></div>
-      <div class="th-xp">
-        <div class="th-xp-track"><div class="th-xp-fill" id="xp-fill" style="width:0%"></div></div>
-        <div class="th-xp-info" id="xp-info">0 / 100 XP</div>
+    </div>
+    <div class="th-flair" id="th-flair">
+      <div class="th-flair-top">
+        <span class="th-flair-name">Чутьё</span>
+        <span class="th-flair-num" id="flair-num">5/5</span>
       </div>
+      <div class="th-flair-pips" id="flair-pips"></div>
+      <div class="th-flair-timer" id="flair-timer"></div>
     </div>
     <div class="th-money">
       <span class="th-coin" data-tico="coin"></span>
