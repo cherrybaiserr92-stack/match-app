@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R118';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R119';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -1931,6 +1931,10 @@ function showDaily(streak,reward){
    HINT GAME (match-3) — мост к match3.js
 ═══════════════════════════════════════════════ */
 function openHintGame(card){
+  // ОСМОТР с непойманной уликой стоит 1 чутьё и заполняет шкалу за неск. раундов.
+  // Обычный гейт-свайп (без улики) — 1 раунд, бесплатно.
+  var isInv = !!window._pendingClue;
+  if(isInv && ((App.profile&&App.profile.energy)||0) < 1){ showNoEnergy(); return; }
   const modal=$('#hint-modal');
   modal.classList.remove('hidden');
   const mission = missionFor(card);
@@ -1938,6 +1942,13 @@ function openHintGame(card){
   if(window.BgFx) BgFx.pause();
 
   const vp=$('#hint-vp');
+
+  // раундов осмотра: улика — 2, минус перк Детектива (высокий навык = быстрее); гейт — 1
+  var det = clamp((App.profile&&App.profile.skill)||0,0,10);
+  window._invest = { need: isInv ? Math.max(1, 2-Math.floor(det/5)) : 1, done:0, isInv:isInv };
+  if(isInv){ App.profile.energy=clamp(App.profile.energy-1,0,App.profile.maxEnergy);
+    if(!App.profile.lastEnergyTs)App.profile.lastEnergyTs=Date.now(); renderHUD(); saveProfile(); }
+  renderInvestBar();
 
   function launchGame(gameId){
     // сейчас готова только match3; остальные грани откатываются на неё в cube.js
@@ -1951,14 +1962,38 @@ function openHintGame(card){
     launchGame('match3'); // фолбэк, если куб не загрузился
   }
 
-  $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); if(window.BgFx)BgFx.resume();
+  $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); window._invest=null; renderInvestBar(); if(window.BgFx)BgFx.resume();
     try{Examine&&Examine.stop();}catch(_){} try{Pursuit&&Pursuit.stop();}catch(_){} try{Lockpick&&Lockpick.stop();}catch(_){} try{Match3&&Match3.stop();}catch(_){} try{MiniCube&&MiniCube.close();}catch(_){} };
+}
+// шкала осмотра в модалке мини-игры (пусто/1 раунд — скрыта)
+function renderInvestBar(){
+  var inv=window._invest;
+  var footer=document.querySelector('#hint-modal .hm-footer');
+  var el=document.getElementById('invest-bar');
+  if(!inv || inv.need<=1){ if(el)el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id='invest-bar'; el.className='invest-bar';
+    if(footer) footer.insertBefore(el, footer.firstChild); }
+  el.innerHTML='<span class="ib-label">Осмотр</span>'+
+    Array.from({length:inv.need},function(_,i){return '<i class="'+(i<inv.done?'on':'')+'"></i>';}).join('');
 }
 
 function startMiniGame(gameId, card, mission, modal){
   const vp=$('#hint-vp');
   $('#hint-footer').textContent=mission.label;
-  const onWin=()=>{ modal.classList.add('hidden'); if(window.BgFx)BgFx.resume(); unlockSwipe(); };
+  const onWin=()=>{
+    var inv=window._invest||{need:1,done:0};
+    inv.done++;
+    if(inv.done < inv.need){
+      // осмотр не закончен — ещё раунд (та же сцена, следующая мини-игра, без куба)
+      renderInvestBar();
+      try{ vibrate(10); Sound.approve&&Sound.approve(); }catch(_){}
+      if(window.toast) toast('Осмотр продолжается','Есть зацепка. Копни ещё — деталь почти в руках.','🔍');
+      setTimeout(function(){ startMiniGame('match3', card, missionFor(card), modal); }, 400);
+      return;
+    }
+    window._invest=null; renderInvestBar();
+    modal.classList.add('hidden'); if(window.BgFx)BgFx.resume(); unlockSwipe();
+  };
   const onLose=()=>{
     try{ const p=App.profile; if(p){ p.energy=clamp(p.energy-1,0,p.maxEnergy); addRapport(-1); renderHUD(); saveProfile(); } }catch(_){}
     if(window.toast) toast('Улика ускользнула','Сдвиг недоволен. Попробуй снова.','\ud83d\udd0d');
