@@ -865,13 +865,12 @@
      Замыкает петлю: свайп → видимое последствие → следующая сцена.
      Использует opt.evidence (написан в сценарии) + показывает,
      какие шкалы двинулись. Без этого выбор ощущался пустым. */
-  function _mapDelta(n){ n=Math.abs(n); return n<=3?1:Math.max(1,Math.round(n/3)); }
   function _choiceDeltas(opt){
     var out='';
     if(typeof opt.rapport==='number'&&opt.rapport){ var up=opt.rapport>0;
-      out+='<span class="fa-d rap '+(up?'up':'dn')+'"><b>🎩</b>'+(up?'+':'−')+_mapDelta(opt.rapport)+'</span>'; }
+      out+='<span class="fa-d rap '+(up?'up':'dn')+'"><b>🎩</b>'+(up?'+':'−')+Math.abs(opt.rapport)+'</span>'; }
     if(typeof opt.dscore==='number'&&opt.dscore){ var u2=opt.dscore>0;
-      out+='<span class="fa-d det '+(u2?'up':'dn')+'"><b>🔍</b>'+(u2?'+':'−')+_mapDelta(opt.dscore)+'</span>'; }
+      out+='<span class="fa-d det '+(u2?'up':'dn')+'"><b>🔍</b>'+(u2?'+':'−')+Math.abs(opt.dscore)+'</span>'; }
     return out;
   }
   function afterChoiceBeat(opt, done){

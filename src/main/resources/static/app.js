@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R119';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R120';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -25,7 +25,7 @@ const DEFAULT_PROFILE = {
   casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
   achievements:[], dailyStreak:0, lastDaily:null, sound:true,
-  lastEnergyTs:0, rapport:5, skill:3, gender:'m', genderChosen:false, playerName:'', story:{}, prologueSeen:false, onboarded:false
+  lastEnergyTs:0, rapport:50, skill:30, _scale100:true, gender:'m', genderChosen:false, playerName:'', story:{}, prologueSeen:false, onboarded:false
 };
 
 /* ── DOM helpers ───────────────────────────────── */
@@ -489,7 +489,7 @@ function computeEnding(f){
   const align=keys.filter(function(k){return f[k]===t[k];}).length;
   const e=CASE.endings||{};
   var p=App.profile||{};
-  var rap=clamp(p.rapport||0,0,10), det=clamp(p.skill||0,0,10);
+  var rap=clamp(p.rapport||0,0,100), det=clamp(p.skill||0,0,100);
   // базовая концовка по сходимости версий
   var base;
   if(align===keys.length&&e.win)  base=Object.assign({},e.win,{align:align});
@@ -498,9 +498,9 @@ function computeEnding(f){
   // шкалы добавляют эпилог-оттенок (задел на сквозную драму)
   base.rap=rap; base.det=det;
   if(base.kind==='win'){
-    if(rap>=6 && det>=6) base.epilogue='Сдвиг хлопнул тебя по плечу. «Напарник». Впервые это слово прозвучало всерьёз.';
-    else if(det>=6 && rap<4) base.epilogue='Ты раскрыл дело блестяще. Но Сдвиг смотрел на тебя холодно — машина, а не человек. «Берегись. Лёд трескается изнутри».';
-    else if(rap>=6 && det<4) base.epilogue='«Голова у тебя ещё сырая, но сердце на месте, — буркнул Сдвиг. — С этим можно работать».';
+    if(rap>=60 && det>=60) base.epilogue='Сдвиг хлопнул тебя по плечу. «Напарник». Впервые это слово прозвучало всерьёз.';
+    else if(det>=60 && rap<40) base.epilogue='Ты раскрыл дело блестяще. Но Сдвиг смотрел на тебя холодно — машина, а не человек. «Берегись. Лёд трескается изнутри».';
+    else if(rap>=60 && det<40) base.epilogue='«Голова у тебя ещё сырая, но сердце на месте, — буркнул Сдвиг. — С этим можно работать».';
   }
   // ── СЮЖЕТНЫЙ ИТОГ: на последнем уровне собираем последствия выборов всей игры ──
   try{
@@ -891,8 +891,8 @@ function cSetProgress(){
 }
 function addRapport(n){
   const p=App.profile; if(!p) return;
-  migrateScale10(p);
-  p.rapport=clamp((p.rapport||0)+n,0,10);
+  migrateScale100(p);
+  p.rapport=_applyGain(p.rapport, n);
   try{ grantScaleMilestone('rap', p.rapport); }catch(_){}
   saveProfile();
   try{ updateScaleBars&&updateScaleBars(); scalePop&&scalePop('rap',n); }catch(_){}
@@ -900,41 +900,50 @@ function addRapport(n){
 /* награда за новый рекорд шкалы (вовлечение: каждый пик = приз) */
 function grantScaleMilestone(kind, val){
   var p=App.profile; if(!p) return;
-  var key=kind==='rap'?'_rapMax':'_detMax';
-  if(val<=(p[key]||0)) return;
-  p[key]=val;
-  var bonus=20*1;
+  var key=kind==='rap'?'_rapMaxTier':'_detMaxTier';
+  var tier=Math.floor(val/10);
+  if(tier<=(p[key]||0)) return;
+  p[key]=tier;
+  var bonus=20;
   addCredits(bonus);
   var msg=kind==='rap'
     ? 'Сдвиг: «Начинаю к тебе привыкать». +'+bonus+' кредитов'
     : 'Хватка крепнет. +'+bonus+' кредитов';
   if(window.toast) toast(kind==='rap'?'Доверие растёт':'Новый уровень хватки', msg, kind==='rap'?'🎩':'🔍');
 }
-function migrateScale10(p){
-  if(!p||p._scale10) return;
-  if(typeof p.rapport==='number' && p.rapport>10) p.rapport=Math.round(p.rapport/10);
-  if(typeof p.skill==='number'   && p.skill>10)   p.skill=Math.round(p.skill/10);
-  if(p.rapport===undefined||p.rapport===null) p.rapport=5;
-  if(p.skill===undefined||p.skill===null) p.skill=3;
-  p.rapport=clamp(p.rapport,0,10); p.skill=clamp(p.skill,0,10);
-  p._rapMax=Math.max(p._rapMax||0,p.rapport); p._detMax=Math.max(p._detMax||0,p.skill);
-  p._scale10=true;
+function migrateScale100(p){
+  if(!p||p._scale100) return;
+  // прошлые версии хранили 0-10; приводим к 0-100
+  var toS=function(v,def){ if(typeof v!=='number') return def; return v<=10 ? v*10 : v; };
+  p.rapport=clamp(toS(p.rapport,50),0,100);
+  p.skill  =clamp(toS(p.skill,30),0,100);
+  p._rapMaxTier=Math.max(p._rapMaxTier||0, Math.floor(p.rapport/10));
+  p._detMaxTier=Math.max(p._detMaxTier||0, Math.floor(p.skill/10));
+  p._scale100=true;
+}
+// убывающая отдача: чем ближе к 100, тем слабее плюс; минусы бьют в полную силу
+function _applyGain(cur, delta){
+  if(!delta) return cur;
+  if(delta<0) return clamp(cur+delta,0,100);
+  var head=(100-cur)/100;
+  return clamp(cur+Math.max(1, Math.round(delta*head)),0,100);
 }
 function updateScaleBars(){
   var p=App.profile; if(!p) return;
-  migrateScale10(p);
-  var rap=clamp(p.rapport||0,0,10), det=clamp(p.skill||0,0,10);
-  _drawScale('rap', rap, rapTitle(rap));
-  _drawScale('det', det, detTitle(det));
+  migrateScale100(p);
+  var rap=clamp(p.rapport||0,0,100), det=clamp(p.skill||0,0,100);
+  _drawScale('rap', rap, rapTitle(Math.floor(rap/10)));
+  _drawScale('det', det, detTitle(Math.floor(det/10)));
 }
 function _drawScale(which, val, title){
   var n=document.getElementById(which+'-num'), seg=document.getElementById(which+'-seg'),
       st=document.getElementById(which+'-stat');
-  if(n)n.innerHTML=val+'<em>/10</em>';
+  var tier=Math.floor(clamp(val,0,100)/10);
+  if(n)n.innerHTML=tier+'<em>/10</em>';
   if(st)st.textContent=title;
   if(seg){
     if(seg.childElementCount!==10) seg.innerHTML=Array.from({length:10},function(){return'<i></i>';}).join('');
-    [].forEach.call(seg.children,function(el,i){ el.classList.toggle('on', i<val); });
+    [].forEach.call(seg.children,function(el,i){ el.classList.toggle('on', i<tier); });
   }
 }
 function rapTitle(v){
@@ -961,18 +970,15 @@ function rapportTitle(){
 }
 function applyChoiceStats(o){
   if(!o) return;
-  if(typeof o.dscore==='number' && o.dscore!==0){ addSkill(scaleDelta10(o.dscore)); }
-  if(typeof o.rapport==='number' && o.rapport!==0){ addRapport(scaleDelta10(o.rapport)); }
+  if(typeof o.dscore==='number' && o.dscore!==0){ addSkill(o.dscore); }
+  if(typeof o.rapport==='number' && o.rapport!==0){ addRapport(o.rapport); }
 }
 /* сценарии писались под 0-100 (дельты ±3/±6/±10) -> 0-10: ±1/±2/±3 */
-function scaleDelta10(n){
-  if(Math.abs(n)<=3) return Math.sign(n);
-  return Math.sign(n)*Math.max(1,Math.round(Math.abs(n)/3));
-}
+function scaleDelta10(n){ return n; } // legacy, шкала теперь 0-100 с сырыми дельтами
 function addSkill(n){
   var p=App.profile; if(!p) return;
-  migrateScale10(p);
-  p.skill=clamp((p.skill||0)+n,0,10);
+  migrateScale100(p);
+  p.skill=_applyGain(p.skill, n);
   try{ grantScaleMilestone('det', p.skill); }catch(_){}
   saveProfile();
   try{ updateScaleBars&&updateScaleBars(); scalePop&&scalePop('det',n); }catch(_){}
@@ -1350,8 +1356,8 @@ window.openAdmin=function(){
   // текущие шкалы в ползунки
   var p2=App.profile||{};
   var r=document.getElementById('adm-rap'), s=document.getElementById('adm-skill');
-  if(r){ r.value=p2.rapport||0; document.getElementById('adm-rap-val').textContent=p2.rapport||0; }
-  if(s){ s.value=p2.skill||0; document.getElementById('adm-skill-val').textContent=p2.skill||0; }
+  if(r){ r.value=p2.rapport||50; document.getElementById('adm-rap-val').textContent=p2.rapport||50; }
+  if(s){ s.value=p2.skill||30; document.getElementById('adm-skill-val').textContent=p2.skill||30; }
   _admUpdateInfo();
 };
 window.closeAdmin=function(){ var p=document.getElementById('admin-panel'); if(p)p.style.display='none'; };
@@ -1649,8 +1655,9 @@ function initCarousel_data(){
   // подготовка состояния дела без 3D-кольца (для ленты)
   try{
     var _saved=window.loadCaseState?loadCaseState():null;
-    if(_saved){ CState.ev=_saved.ev; CState.flags=_saved.flags||{}; CState.evidence=_saved.evidence||[]; CState.step=_saved.step||0; }
-    else { CState.ev=CASE.start; CState.flags={}; CState.evidence=[]; CState.step=0; }
+    if(_saved){ CState.ev=_saved.ev; CState.flags=_saved.flags||{}; CState.evidence=_saved.evidence||[]; CState.clues=_saved.clues||[]; CState.step=_saved.step||0; }
+    else { CState.ev=CASE.start; CState.flags={}; CState.evidence=[]; CState.clues=[]; CState.step=0; }
+    try{ var _ec=document.getElementById('ev-count'); if(_ec)_ec.textContent=(CState.clues?CState.clues.length:0); }catch(_){}
     var _cn=document.getElementById('case-name'); if(_cn)_cn.textContent=CASE.name||'';
     if(window.cSetProgress)cSetProgress();
     if(window.initEvPanel)initEvPanel();
@@ -1790,12 +1797,12 @@ function renderProfile(){
   var name=u.firstName||u.name||'Детектив';
   var gid=document.getElementById('ag-name'); if(gid)gid.textContent=name;
   // ранг + дело
-  var rank=(typeof detTitle==='function')?detTitle(clamp(p.skill||0,0,10)):'Новичок';
+  var rank=(typeof detTitle==='function')?detTitle(clamp(Math.floor((p.skill||0)/10),0,10)):'Новичок';
   var caseN=(p.casesSolved||0)+1;
   var ar=document.getElementById('ag-rank'); if(ar)ar.textContent=rank+' · Дело '+caseN;
   // уровень-бар (по детективности)
-  var det=clamp(p.skill||0,0,10), rap=clamp(p.rapport||0,0,10);
-  var lf=document.getElementById('ag-lvlfill'); if(lf)lf.style.width=(det*10)+'%';
+  var det=clamp(p.skill||0,0,100), rap=clamp(p.rapport||0,0,100);
+  var lf=document.getElementById('ag-lvlfill'); if(lf)lf.style.width=det+'%';
   var lt=document.getElementById('ag-lvltext'); if(lt)lt.textContent='УР '+(p.level||1);
   // статы
   var s1=document.getElementById('ag-skill'); if(s1)s1.textContent=det;
@@ -1944,7 +1951,7 @@ function openHintGame(card){
   const vp=$('#hint-vp');
 
   // раундов осмотра: улика — 2, минус перк Детектива (высокий навык = быстрее); гейт — 1
-  var det = clamp((App.profile&&App.profile.skill)||0,0,10);
+  var det = clamp(Math.floor(((App.profile&&App.profile.skill)||0)/10),0,10);
   window._invest = { need: isInv ? Math.max(1, 2-Math.floor(det/5)) : 1, done:0, isInv:isInv };
   if(isInv){ App.profile.energy=clamp(App.profile.energy-1,0,App.profile.maxEnergy);
     if(!App.profile.lastEnergyTs)App.profile.lastEnergyTs=Date.now(); renderHUD(); saveProfile(); }
