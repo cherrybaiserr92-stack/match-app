@@ -535,11 +535,17 @@
       // все реплики показаны — следующий шаг (решение или линейный переход)
       _wrap.onclick=null;
       if(ev.linear){
-        const hint=document.createElement('div'); hint.className='feed2-next';
-        hint.textContent='далее ▸';
-        hint.onclick=()=>{ advanceLinear(ev); };
-        _wrap.appendChild(hint);
-        _wrap.onclick=(e)=>{ if(!e.target.closest('.m2-clue')) advanceLinear(ev); };
+        // линейное событие с НЕпойманной уликой -> тоже даём мини-игру,
+        // после победы enterDecisionMode увидит ev.linear и продолжит по ev.next
+        if(_hasUnfoundClue(ev)){
+          renderHint(ev); renderFindButton(ev);
+        } else {
+          const hint=document.createElement('div'); hint.className='feed2-next';
+          hint.textContent='далее ▸';
+          hint.onclick=()=>{ advanceLinear(ev); };
+          _wrap.appendChild(hint);
+          _wrap.onclick=(e)=>{ if(!e.target.closest('.m2-clue')) advanceLinear(ev); };
+        }
       } else if(ev.shift){
         // shift-карта: ждём, пока допечатается последняя реплика, потом карта
         var _waitType=function(){
@@ -550,22 +556,33 @@
         };
         _waitType();
       } else {
-        // наводка перед мини-игрой (если у события есть hint и ещё нет улики)
-        if(ev.hint && ev.clue){
-          var hintEl=_wrap.querySelector('.feed2-hint');
-          if(!hintEl){
-            hintEl=document.createElement('div'); hintEl.className='feed2-hint';
-            hintEl.innerHTML='<span class="fh-ico">💡</span>'+esc(ev.hint);
-            _wrap.appendChild(hintEl);
-          }
-        }
-        const btn=document.createElement('button'); btn.className='feed2-find';
-        btn.innerHTML='<span>🔍 Найти улики</span>';
-        btn.onclick=()=>{ openMiniGame(ev); };
-        _wrap.appendChild(btn);
+        // развилка: мини-игра разблокирует свайп (плюс улика, если есть)
+        renderHint(ev); renderFindButton(ev);
       }
     }
     scrollEnd();
+  }
+  // улика события уже собрана?
+  function _hasUnfoundClue(ev){
+    if(!ev || !ev.clue) return false;
+    var id=ev.clue.id; if(!id) return true;
+    var have=(typeof CState!=='undefined' && CState.clues)?CState.clues:[];
+    return !have.some(function(c){ return c && c.id===id; });
+  }
+  function renderHint(ev){
+    if(!(ev.hint && ev.clue)) return;
+    if(_wrap.querySelector('.feed2-hint')) return;
+    var hintEl=document.createElement('div'); hintEl.className='feed2-hint';
+    hintEl.innerHTML='<span class="fh-ico">💡</span>'+esc(ev.hint);
+    _wrap.appendChild(hintEl);
+  }
+  function renderFindButton(ev){
+    if(_wrap.querySelector('.feed2-find')) return;
+    var btn=document.createElement('button'); btn.className='feed2-find';
+    var hasClue=_hasUnfoundClue(ev);
+    btn.innerHTML='<span>🔍 '+(hasClue?'Найти улику':'Осмотреться')+'</span>';
+    btn.onclick=function(){ openMiniGame(ev); };
+    _wrap.appendChild(btn);
   }
 
   function finishCurrentTyping(){
