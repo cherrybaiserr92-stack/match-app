@@ -115,6 +115,24 @@
     .m2-clue.collected{background:rgba(70,216,155,.3);opacity:.8;}
     .m2-clue::before{content:'🔍';font-size:10px;}
 
+    /* бит последствия выбора */
+    .feed2-aftermath{align-self:stretch;flex:0 0 auto;margin:2px 0;padding:13px 16px 14px;border-radius:14px;
+      position:relative;overflow:hidden;border:1px solid #000;border-left:3px solid #e0546e;
+      background:linear-gradient(165deg,rgba(30,18,24,.96),rgba(14,10,14,.98));
+      box-shadow:0 10px 26px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.05);
+      opacity:0;transform:translateY(10px);transition:opacity .45s ease,transform .45s cubic-bezier(.2,1,.3,1);}
+    .feed2-aftermath.show{opacity:1;transform:none;}
+    .fa-eyebrow{font-family:Unbounded,sans-serif;font-weight:700;font-size:8.5px;letter-spacing:.22em;
+      text-transform:uppercase;color:#ff8fa8;opacity:.85;margin-bottom:6px;}
+    .fa-text{font-size:13.5px;line-height:1.55;color:#e6d9de;font-style:italic;}
+    .fa-deltas{display:flex;gap:8px;margin-top:10px;}
+    .fa-d{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:8px;
+      font-family:Unbounded,sans-serif;font-weight:800;font-size:11px;border:1px solid;}
+    .fa-d b{font-weight:400;font-size:12px;}
+    .fa-d.rap.up{color:#ffb9c4;border-color:rgba(255,143,176,.4);background:rgba(255,143,176,.1);}
+    .fa-d.rap.dn{color:#ff9a9a;border-color:rgba(255,93,108,.4);background:rgba(255,93,108,.1);}
+    .fa-d.det.up{color:#8ee9c3;border-color:rgba(70,216,155,.4);background:rgba(70,216,155,.1);}
+    .fa-d.det.dn{color:#ff9a9a;border-color:rgba(255,93,108,.4);background:rgba(255,93,108,.1);}
     .feed2-next{align-self:center;flex:0 0 auto;margin-top:6px;font-size:11px;color:#93a1b3;font-family:Unbounded,sans-serif;
       letter-spacing:.05em;opacity:.7;animation:f2tap 1.5s ease-in-out infinite;padding:8px;cursor:pointer;}
     @keyframes f2tap{0%,100%{opacity:.4}50%{opacity:.8}}
@@ -807,8 +825,43 @@
       const st=document.getElementById('dec-stage');if(st)st.remove();
       _decision=false;_busy=false;
       try{if(window.hideChar)hideChar();}catch(_){}
-      if(opt.to==='__resolve__'||!opt.to){finish();}else pushEvent(opt.to);
+      var go=function(){ if(opt.to==='__resolve__'||!opt.to){finish();}else pushEvent(opt.to); };
+      // бит последствия: показать в ленте, к чему привёл выбор (opt.evidence + сдвиг шкал)
+      if(opt.evidence && _wrap){ afterChoiceBeat(opt, go); } else { go(); }
     },900);
+  }
+  /* ── БИТ ПОСЛЕДСТВИЯ ВЫБОРА ─────────────────────────────
+     Замыкает петлю: свайп → видимое последствие → следующая сцена.
+     Использует opt.evidence (написан в сценарии) + показывает,
+     какие шкалы двинулись. Без этого выбор ощущался пустым. */
+  function _mapDelta(n){ n=Math.abs(n); return n<=3?1:Math.max(1,Math.round(n/3)); }
+  function _choiceDeltas(opt){
+    var out='';
+    if(typeof opt.rapport==='number'&&opt.rapport){ var up=opt.rapport>0;
+      out+='<span class="fa-d rap '+(up?'up':'dn')+'"><b>🎩</b>'+(up?'+':'−')+_mapDelta(opt.rapport)+'</span>'; }
+    if(typeof opt.dscore==='number'&&opt.dscore){ var u2=opt.dscore>0;
+      out+='<span class="fa-d det '+(u2?'up':'dn')+'"><b>🔍</b>'+(u2?'+':'−')+_mapDelta(opt.dscore)+'</span>'; }
+    return out;
+  }
+  function afterChoiceBeat(opt, done){
+    var oldc=_wrap.querySelector('.feed2-next,.feed2-find'); if(oldc)oldc.remove();
+    _wrap.querySelectorAll('.msg2').forEach(function(m){ m.classList.add('m2-past'); });
+    var el=document.createElement('div'); el.className='feed2-aftermath';
+    var dl=_choiceDeltas(opt);
+    el.innerHTML='<div class="fa-eyebrow">твой ход</div>'+
+      '<div class="fa-text">'+esc(opt.evidence)+'</div>'+
+      (dl?'<div class="fa-deltas">'+dl+'</div>':'');
+    _wrap.appendChild(el);
+    requestAnimationFrame(function(){ el.classList.add('show'); });
+    scrollEnd();
+    var advanced=false;
+    function advance(){ if(advanced)return; advanced=true;
+      _wrap.onclick=null; var n=_wrap.querySelector('.feed2-next'); if(n)n.remove();
+      if(done)done(); }
+    var hint=document.createElement('div'); hint.className='feed2-next'; hint.textContent='далее ▸';
+    hint.onclick=advance; _wrap.appendChild(hint);
+    _wrap.onclick=function(e){ if(!e.target.closest('.m2-clue')) advance(); };
+    setTimeout(advance, 5000); // страховка: не застрять
   }
   function startDecTimer(){
     let left=15;const total=15;
