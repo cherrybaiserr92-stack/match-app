@@ -948,17 +948,21 @@
 .clue-reveal{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
   background:rgba(6,8,13,.7);opacity:0;transition:opacity .4s;pointer-events:none;}
 .clue-reveal.show{opacity:1;pointer-events:auto;}
-.cr-card{width:min(78vw,320px);border-radius:18px;padding:24px 22px;text-align:center;
-  background:linear-gradient(160deg,rgba(30,24,16,.99),rgba(14,11,8,.99));
-  border:1.5px solid var(--acc,#c8860a);box-shadow:0 20px 50px rgba(0,0,0,.6),0 0 30px rgba(200,134,10,.25);
+.cr-card{width:min(78vw,320px);border-radius:20px;padding:24px 22px;text-align:center;position:relative;overflow:hidden;
+  background:linear-gradient(165deg,rgba(26,22,28,.98),rgba(12,9,14,.99));
+  border:1px solid #000;box-shadow:0 22px 54px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.05),0 0 30px rgba(142,30,54,.28),inset 0 1px 0 rgba(255,255,255,.08);
   transform:translateY(30px) scale(.9);transition:transform .5s cubic-bezier(.2,1.3,.4,1);}
+.cr-card::before{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.4;mix-blend-mode:color-dodge;
+  background:linear-gradient(115deg,transparent 25%,rgba(224,84,110,.35) 42%,rgba(120,180,220,.4) 50%,rgba(224,180,110,.35) 58%,transparent 75%);
+  background-size:250% 250%;animation:sheenMove 5s ease-in-out infinite;}
+.cr-card>*{position:relative;z-index:1;}
 .clue-reveal.show .cr-card{transform:none;}
 .clue-reveal.tofile .cr-card{transform:translate(-40vw,40vh) scale(.2);opacity:0;transition:all .6s cubic-bezier(.5,0,.7,1);}
 .cr-ico{font-size:54px;margin-bottom:8px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5));}
-.cr-label{font-family:Unbounded,sans-serif;font-size:10px;letter-spacing:.18em;color:var(--acc,#c8860a);margin-bottom:6px;}
+.cr-label{font-family:Unbounded,sans-serif;font-size:10px;letter-spacing:.18em;color:#ff8fa8;margin-bottom:6px;}
 .cr-name{font-family:Unbounded,sans-serif;font-weight:900;font-size:19px;color:#fff;margin-bottom:10px;}
-.cr-proof{font-size:13px;line-height:1.5;color:#d8cfbe;font-style:italic;margin-bottom:14px;}
-.cr-hint{font-size:11px;color:#c8a05a;letter-spacing:.05em;font-family:Unbounded,sans-serif;opacity:.7;}
+.cr-proof{font-size:13px;line-height:1.5;color:#d9cdd4;font-style:italic;margin-bottom:14px;}
+.cr-hint{font-size:11px;color:#93a1b3;letter-spacing:.05em;font-family:Unbounded,sans-serif;opacity:.7;}
 /* досье */
 .ev-clue{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;margin-bottom:8px;border-radius:12px;
   background:rgba(200,134,10,.07);border:1px solid rgba(200,134,10,.22);border-left:3px solid var(--acc,#c8860a);}

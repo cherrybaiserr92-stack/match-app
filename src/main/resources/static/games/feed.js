@@ -16,10 +16,18 @@
 
   const NAMES={shift:'Сдвиг',recruit:'Рекрут',kurator:'Куратор',arundel:'Аранделл',
     miller:'Миллер',hayes:'Хейс',romero:'Ромеро',conroy:'Конрой',jiang:'Цзян',
-    purcell:'Пёрселл',danny:'Дэнни',eleanor:'Эленор',cop:'Патрульный',captain:'Капитан',pocketman:'Свидетель',guests:'Гости'};
+    purcell:'Пёрселл',danny:'Дэнни',eleanor:'Эленор',cop:'Патрульный',captain:'Капитан',
+    pocketman:'Свидетель',guests:'Гости',vivien:'Вивьен',narrator:''};
   function speakerName(spk){
     if(spk==='recruit'){ try{ return (window.playerName?window.playerName():'Рекрут'); }catch(_){ return 'Рекрут'; } }
     return NAMES[spk]||spk;
+  }
+  // портрет спикера или монограмма-фолбэк (для персонажей без арта, напр. Вивьен)
+  function avFace(spk){
+    var src=avatar(spk);
+    if(src) return '<img src="'+src+'">';
+    var nm=speakerName(spk)||'?';
+    return '<span class="m2-mono">'+esc(nm.charAt(0).toUpperCase())+'</span>';
   }
 
   const CHARV=(window.CHAR_VER||'3');
@@ -65,6 +73,9 @@
     @keyframes m2In{to{opacity:1;transform:none}}
     .m2-av{width:62px;height:62px;border-radius:50%;flex-shrink:0;overflow:hidden;border:2.5px solid;position:relative;}
     .m2-av img{position:absolute;width:150%;left:-25%;top:8%;max-width:none;}
+    .m2-mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      font-family:Unbounded,sans-serif;font-weight:800;font-size:24px;color:currentColor;
+      background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.1),rgba(0,0,0,.25));}
     /* индивидуальный кроп — голова целиком влезает */
     .m2-av.av-shift img{width:128%;left:-14%;top:1%;}
     .m2-av.av-recruit img{width:150%;left:-25%;top:7%;}
@@ -326,7 +337,7 @@
       el.innerHTML='<div class="m2-av">🧠</div><div class="m2-body"><div class="m2-head"><span class="m2-nm">Дедукция</span></div><div class="m2-bubble">'+renderClues(m.text)+'</div></div>'; }
     else { var spk=m.speaker||'narrator'; var cls=(spk==='shift')?'shift':(spk==='recruit')?'recruit':'other';
       el.className='msg2 '+cls+' m2-past';
-      el.innerHTML='<div class="m2-av av-'+spk+'"><img src="'+avatar(spk)+'"></div><div class="m2-body"><div class="m2-head"><span class="m2-nm">'+speakerName(spk)+'</span></div><div class="m2-bubble">'+renderClues(m.text)+'</div></div>'; }
+      el.innerHTML='<div class="m2-av av-'+spk+'">'+avFace(spk)+'</div><div class="m2-body"><div class="m2-head"><span class="m2-nm">'+speakerName(spk)+'</span></div><div class="m2-bubble">'+renderClues(m.text)+'</div></div>'; }
     _wrap.appendChild(el);
     var b=el.querySelector('.m2-bubble,.m2-narr'); if(b) bindClues(b);
   }
@@ -426,7 +437,7 @@
       el.className='msg2 '+cls+' active';
       const av=avatar(spk);
       const moodHtml=m.mood?'<span class="m2-mood" style="background:'+m.moodc+'22;color:'+m.moodc+';border:1px solid '+m.moodc+'55">'+m.mood+'</span>':'';
-      el.innerHTML='<div class="m2-av av-'+spk+'"><img src="'+av+'"><span class="m2-ring"></span></div>'+
+      el.innerHTML='<div class="m2-av av-'+spk+'">'+avFace(spk)+'<span class="m2-ring"></span></div>'+
         '<div class="m2-body"><div class="m2-head"><span class="m2-nm">'+speakerName(spk)+'</span>'+moodHtml+'</div>'+
         '<div class="m2-bubble"></div></div>';
       _wrap.appendChild(el);
@@ -616,10 +627,13 @@
     if(!dialogueStr){ done&&done(); return; }
     var lines=dialogueStr.split('\n').filter(function(s){return s.trim();});
     var msgs=lines.map(function(line){
-      var m=line.match(/^([^:]+):\s*(.+)$/);
+      var m=line.match(/^([^:«»]{2,20}):\s*(.+)$/);
       if(m){
         var spk=m[1].trim().toLowerCase();
-        var map={'сдвиг':'shift','рекрут':'recruit','миллер':'miller','эленор':'eleanor','куратор':'kurator','патрульный':'narrator'};
+        var map={'сдвиг':'shift','рекрут':'recruit','миллер':'miller','эленор':'eleanor','куратор':'kurator',
+          'патрульный':'cop','парень':'miller','старуха':'eleanor','аранделл':'arundel','директор':'arundel',
+          'печатник':'pocketman','старик':'miller','посредник':'pocketman','кросс':'vivien','вивьен':'vivien',
+          'мадам':'vivien','капитан':'captain','хейс':'hayes','дэнни':'danny'};
         return {type:'speech', speaker:map[spk]||'narrator', text:m[2].trim()};
       }
       return {type:'narr', text:line.trim()};
