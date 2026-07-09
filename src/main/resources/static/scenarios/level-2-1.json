@@ -4,8 +4,7 @@
   "chapter": 2,
   "level": 1,
   "truth": {
-    "place": "found",
-    "letter": "recognized"
+    "threat": "cleaners"
   },
   "start": "s1",
   "total": 1,

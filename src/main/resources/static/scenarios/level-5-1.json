@@ -4,8 +4,7 @@
   "chapter": 5,
   "level": 1,
   "truth": {
-    "house": "survived",
-    "game": "refused"
+    "weak": "collection"
   },
   "start": "s1",
   "total": 1,

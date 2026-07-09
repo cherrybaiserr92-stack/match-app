@@ -4,8 +4,7 @@
   "chapter": 4,
   "level": 3,
   "truth": {
-    "cleaners": "faced",
-    "threshold": "crossed"
+    "calm": "trap"
   },
   "start": "s1",
   "total": 1,

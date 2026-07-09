@@ -4,7 +4,6 @@
   "chapter": 3,
   "level": 2,
   "truth": {
-    "captain": "informant",
     "route": "mansion"
   },
   "start": "s1",

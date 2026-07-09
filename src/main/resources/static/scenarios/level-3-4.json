@@ -4,8 +4,7 @@
   "chapter": 3,
   "level": 4,
   "truth": {
-    "vivien": "vendetta",
-    "pact": "sealed"
+    "vivien": "vendetta"
   },
   "start": "s1",
   "total": 1,

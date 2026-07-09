@@ -4,8 +4,7 @@
   "chapter": 4,
   "level": 2,
   "truth": {
-    "gallery": "seen",
-    "witness": "heard"
+    "method": "preserve"
   },
   "start": "s1",
   "total": 1,

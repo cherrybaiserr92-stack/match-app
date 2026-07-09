@@ -4,8 +4,7 @@
   "chapter": 2,
   "level": 4,
   "truth": {
-    "vivien": "player",
-    "lead": "arundel"
+    "vivien": "player"
   },
   "start": "s1",
   "total": 1,

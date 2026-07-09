@@ -3,10 +3,7 @@
   "title": "Цена",
   "chapter": 5,
   "level": 3,
-  "truth": {
-    "shift": "fate",
-    "curator": "fate"
-  },
+  "truth": {},
   "start": "s1",
   "total": 1,
   "events": {
