@@ -232,6 +232,14 @@
     .dc-title{font-family:Unbounded,sans-serif;font-weight:900;font-size:22px;line-height:1.13;color:#fff;
       margin-bottom:10px;overflow-wrap:break-word;text-wrap:balance;}
     .dc-intro{font-size:14.5px;line-height:1.6;color:#c8bcc2;text-wrap:pretty;}
+    /* улики «в деле» на карте решения */
+    .dc-evidence{position:relative;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:13px;pointer-events:none;}
+    .dc-ev-label{font-family:Unbounded,sans-serif;font-weight:700;font-size:8px;letter-spacing:.16em;
+      text-transform:uppercase;color:#46d89b;opacity:.85;}
+    .dc-ev-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;
+      padding:4px 9px;border-radius:8px;color:#8ee9c3;
+      background:rgba(70,216,155,.12);border:1px solid rgba(70,216,155,.35);}
+    .dc-ev-more{font-size:10px;font-weight:700;color:#8ee9c3;opacity:.7;}
     /* огонь-спрайт (языки снизу) */
     .dc-fire{position:absolute;left:0;right:0;bottom:-8%;height:120%;z-index:20;pointer-events:none;opacity:0;
       background-image:url(/img/cards/fire-sheet.png);background-repeat:no-repeat;
@@ -721,8 +729,18 @@
       '<span class="dc-badge">'+esc(ev.badge||'РЕШЕНИЕ')+'</span>'+
       '<div class="dc-title">'+esc(ev.title||'')+'</div>'+
       '<div class="dc-intro">'+esc(intro)+'</div>'+
+      _evidenceStrip()+
       '<div class="dc-fire"></div>'+
       '</div>';
+  }
+  // улики «в деле» на карте решения: выбор виден опёртым на собранные доказательства
+  function _evidenceStrip(){
+    var cl=(typeof CState!=='undefined' && CState.clues)?CState.clues:[];
+    if(!cl.length) return '';
+    var shown=cl.slice(-2);
+    var chips=shown.map(function(c){ return '<span class="dc-ev-chip">'+(c.icon||'🔍')+' '+esc(c.name||'')+'</span>'; }).join('');
+    var more=cl.length>shown.length ? '<span class="dc-ev-more">+'+(cl.length-shown.length)+'</span>' : '';
+    return '<div class="dc-evidence"><span class="dc-ev-label">В деле</span>'+chips+more+'</div>';
   }
   // плашки выбора ПОД картой (чёрная рамка + переливы, клик = commitDecision)
   // точки-предвестники (Reigns): выбор заденет Сдвига (розовая) / Детектива (зелёная)
