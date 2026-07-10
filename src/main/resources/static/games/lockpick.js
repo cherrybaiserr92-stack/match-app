@@ -54,16 +54,27 @@
     for(var d=1;d<=DIGITS;d++) pad+='<button class="lp-key" data-d="'+d+'">'+d+'</button>';
 
     var ticks='';
-    for(var t=0;t<24;t++){ var ta=t*15; ticks+='<line x1="50" y1="6" x2="50" y2="'+(t%6===0?14:10)+'" transform="rotate('+ta+' 50 50)"/>'; }
+    for(var t=0;t<36;t++){ var ta=t*10; ticks+='<line x1="50" y1="8" x2="50" y2="'+(t%6===0?15:11.5)+'" transform="rotate('+ta+' 50 50)"/>'; }
+    var nums='';
+    for(var nd=1;nd<=DIGITS;nd++){ var na=(nd-1)*(360/DIGITS);
+      nums+='<text x="50" y="24" transform="rotate('+na+' 50 50)" text-anchor="middle" class="ld-num">'+nd+'</text>'; }
+    var rivets='';
+    for(var rv=0;rv<6;rv++){ var rva=rv*60+30;
+      rivets+='<circle cx="50" cy="11" r="1.8" transform="rotate('+rva+' 50 50)" class="ld-rivet"/>'; }
     root.innerHTML=
       '<div class="lp-wrap">'+
-        '<div class="lp-dialwrap"><svg class="lp-dial" viewBox="0 0 100 100" style="transform:rotate('+dialRot+'deg)">'+
-          '<circle cx="50" cy="50" r="46" class="ld-rim"/>'+
-          '<circle cx="50" cy="50" r="34" class="ld-face"/>'+
-          '<g class="ld-ticks">'+ticks+'</g>'+
-          '<polygon points="50,10 46,20 54,20" class="ld-arrow"/>'+
-          '<circle cx="50" cy="50" r="7" class="ld-hub"/>'+
-        '</svg></div>'+
+        '<div class="lp-dialwrap">'+
+          '<svg class="lp-dial" viewBox="0 0 100 100" style="transform:rotate('+dialRot+'deg)">'+
+            '<circle cx="50" cy="50" r="47" class="ld-outer"/>'+
+            '<circle cx="50" cy="50" r="42" class="ld-rim"/>'+
+            rivets+
+            '<circle cx="50" cy="50" r="31" class="ld-face"/>'+
+            '<g class="ld-ticks">'+ticks+'</g>'+nums+
+            '<circle cx="50" cy="50" r="10" class="ld-hub"/>'+
+            '<circle cx="50" cy="50" r="4.5" class="ld-hub2"/>'+
+          '</svg>'+
+          '<svg class="lp-pointer" viewBox="0 0 100 100"><polygon points="50,2 44,14 56,14" class="ld-arrow"/></svg>'+
+        '</div>'+
         '<div class="lp-head"><span class="lp-title">ВЗЛОМ ЗАМКА</span>'+
           '<span class="lp-moves">Ходов: <b>'+movesLeft+'</b></span></div>'+
         '<div class="lp-board">'+rows+
@@ -88,7 +99,10 @@
   function addDigit(d){
     if(cur.length>=LEN){ cur=[]; }
     cur.push(d);
-    dialRot += (d%2? -1:1) * (30+d*15); // диск крутится, как будто щупаешь код
+    // довести цифру d под стрелку: несколько лишних оборотов для веса
+    var targetAng=-(d-1)*(360/DIGITS);
+    var spins=(cur.length%2? -360:360)*1;
+    dialRot = Math.round(dialRot/360)*360 + spins + targetAng;
     try{navigator.vibrate&&navigator.vibrate(6);}catch(_){}
     render();
   }
@@ -125,7 +139,7 @@
     if(document.getElementById('lp-css')) return;
     var s=document.createElement('style'); s.id='lp-css';
     s.textContent=
-    '.lp-wrap{position:relative;width:100%;max-width:380px;margin:0 auto;color:#e8e2d4;font-family:Manrope,sans-serif;padding:8px;}'+'.lp-dialwrap{display:flex;justify-content:center;margin-bottom:10px;}'+'.lp-dial{width:110px;height:110px;transition:transform .5s cubic-bezier(.3,1.4,.4,1);filter:drop-shadow(0 8px 18px rgba(0,0,0,.6));}'+'.ld-rim{fill:#141218;stroke:#000;stroke-width:3;}'+'.ld-face{fill:#1d1a22;stroke:rgba(255,255,255,.08);stroke-width:1;}'+'.ld-ticks line{stroke:#93a1b3;stroke-width:1.6;opacity:.7;}'+'.ld-arrow{fill:#e0546e;}'+'.ld-hub{fill:#0c0a10;stroke:#93a1b3;stroke-width:1.4;}'+
+    '.lp-wrap{position:relative;width:100%;max-width:380px;margin:0 auto;color:#e8e2d4;font-family:Manrope,sans-serif;padding:8px;}'+'.lp-dialwrap{position:relative;display:flex;justify-content:center;margin-bottom:12px;}'+'.lp-dial{width:150px;height:150px;transition:transform .65s cubic-bezier(.25,1.2,.4,1);filter:drop-shadow(0 10px 22px rgba(0,0,0,.65));}'+'.lp-pointer{position:absolute;top:0;left:50%;width:150px;height:150px;transform:translateX(-50%);pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));}'+'.ld-outer{fill:#0b0a0e;stroke:#000;stroke-width:2;}'+'.ld-rim{fill:#23202a;stroke:rgba(255,255,255,.10);stroke-width:1;}'+'.ld-rivet{fill:#5c6572;stroke:#0b0a0e;stroke-width:.6;}'+'.ld-face{fill:#17141c;stroke:rgba(255,255,255,.07);stroke-width:1;}'+'.ld-ticks line{stroke:#8b96a6;stroke-width:1.3;opacity:.8;}'+'.ld-num{font:700 9px Unbounded,sans-serif;fill:#cfd8e3;}'+'.ld-arrow{fill:#e0546e;}'+'.ld-hub{fill:#201d26;stroke:#8b96a6;stroke-width:1.2;}'+'.ld-hub2{fill:#0c0a10;stroke:#5c6572;stroke-width:1;}'+
     '.lp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}'+
     '.lp-title{font:800 14px Unbounded,sans-serif;letter-spacing:.12em;color:#cfd8e3;}'+
     '.lp-moves{font-size:13px;color:#9aa8b8;}.lp-moves b{color:#fff;}'+

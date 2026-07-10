@@ -41,6 +41,69 @@
   const HINT_DELAY=6000;
   const STARS=[0.4,0.7,1.0]; // пороги «улик»-звёзд от target
 
+
+  // дефы градиентов самоцветов (один раз в DOM)
+  function injectGemDefs(){
+    if(document.getElementById('m3gem-defs')) return;
+    var NS='http://www.w3.org/2000/svg';
+    var hues={red:['#ff9aa0','#e23b4e','#7d1020'], blue:['#9fe0ff','#2f9fe0','#0d4a75'],
+      green:['#8ff0c0','#22c07a','#0b5c3a'], amber:['#ffe3a0','#f0a52e','#8a5408'],
+      violet:['#d9c2ff','#8f5fe8','#45247e']};
+    var svg=document.createElementNS(NS,'svg'); svg.id='m3gem-defs';
+    svg.setAttribute('width','0'); svg.setAttribute('height','0');
+    svg.style.position='absolute';
+    var defs=document.createElementNS(NS,'defs'); var html='';
+    Object.keys(hues).forEach(function(k){ var h=hues[k];
+      html+='<radialGradient id="m3g-'+k+'" cx="38%" cy="30%" r="80%">'+
+        '<stop offset="0%" stop-color="'+h[0]+'"/><stop offset="55%" stop-color="'+h[1]+'"/>'+
+        '<stop offset="100%" stop-color="'+h[2]+'"/></radialGradient>'+
+        '<linearGradient id="m3f-'+k+'" x1="0" y1="0" x2="1" y2="1">'+
+        '<stop offset="0%" stop-color="#ffffff" stop-opacity=".55"/>'+
+        '<stop offset="45%" stop-color="#ffffff" stop-opacity=".08"/>'+
+        '<stop offset="100%" stop-color="#000000" stop-opacity=".30"/></linearGradient>';
+    });
+    defs.innerHTML=html; svg.appendChild(defs); document.body.appendChild(svg);
+  }
+
+  // гранёный самоцвет: форма+фасетки+блик, у каждого типа своя огранка
+  function gemSVG(gid){
+    var G={
+      trace:{hue:'red',   // капля-рубин
+        body:'M24 4 C24 4 40 22 40 31 A16 16 0 0 1 8 31 C8 22 24 4 24 4 Z',
+        facets:'<path d="M24 4 L15 24 L24 44 Z" fill="url(#m3f-red)" opacity=".7"/>'+
+               '<path d="M24 4 L33 24 L24 44 Z" fill="#000" opacity=".14"/>'+
+               '<path d="M15 24 L24 16 L33 24 L24 44 Z" fill="#fff" opacity=".10"/>'},
+      witness:{hue:'blue', // кабошон-сапфир
+        body:'M24 5 A19 19 0 1 1 23.9 5 Z',
+        facets:'<circle cx="24" cy="24" r="12.5" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1.6"/>'+
+               '<path d="M24 5 A19 19 0 0 1 43 24 L31 24 A7.5 7.5 0 0 0 24 16.5 Z" fill="url(#m3f-blue)" opacity=".6"/>'+
+               '<circle cx="24" cy="24" r="6" fill="#0d4a75" opacity=".5"/>'},
+      exhibit:{hue:'green', // изумруд-восьмиугольник
+        body:'M15 6 L33 6 L42 15 L42 33 L33 42 L15 42 L6 33 L6 15 Z',
+        facets:'<path d="M15 6 L33 6 L42 15 L6 15 Z" fill="#fff" opacity=".18"/>'+
+               '<path d="M6 33 L42 33 L33 42 L15 42 Z" fill="#000" opacity=".22"/>'+
+               '<rect x="14" y="14" width="20" height="20" fill="url(#m3f-green)" opacity=".55"/>'+
+               '<rect x="18" y="18" width="12" height="12" fill="#0b5c3a" opacity=".35"/>'},
+      alibi:{hue:'amber', // ромб-топаз
+        body:'M24 3 L44 24 L24 45 L4 24 Z',
+        facets:'<path d="M24 3 L44 24 L24 24 Z" fill="#fff" opacity=".20"/>'+
+               '<path d="M24 45 L4 24 L24 24 Z" fill="#000" opacity=".20"/>'+
+               '<path d="M24 12 L36 24 L24 36 L12 24 Z" fill="url(#m3f-amber)" opacity=".6"/>'},
+      link:{hue:'violet', // шестиугольник-аметист
+        body:'M24 3 L42 13.5 L42 34.5 L24 45 L6 34.5 L6 13.5 Z',
+        facets:'<path d="M24 3 L42 13.5 L24 24 Z" fill="#fff" opacity=".18"/>'+
+               '<path d="M24 45 L6 34.5 L24 24 Z" fill="#000" opacity=".20"/>'+
+               '<path d="M24 11 L35 17.5 L35 30.5 L24 37 L13 30.5 L13 17.5 Z" fill="url(#m3f-violet)" opacity=".55"/>'}
+    };
+    var g=G[gid]||G.trace;
+    return '<svg viewBox="0 0 48 48" style="width:100%;height:100%;display:block">'+
+      '<path d="'+g.body+'" fill="url(#m3g-'+g.hue+')" stroke="#000" stroke-opacity=".55" stroke-width="1.4"/>'+
+      g.facets+
+      '<ellipse cx="17" cy="13" rx="6.5" ry="4" fill="#fff" opacity=".55" transform="rotate(-24 17 13)"/>'+
+      '<ellipse cx="30" cy="36" rx="4" ry="2.2" fill="#fff" opacity=".14" transform="rotate(-24 30 36)"/>'+
+    '</svg>';
+  }
+
   window.Match3={
     start(container,o){
       opts=o||{}; mission=opts.mission||{type:'score',target:600,moves:14};
@@ -48,7 +111,7 @@
       invMode=null; sel=null; busy=false; running=true; idleT=0;
       try{ if(window.BgFx&&BgFx.pause) BgFx.pause(); }catch(e){}
       regenAll();
-      injectCSS(); buildDOM(container); initGrid(); renderBar(); hud(); scheduleHint();
+      injectGemDefs(); injectCSS(); buildDOM(container); initGrid(); renderBar(); hud(); scheduleHint();
     },
     stop(){ running=false; clearTimeout(hintTimer);
       try{ window.removeEventListener('resize',_resize); }catch(e){}
@@ -112,7 +175,9 @@
     @keyframes m3pop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(0);opacity:0}}
     .m3gem.sel{z-index:3;animation:m3sel .55s ease-in-out infinite;}
     @keyframes m3sel{0%,100%{transform:translate3d(var(--tx),var(--ty),0) scale(1)}50%{transform:translate3d(var(--tx),var(--ty),0) scale(1.1)}}
-    .m3gem.hint .gembody{outline:2px solid rgba(255,255,255,.75);outline-offset:-2px;}
+    .m3gem.hint .gemstone{animation:m3hintPulse .8s ease-in-out infinite;}
+    @keyframes m3hintPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+    .gemstone{position:absolute;inset:6%;}
     /* вещдок: тёмное стекло, неоновая иконка улики */
     .gembody{position:absolute;inset:6%;border-radius:26%;overflow:hidden;border:1px solid;
       background:linear-gradient(165deg,#211d26,#0d0b10 70%);
@@ -200,8 +265,7 @@
   function makeGem(c,sp){
     const g=GEMS[c]||GEMS[0];
     const el=document.createElement('div'); el.className='m3gem';
-    el.innerHTML='<div class="gembody" style="border-color:'+g.c2+'66"></div>'+
-      '<div class="gememb" style="color:'+g.glow+';filter:drop-shadow(0 0 5px '+g.glow+'aa)"><svg viewBox="0 0 24 24">'+(EMBLEM[g.id]||'')+'</svg></div>'+
+    el.innerHTML='<div class="gemstone" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,.55)) drop-shadow(0 0 7px '+g.glow+'55)">'+gemSVG(g.id)+'</div>'+
       (sp?'<div class="gemspring"></div><div class="gemmark" style="font-size:'+(_cellPx*0.4)+'px">'+(SPMARK[sp]||'')+'</div>':'');
     return el;
   }
@@ -356,8 +420,8 @@
       if(grid[k].el&&grid[k].el.parentNode) grid[k].el.parentNode.removeChild(grid[k].el);
       grid[k]={c,sp:SP.NONE,el:makeGem(c,SP.NONE)}; _board.appendChild(grid[k].el); place(grid[k].el,k,'spawn'); }
     let guard=0; while(findMatches().length&&guard++<100){ findMatches().forEach(g=>g.forEach(k=>{ grid[k].c=rnd();
-      const gg=GEMS[grid[k].c]; grid[k].el.querySelector('.gembody').style.borderColor=gg.c2+'66';
-      const em=grid[k].el.querySelector('.gememb'); if(em){ em.style.color=gg.glow; em.style.filter='drop-shadow(0 0 5px '+gg.glow+'aa)'; } })); }
+      if(grid[k].el&&grid[k].el.parentNode) grid[k].el.parentNode.removeChild(grid[k].el);
+      grid[k].el=makeGem(grid[k].c,grid[k].sp); _board.appendChild(grid[k].el); place(grid[k].el,k,false); })); }
     Sound.transition&&Sound.transition(); setTimeout(()=>{ busy=false; checkEnd(); },340); }
   function saveP(){ try{ window.saveProfile&&saveProfile(); }catch(e){} }
 

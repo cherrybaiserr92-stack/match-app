@@ -6,7 +6,7 @@
 (function(){
   var cv,ctx,raf,running=false,opts=null;
   var W=0,H=0,DPR=1;
-  var target,crowd=[],aim={x:0,y:0};
+  var target,crowd=[],aim={x:0,y:0},rain=[];
   var progress=0,need=100,heat=0,lost=0,maxLost=100;
   var lastT=0,duration=0,survived=0;
 
@@ -19,6 +19,9 @@
     ctx.setTransform(DPR,0,0,DPR,0,0);
   }
 
+  function spawnRain(){
+    rain=[]; for(var i=0;i<42;i++) rain.push({x:Math.random()*W,y:Math.random()*H,l:8+Math.random()*10,v:220+Math.random()*160});
+  }
   function spawnCrowd(){
     crowd=[];
     for(var i=0;i<10;i++){
@@ -75,17 +78,27 @@
     if(lost>=maxLost){ lose(); }
   }
 
-  function drawFigure(x,y,col,r,filled){
+  function drawFigure(x,y,col,r,glowCol){
     ctx.save();ctx.translate(x,y);
-    ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=2.4;
-    // голова
-    ctx.beginPath();ctx.arc(0,-r*0.7,r*0.32,0,6.28);filled?ctx.fill():ctx.stroke();
-    // плечи/тело (силуэт в шляпе — нуар)
+    if(glowCol){ var gg=ctx.createRadialGradient(0,0,r*0.2,0,0,r*1.9);
+      gg.addColorStop(0,glowCol); gg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=gg; ctx.fillRect(-r*2,-r*2,r*4,r*4); }
+    ctx.fillStyle=col;
+    // пальто (трапеция с плечами)
     ctx.beginPath();
-    ctx.moveTo(-r*0.5,r*0.8);ctx.quadraticCurveTo(0,-r*0.2,r*0.5,r*0.8);
-    filled?ctx.fill():ctx.stroke();
-    // шляпа
-    ctx.beginPath();ctx.moveTo(-r*0.45,-r*0.9);ctx.lineTo(r*0.45,-r*0.9);ctx.stroke();
+    ctx.moveTo(-r*0.62,r*0.95); ctx.lineTo(-r*0.5,-r*0.1);
+    ctx.quadraticCurveTo(-r*0.45,-r*0.42,-r*0.2,-r*0.46);
+    ctx.lineTo(r*0.2,-r*0.46);
+    ctx.quadraticCurveTo(r*0.45,-r*0.42,r*0.5,-r*0.1);
+    ctx.lineTo(r*0.62,r*0.95); ctx.closePath(); ctx.fill();
+    // голова
+    ctx.beginPath(); ctx.arc(0,-r*0.66,r*0.26,0,6.28); ctx.fill();
+    // федора: тулья + поля
+    ctx.beginPath();
+    ctx.ellipse(0,-r*0.88,r*0.5,r*0.11,0,0,6.28); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-r*0.3,-r*0.9); ctx.quadraticCurveTo(-r*0.28,-r*1.22,0,-r*1.22);
+    ctx.quadraticCurveTo(r*0.28,-r*1.22,r*0.3,-r*0.9); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
 
@@ -107,11 +120,19 @@
       ctx.fillStyle=lg2; ctx.fillRect(0,0,W,H);
     }
 
-    // толпа (серые силуэты-приманки)
-    for(var i=0;i<crowd.length;i++){ drawFigure(crowd[i].x,crowd[i].y,'rgba(120,120,135,0.5)',18,false); }
-    // цель (подозреваемый — выделен)
-    var tcol = heat>0.5?'#ffcf6b':'#e0a060';
-    drawFigure(target.x,target.y,tcol,22,false);
+    // толпа (тёмные силуэты в пальто)
+    for(var i=0;i<crowd.length;i++){ var bob=Math.sin(crowd[i].ph)*2;
+      drawFigure(crowd[i].x,crowd[i].y+bob,'rgba(52,56,66,0.9)',18,null); }
+    // цель: тёплый силуэт с подсветкой
+    var tcol = heat>0.5?'#e8b45a':'#c28a48';
+    drawFigure(target.x,target.y,tcol,22, heat>0.5?'rgba(232,180,90,0.16)':'rgba(194,138,72,0.10)');
+    // дождь
+    ctx.save(); ctx.strokeStyle='rgba(170,190,215,0.16)'; ctx.lineWidth=1;
+    for(var ri=0;ri<rain.length;ri++){ var rp=rain[ri];
+      rp.y+=rp.v*dt; rp.x-=rp.v*dt*0.12;
+      if(rp.y>H){ rp.y=-12; rp.x=Math.random()*W; }
+      ctx.beginPath(); ctx.moveTo(rp.x,rp.y); ctx.lineTo(rp.x+rp.l*0.14,rp.y+rp.l); ctx.stroke(); }
+    ctx.restore();
     // метка над целью
     ctx.save();ctx.globalAlpha=0.5+0.4*Math.sin(survived*5);
     ctx.fillStyle=tcol;ctx.beginPath();
@@ -173,7 +194,7 @@
     wrap.appendChild(tip);
     container.appendChild(wrap);
     ctx=cv.getContext('2d');
-    resize();aim.x=W/2;aim.y=H/2;spawnCrowd();initTarget();
+    resize();aim.x=W/2;aim.y=H/2;spawnCrowd();initTarget();spawnRain();
     cv.addEventListener('touchstart',function(e){e.preventDefault();move(e);},{passive:false});
     cv.addEventListener('touchmove',function(e){e.preventDefault();move(e);},{passive:false});
     cv.addEventListener('mousemove',move);
