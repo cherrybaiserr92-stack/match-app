@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R126';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R127';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -631,17 +631,22 @@ function buildBacks(){
 /* ── мини-игра: блокировка свайпа ── */
 function missionFor(ev){
   if(ev && ev.mission) return ev.mission;
-  /* генерация по типу события, если в сценарии не задано */
+  /* сложность растёт по главам: меньше ходов, с гл.2 появляется лёд */
+  const ch=Math.max(1,Math.min(5, (typeof chapterOfIndex==='function')?chapterOfIndex(_caseIdx):1));
+  const MOVES=[0,20,18,16,15,13][ch];
+  const ICE  =[0, 0, 4, 6, 8,10][ch];   // замороженные клетки на поле
   const t=(ev&&ev.t)||'evidence';
   const M={
-    crime:    {type:'score', target:700, moves:16, label:'Собери 700 очков — осмотри сцену'},
-    evidence: {type:'clear', target:16, moves:18, label:'Очисти 16 ячеек — найди улику'},
-    witness:  {type:'color', color:0, target:12, moves:16, label:'Собери 12 красных — разговори свидетеля'},
-    suspect:  {type:'combo', target:3, moves:15, label:'Сделай 3 комбо — дожми подозреваемого'},
-    revelation:{type:'score',target:900, moves:18, label:'Собери 900 очков — собери факты'},
-    final:    {type:'score', target:1200,moves:20, label:'Собери 1200 очков — назови имя'}
+    crime:    {type:'score', target:500+ch*120, label:'Очков: набери — осмотри сцену'},
+    evidence: {type:'clear', target:12+ch*3,    label:'Очисти ячейки — найди улику'},
+    witness:  {type:'color', color:0, target:9+ch*2, label:'Собери красные — разговори свидетеля'},
+    suspect:  {type:'combo', target:2+Math.ceil(ch/2), label:'Каскады подряд — дожми подозреваемого'},
+    revelation:{type:'score',target:700+ch*130, label:'Очков: собери факты'},
+    final:    {type:'score', target:900+ch*160, label:'Очков: назови имя'}
   };
-  return M[t]||M.evidence;
+  const m=Object.assign({}, M[t]||M.evidence);
+  m.moves=MOVES; m.ice=ICE; m.chapter=ch;
+  return m;
 }
 function addLockOverlay(cardEl){
   const pad=cardEl.querySelector('.pad'); if(!pad) return;

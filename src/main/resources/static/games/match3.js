@@ -36,7 +36,7 @@
   ];
 
   let opts=null, mission=null, moves=0, score=0, progress=0, combo=0, comboMax=0;
-  let grid=[], invMode=null, running=false, busy=false, sel=null, idleT=0, hintTimer=null;
+  let grid=[], ice=[], invMode=null, running=false, busy=false, sel=null, idleT=0, hintTimer=null;
   let _root,_board,_hud,_bar,_stage,_cellPx=40,_resize,_cellBgs=null;
   const HINT_DELAY=6000;
   const STARS=[0.4,0.7,1.0]; // пороги «улик»-звёзд от target
@@ -113,9 +113,13 @@
       regenAll();
       injectGemDefs(); injectCSS(); buildDOM(container); initGrid(); renderBar(); hud(); scheduleHint();
     },
+    _dbg:{ getIce:function(){return ice.slice();},
+      clearAt:function(k){ clearSet(new Set([k])); },
+      setIce:function(k,v){ice[k]=v; if(typeof renderIce==='function')renderIce();},
+      getGrid:function(){return grid.map(function(g){return g?g.c:-9;});} },
     stop(){ running=false; clearTimeout(hintTimer);
       try{ window.removeEventListener('resize',_resize); }catch(e){}
-      if(_root&&_root.parentNode) _root.parentNode.innerHTML=''; _cellBgs=null; }
+      if(_root&&_root.parentNode) _root.parentNode.innerHTML=''; _cellBgs=null; _iceEls=null; }
   };
 
   /* ── восстановление усилителей по времени ── */
@@ -152,14 +156,18 @@
     .m3moves .l{font-size:8px;color:#93a1b3;letter-spacing:.08em;}
     .m3moves .n{font-size:20px;font-weight:900;line-height:1;color:#fff;}
     .m3moves .n.low{color:#ff6470;}
-    .m3goalwrap{flex:1;display:flex;flex-direction:column;gap:4px;}
-    .m3goaltxt{font-size:9px;letter-spacing:.06em;color:#93a1b3;}
-    .m3stars{display:flex;gap:5px;}
-    .m3star{width:18px;height:18px;color:#3a342a;transition:color .3s,transform .3s;}
-    .m3star.on{color:#46d89b;transform:scale(1.1);filter:drop-shadow(0 0 5px rgba(70,216,155,.7));}
-    .m3star svg{width:100%;height:100%;display:block;fill:currentColor;}
-    .m3track{height:6px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;}
-    .m3fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#2a9d6f,#46d89b);transition:width .35s cubic-bezier(.3,1,.4,1);}
+    .m3goalwrap{flex:1;display:flex;flex-direction:column;gap:8px;}
+    .m3goalrow{display:flex;align-items:center;gap:8px;}
+    .m3goalico{width:26px;height:26px;flex:0 0 auto;display:inline-flex;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));}
+    .m3goalemoji{font-size:20px;align-items:center;justify-content:center;}
+    .m3goaltxt{font-family:Unbounded,sans-serif;font-weight:700;font-size:12px;letter-spacing:.03em;color:#e6edf5;}
+    .m3star{width:20px;height:20px;color:#3a3f48;transition:color .3s,transform .3s;}
+    .m3star.ontrack{position:absolute;top:50%;transform:translate(-50%,-50%);}
+    .m3star.ontrack.on{color:#46d89b;transform:translate(-50%,-50%) scale(1.15);filter:drop-shadow(0 0 6px rgba(70,216,155,.8));}
+    .m3star svg{width:100%;height:100%;display:block;fill:currentColor;stroke:#0a0c10;stroke-width:1.2;}
+    .m3track{position:relative;height:8px;border-radius:6px;background:rgba(255,255,255,.08);margin-right:10px;
+      box-shadow:inset 0 1px 2px rgba(0,0,0,.5);}
+    .m3fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#2a9d6f,#46d89b);transition:width .35s cubic-bezier(.3,1,.4,1);box-shadow:0 0 8px rgba(70,216,155,.45);}
     .m3stage{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:0;position:relative;}
     .m3board{position:relative;touch-action:none;border-radius:14px;
       background:linear-gradient(160deg,#232227,#0a0a0c 60%,#000);padding:3px;border:1px solid #000;
@@ -168,7 +176,7 @@
     /* фишка: ТОЛЬКО transform/opacity анимируются (GPU) */
     .m3gem{position:absolute;will-change:transform;cursor:pointer;
       transition:transform .15s cubic-bezier(.34,1.4,.6,1);}
-    .m3gem.fall{transition:transform .26s cubic-bezier(.4,1.3,.55,1);}
+    .m3gem.fall{transition:transform .3s cubic-bezier(.3,1.45,.45,1);}
     .m3gem.spawn{animation:m3spawn .26s ease forwards;}
     @keyframes m3spawn{from{opacity:0}to{opacity:1}}
     .m3gem.pop{animation:m3pop .24s ease forwards;}
@@ -177,7 +185,28 @@
     @keyframes m3sel{0%,100%{transform:translate3d(var(--tx),var(--ty),0) scale(1)}50%{transform:translate3d(var(--tx),var(--ty),0) scale(1.1)}}
     .m3gem.hint .gemstone{animation:m3hintPulse .8s ease-in-out infinite;}
     @keyframes m3hintPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
-    .gemstone{position:absolute;inset:6%;}
+    .gemstone{position:absolute;inset:6%;animation:m3idleGlow 6s ease-in-out infinite;}
+    @keyframes m3idleGlow{0%,86%,100%{filter:brightness(1)}92%{filter:brightness(1.22)}}
+    /* лёд: вмороженная клетка */
+    .m3ice{position:absolute;border-radius:8px;z-index:4;pointer-events:none;
+      background:linear-gradient(158deg,rgba(168,214,255,.34),rgba(96,146,208,.20));
+      border:1px solid rgba(196,232,255,.55);
+      box-shadow:inset 0 1px 3px rgba(255,255,255,.35), inset 0 -2px 4px rgba(40,80,140,.3);}
+    .m3ice.lv2{background:linear-gradient(158deg,rgba(198,232,255,.5),rgba(120,168,224,.34));
+      border-color:rgba(220,242,255,.8);}
+    .m3ice.cracked{background-image:linear-gradient(158deg,rgba(168,214,255,.28),rgba(96,146,208,.16)),
+      url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><path d="M8 6 L20 19 L14 30 M20 19 L33 12 M20 19 L27 33" stroke="white" stroke-opacity=".55" stroke-width="1.2" fill="none"/></svg>');
+      background-size:cover;}
+    .m3iceshard{position:absolute;width:7px;height:7px;pointer-events:none;will-change:transform,opacity;
+      background:linear-gradient(140deg,#dff0ff,#8ab6e8);border-radius:2px;}
+    .m3gem.frozenshake{animation:m3fshake .32s ease;}
+    @keyframes m3fshake{0%,100%{}25%{margin-left:-4px}75%{margin-left:4px}}
+    .m3flash{position:absolute;width:8px;height:8px;border-radius:50%;pointer-events:none;
+      background:#fff;box-shadow:0 0 18px 10px rgba(255,255,255,.55);
+      transform:translate(-50%,-50%);animation:m3fl .3s ease-out forwards;}
+    @keyframes m3fl{from{opacity:.9;transform:translate(-50%,-50%) scale(.6)}to{opacity:0;transform:translate(-50%,-50%) scale(2.2)}}
+    .m3stage.bigshake{animation:m3bigshake .34s ease;}
+    @keyframes m3bigshake{0%,100%{transform:none}20%{transform:translate(-5px,2px)}45%{transform:translate(5px,-3px)}70%{transform:translate(-3px,-2px)}}
     /* вещдок: тёмное стекло, неоновая иконка улики */
     .gembody{position:absolute;inset:6%;border-radius:26%;overflow:hidden;border:1px solid;
       background:linear-gradient(165deg,#211d26,#0d0b10 70%);
@@ -215,6 +244,12 @@
     @keyframes m3fade{from{opacity:0}to{opacity:1}}
     .m3end .v{font-family:Unbounded,sans-serif;font-weight:900;font-size:25px;}
     .m3end .s{font-size:13px;color:#9aa3b2;}
+    .m3endstars{display:flex;gap:14px;margin-bottom:4px;}
+    .m3endstar{width:44px;height:44px;color:#2c3138;}
+    .m3endstar svg{width:100%;height:100%;fill:currentColor;stroke:#0a0c10;stroke-width:1;}
+    .m3endstar.earn{color:#46d89b;opacity:0;transform:scale(2.2);
+      animation:m3starIn .45s cubic-bezier(.2,1.6,.4,1) forwards;filter:drop-shadow(0 0 12px rgba(70,216,155,.8));}
+    @keyframes m3starIn{to{opacity:1;transform:scale(1)}}
     `;
     document.head.appendChild(s);
   }
@@ -248,15 +283,58 @@
       c.style.left=(x*_cellPx+2)+'px'; c.style.top=(y*_cellPx+2)+'px';
       c.style.width=(_cellPx-4)+'px'; c.style.height=(_cellPx-4)+'px'; }
     for(let k=0;k<N*N;k++){ if(grid[k]&&grid[k].el) place(grid[k].el,k,false); }
+    if(_iceEls) renderIce();
   }
 
   /* ── сетка ── */
   function initGrid(){
-    grid=new Array(N*N);
+    grid=new Array(N*N); ice=new Array(N*N).fill(0);
     for(let k=0;k<N*N;k++) grid[k]={c:rnd(),sp:SP.NONE,el:null};
     let guard=0; while(findMatches().length&&guard++<200){ findMatches().forEach(g=>g.forEach(k=>grid[k].c=rnd())); }
+    // лёд: mission.ice клеток в средней зоне; на глубоких главах часть двухслойные
+    var nIce=(mission.ice|0);
+    if(nIce>0){
+      var cand=[]; for(let y=2;y<N-1;y++)for(let x=0;x<N;x++)cand.push(idx(x,y));
+      cand.sort(function(){return Math.random()-0.5;});
+      for(var i=0;i<Math.min(nIce,cand.length);i++){
+        ice[cand[i]]=(mission.chapter>=4 && i<nIce/3)?2:1;
+      }
+    }
     for(let k=0;k<N*N;k++){ grid[k].el=makeGem(grid[k].c,grid[k].sp); _board.appendChild(grid[k].el); place(grid[k].el,k,false); }
+    renderIce();
     bindInput();
+  }
+  // слой льда: элементы поверх cellbg, под камнями
+  var _iceEls=null;
+  function renderIce(){
+    if(!_iceEls){ _iceEls=[];
+      for(let k=0;k<N*N;k++){ const d=document.createElement('div'); d.className='m3ice'; d.style.display='none';
+        _board.appendChild(d); _iceEls.push(d); } }
+    for(let k=0;k<N*N;k++){
+      const d=_iceEls[k], x=k%N, y=k/N|0, lv=ice[k];
+      d.style.left=(x*_cellPx+2)+'px'; d.style.top=(y*_cellPx+2)+'px';
+      d.style.width=(_cellPx-4)+'px'; d.style.height=(_cellPx-4)+'px';
+      d.style.display=lv>0?'block':'none';
+      d.classList.toggle('lv2', lv>=2);
+      d.classList.toggle('cracked', lv===1 && d._wasHit===true);
+    }
+  }
+  function hitIce(k){
+    if(ice[k]<=0) return false;
+    ice[k]--;
+    if(_iceEls&&_iceEls[k]) _iceEls[k]._wasHit=true;
+    iceShatter(k);
+    try{Sound.tap&&Sound.tap();}catch(_){}
+    return true; // лёд поглотил удар
+  }
+  function iceShatter(k){
+    const x=k%N,y=k/N|0;
+    for(let i=0;i<6;i++){ const p=document.createElement('div'); p.className='m3iceshard';
+      p.style.left=(x*_cellPx+_cellPx/2)+'px'; p.style.top=(y*_cellPx+_cellPx/2)+'px';
+      const a=Math.random()*6.28,d2=12+Math.random()*20; _board.appendChild(p);
+      requestAnimationFrame(()=>{ p.style.transition='transform .5s ease-out,opacity .5s';
+        p.style.opacity='0'; p.style.transform='translate3d('+(Math.cos(a)*d2)+'px,'+(Math.sin(a)*d2+10)+'px,0) rotate('+(Math.random()*180-90)+'deg)'; });
+      setTimeout(()=>{ if(p.parentNode)p.parentNode.removeChild(p); },520); }
   }
   function rnd(){ return Math.floor(Math.random()*NC); }
   const idx=(x,y)=>y*N+x;
@@ -292,7 +370,9 @@
     return groups;
   }
   function findHint(){ for(let y=0;y<N;y++)for(let x=0;x<N;x++) for(const[dx,dy] of [[1,0],[0,1]]){
-    if(!inb(x+dx,y+dy))continue; sd(idx(x,y),idx(x+dx,y+dy));
+    if(!inb(x+dx,y+dy))continue;
+    if(ice[idx(x,y)]>0||ice[idx(x+dx,y+dy)]>0)continue;
+    sd(idx(x,y),idx(x+dx,y+dy));
     const m=findMatches().length>0; sd(idx(x,y),idx(x+dx,y+dy)); if(m)return[idx(x,y),idx(x+dx,y+dy)]; } return null; }
   function sd(a,b){ const tc=grid[a].c; grid[a].c=grid[b].c; grid[b].c=tc; const ts=grid[a].sp; grid[a].sp=grid[b].sp; grid[b].sp=ts; }
 
@@ -322,6 +402,11 @@
     if(busy||!running) return;
     const ax=a%N,ay=a/N|0,bx=b%N,by=b/N|0;
     if(Math.abs(ax-bx)+Math.abs(ay-by)!==1) return;
+    if(ice[a]>0||ice[b]>0){ // вмороженный камень не сдвинуть
+      Sound.error&&Sound.error(); vibrate(10);
+      const el=grid[ice[a]>0?a:b].el; if(el){ el.classList.add('frozenshake'); setTimeout(()=>el.classList.remove('frozenshake'),320); }
+      setSel(null); return;
+    }
     setSel(null); idleT=0; clearHint();
     if(grid[a].sp===SP.RAINBOW||grid[b].sp===SP.RAINBOW){
       busy=true; Sound.gemSwap&&Sound.gemSwap(); swapFull(a,b);
@@ -355,7 +440,11 @@
       score+=gained+(combo>1?combo*5:0); if(mission.type==='score')progress=score;
       Sound.gemMatch&&Sound.gemMatch(matches.length);
       if(cascade>1){Sound.gemCascade&&Sound.gemCascade(cascade);vibrate(8);} else vibrate(12);
-      expand.forEach(k=>{ if(specials.some(s=>s.k===k))return; removeGem(k); });
+      const absorbed=new Set();
+      expand.forEach(k=>{ if(hitIce(k)) absorbed.add(k); });
+      renderIce();
+      expand.forEach(k=>{ if(absorbed.has(k))return; if(specials.some(s=>s.k===k))return; removeGem(k); });
+      if(cascade>=3){ _stage.classList.remove('bigshake'); void _stage.offsetWidth; _stage.classList.add('bigshake'); }
       specials.forEach(s=>{ const old=grid[s.k].el; if(old&&old.parentNode)old.parentNode.removeChild(old);
         grid[s.k].c=s.c; grid[s.k].sp=s.sp; grid[s.k].el=makeGem(s.c,s.sp); _board.appendChild(grid[s.k].el); place(grid[s.k].el,s.k,'spawn'); ring(s.k); });
       hud();
@@ -376,7 +465,9 @@
   function detonateRainbow(rk,color){ const set=new Set(); for(let i=0;i<N*N;i++)if(grid[i].c===color)set.add(i); set.add(rk);
     Sound.special&&Sound.special(); let gained=0;
     set.forEach(k=>{ if(grid[k].c<0)return; gained+=14; burst(k);
-      if(mission.type==='color'&&grid[k].c===(mission.color||0))progress++; if(mission.type==='clear')progress++; removeGem(k); });
+      if(mission.type==='color'&&grid[k].c===(mission.color||0))progress++; if(mission.type==='clear')progress++;
+      if(hitIce(k))return; removeGem(k); });
+    renderIce();
     score+=gained; if(mission.type==='score')progress=score; hud();
     setTimeout(()=>{ collapse(); setTimeout(()=>resolveBoard(null),300); },260); }
 
@@ -411,7 +502,9 @@
   }
   function clearSet(set){ Sound.booster&&Sound.booster(); vibrate([10,30]); busy=true; let gained=0;
     set.forEach(k=>{ if(grid[k].c<0)return; gained+=12; burst(k);
-      if(mission.type==='color'&&grid[k].c===(mission.color||0))progress++; if(mission.type==='clear')progress++; removeGem(k); });
+      if(mission.type==='color'&&grid[k].c===(mission.color||0))progress++; if(mission.type==='clear')progress++;
+      if(hitIce(k))return; removeGem(k); });
+    renderIce();
     score+=gained; if(mission.type==='score')progress=score; hud();
     setTimeout(()=>{ collapse(); setTimeout(()=>resolveBoard(null),300); },260); }
   function shuffleBoard(){ busy=true; const cs=[]; for(let k=0;k<N*N;k++) if(grid[k].c>=0) cs.push(grid[k].c);
@@ -427,7 +520,10 @@
 
   /* ── эффекты ── */
   function burst(k){ const g=GEMS[grid[k].c]||GEMS[0]; const x=k%N,y=k/N|0;
-    for(let i=0;i<5;i++){ const p=document.createElement('div'); p.className='m3burst'; p.style.background=g.c1;
+    const fl=document.createElement('div'); fl.className='m3flash';
+    fl.style.left=(x*_cellPx+_cellPx/2)+'px'; fl.style.top=(y*_cellPx+_cellPx/2)+'px';
+    _board.appendChild(fl); setTimeout(()=>{ if(fl.parentNode)fl.parentNode.removeChild(fl); },300);
+    for(let i=0;i<8;i++){ const p=document.createElement('div'); p.className='m3burst'; p.style.background=g.c1;
       p.style.left=(x*_cellPx+_cellPx/2)+'px'; p.style.top=(y*_cellPx+_cellPx/2)+'px';
       const a=Math.random()*6.28,d=10+Math.random()*22; _board.appendChild(p);
       requestAnimationFrame(()=>{ p.style.transition='transform .45s ease-out,opacity .45s'; p.style.opacity='0';
@@ -448,24 +544,44 @@
   function lose(){ running=false; clearTimeout(hintTimer); Sound.deny&&Sound.deny(); end(false); setTimeout(()=>opts.onLose&&opts.onLose(),1500); }
   function end(won){ const stars=starsEarned();
     const o=document.createElement('div'); o.className='m3end';
-    o.innerHTML='<div class="v" style="color:'+(won?'#46d89b':'#ff6470')+';text-shadow:0 0 24px '+(won?'#46d89b':'#ff6470')+'">'+
+    o.innerHTML='<div class="m3endstars">'+[0,1,2].map(i=>
+        '<span class="m3endstar'+(i<stars&&won?' earn':'')+'" style="animation-delay:'+(0.25+i*0.3)+'s">'+STAR_SVG+'</span>').join('')+'</div>'+
+      '<div class="v" style="color:'+(won?'#46d89b':'#ff6470')+';text-shadow:0 0 24px '+(won?'#46d89b':'#ff6470')+'">'+
       (won?'УЛИКА ПОЛУЧЕНА':'УЛИКА УТЕРЯНА')+'</div>'+
-      '<div class="s">'+(won?('Улик собрано: '+stars+' / 3'):'Сдвиг недоволен')+'</div>';
-    _root.appendChild(o); }
+      '<div class="s">'+(won?('Точность сыска: '+stars+' из 3'):'Сдвиг недоволен. Попробуй ещё.')+'</div>';
+    _root.appendChild(o);
+    if(won&&stars>0){ let si=0; const tick=()=>{ if(si++<stars){ try{Sound.approve&&Sound.approve();}catch(_){ } setTimeout(tick,300);} }; setTimeout(tick,250); } }
 
   /* ── HUD: ходы + звёзды-улики + цель ── */
   function starsEarned(){ const target=mission.target||600; let s=0; STARS.forEach(t=>{ if(progress>=target*t)s++; }); return s; }
   const STAR_SVG='<svg viewBox="0 0 24 24"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"/></svg>';
+  function goalIconHtml(){
+    if(mission.type==='color'){ const g=GEMS[mission.color||0];
+      return '<span class="m3goalico">'+gemSVG(g.id)+'</span>'; }
+    if(mission.type==='clear') return '<span class="m3goalico m3goalemoji">🧹</span>';
+    if(mission.type==='combo') return '<span class="m3goalico m3goalemoji">⚡</span>';
+    return '<span class="m3goalico m3goalemoji">💯</span>';
+  }
+  function goalLeftTxt(){
+    const target=mission.target||600;
+    const left=Math.max(0,target-progress);
+    if(mission.type==='score') return progress+' / '+target;
+    if(mission.type==='combo') return 'лучший ×'+comboMax+' из ×'+target;
+    return left>0 ? ('осталось '+left) : 'готово!';
+  }
   function hud(){
     const target=mission.target||600, pct=Math.min(100,Math.round(progress/target*100)), st=starsEarned();
     _hud.innerHTML=
       '<div class="m3moves"><span class="l">ХОДЫ</span><span class="n'+(moves<=3?' low':'')+'">'+moves+'</span></div>'+
       '<div class="m3goalwrap">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between">'+
-          '<span class="m3goaltxt">'+(mission.label||'ЦЕЛЬ')+'</span>'+
-          '<span class="m3stars">'+[0,1,2].map(i=>'<span class="m3star'+(i<st?' on':'')+'">'+STAR_SVG+'</span>').join('')+'</span>'+
+        '<div class="m3goalrow">'+goalIconHtml()+
+          '<span class="m3goaltxt">'+goalLeftTxt()+'</span>'+
         '</div>'+
-        '<div class="m3track"><div class="m3fill" style="width:'+pct+'%"></div></div>'+
+        '<div class="m3track">'+
+          '<div class="m3fill" style="width:'+pct+'%"></div>'+
+          [0,1,2].map(i=>{ const pos=STARS[i]*100;
+            return '<span class="m3star ontrack'+(i<st?' on':'')+'" style="left:'+pos+'%">'+STAR_SVG+'</span>'; }).join('')+
+        '</div>'+
       '</div>';
   }
 
