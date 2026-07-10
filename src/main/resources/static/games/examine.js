@@ -7,7 +7,7 @@
   var cv, ctx, raf, running=false, opts=null;
   var W=0,H=0,DPR=1;
   var items=[], need=0, found=0, strikes=0, maxStrikes=3;
-  var glass={x:-999,y:-999,active:false};
+  var glass={x:0,y:0,r:78,active:true};
   var t0=0;
 
   // нуар-иконки предметов (рисуются процедурно)
@@ -50,6 +50,7 @@
     W=rect.width; H=rect.height;
     cv.width=W*DPR; cv.height=H*DPR;
     ctx.setTransform(DPR,0,0,DPR,0,0);
+    if(!glass._init){ glass.x=W/2; glass.y=H*0.42; glass.r=Math.min(W,H)*0.21; glass._init=true; }
   }
 
   function drawIcon(it,a){
@@ -96,6 +97,12 @@
     var g=ctx.createRadialGradient(W/2,H*0.4,40,W/2,H*0.4,Math.max(W,H)*0.7);
     g.addColorStop(0,'rgba(30,26,20,0.6)'); g.addColorStop(1,'rgba(8,8,11,0.95)');
     ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // свет лупы: тёплое пятно на «полу»
+    var lg=ctx.createRadialGradient(glass.x,glass.y,glass.r*0.2,glass.x,glass.y,glass.r*1.6);
+    lg.addColorStop(0,'rgba(255,214,150,0.10)');
+    lg.addColorStop(0.6,'rgba(255,200,130,0.05)');
+    lg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=lg; ctx.fillRect(0,0,W,H);
 
     var near=null, nd=1e9;
     for(var i=0;i<items.length;i++){
@@ -103,14 +110,13 @@
       it.scale += (1-it.scale)*0.12; // плавное появление
       it.glint+=0.05;
       var dx=it.x-glass.x, dy=it.y-glass.y, d=Math.sqrt(dx*dx+dy*dy);
-      if(glass.active && d<nd){ nd=d; near=it; }
-      // базовая прорисовка
-      var a=0.55;
-      // под лупой ярче
-      if(glass.active && d<glass.r){ a=0.95; }
+      if(d<nd){ nd=d; near=it; }
+      // тьма: предмет виден только в свете лупы, силуэтом — рядом с ней
+      var a = d<glass.r ? 0.95 : Math.max(0.10, 0.42 - (d-glass.r)/(glass.r*3));
+      if(it.found) a=Math.max(a,0.85);
       drawIcon(it,a);
-      // настоящие улики под лупой — лёгкий янтарный отблеск
-      if(it.real && !it.found && glass.active && d<glass.r){
+      // настоящие улики под лупой — янтарный отблеск
+      if(it.real && !it.found && d<glass.r){
         var pulse=0.4+0.3*Math.sin(it.glint*2);
         ctx.save();
         ctx.globalAlpha=pulse*0.6;
@@ -120,23 +126,27 @@
       }
     }
 
-    // линза (лупа)
-    if(glass.active){
-      ctx.save();
-      ctx.beginPath(); ctx.arc(glass.x,glass.y,glass.r,0,6.28);
-      ctx.strokeStyle='rgba(200,160,90,0.5)'; ctx.lineWidth=3; ctx.stroke();
-      ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1; ctx.stroke();
-      // блик
-      ctx.beginPath(); ctx.arc(glass.x-glass.r*0.3,glass.y-glass.r*0.3,glass.r*0.15,0,6.28);
-      ctx.fillStyle='rgba(255,255,255,0.10)'; ctx.fill();
-      ctx.restore();
-    }
+    // линза (лупа): стальная оправа + ручка
+    ctx.save();
+    ctx.beginPath(); ctx.arc(glass.x,glass.y,glass.r,0,6.28);
+    ctx.strokeStyle='rgba(207,216,227,0.75)'; ctx.lineWidth=4; ctx.stroke();
+    ctx.beginPath(); ctx.arc(glass.x,glass.y,glass.r-4,0,6.28);
+    ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=2; ctx.stroke();
+    // ручка вниз-вправо
+    var hx=Math.cos(0.7)*glass.r, hy=Math.sin(0.7)*glass.r;
+    ctx.beginPath(); ctx.moveTo(glass.x+hx,glass.y+hy);
+    ctx.lineTo(glass.x+hx*1.55,glass.y+hy*1.55);
+    ctx.strokeStyle='rgba(147,161,179,0.8)'; ctx.lineWidth=7; ctx.lineCap='round'; ctx.stroke();
+    // блик линзы
+    ctx.beginPath(); ctx.arc(glass.x-glass.r*0.32,glass.y-glass.r*0.32,glass.r*0.14,0,6.28);
+    ctx.fillStyle='rgba(255,255,255,0.09)'; ctx.fill();
+    ctx.restore();
 
     // HUD: счётчик улик и промахов
     ctx.save();
-    ctx.font='600 14px Inter,sans-serif'; ctx.textBaseline='top';
-    ctx.fillStyle='#ffcf6b'; ctx.fillText('Улики: '+found+'/'+need, 14, 12);
-    ctx.fillStyle= strikes>0?'#e08080':'#6b7585';
+    ctx.font='700 13px Manrope,sans-serif'; ctx.textBaseline='top';
+    ctx.fillStyle='#46d89b'; ctx.fillText('Улики: '+found+'/'+need, 14, 12);
+    ctx.fillStyle= strikes>0?'#ff8fa8':'#93a1b3';
     ctx.fillText('Промахи: '+strikes+'/'+maxStrikes, 14, 32);
     ctx.restore();
 
@@ -147,9 +157,10 @@
     var rect=cv.getBoundingClientRect();
     var p=(e.touches&&e.touches[0])||e;
     var x=p.clientX-rect.left, y=p.clientY-rect.top;
-    if(type==='down'||type==='move'){ glass.x=x; glass.y=y; glass.active=true; }
+    if(type==='down'||type==='move'){ glass.x=x; glass.y=y; }
     if(type==='up'){
       // тап = осмотреть ближайший предмет под лупой
+      glass.x=x; glass.y=y;
       var best=null,bd=glass.r;
       for(var i=0;i<items.length;i++){
         var it=items[i]; if(it.found) continue;
@@ -157,7 +168,6 @@
         if(d<it.r*1.3 && d<bd){ bd=d; best=it; }
       }
       if(best){ examine(best); }
-      glass.active=false; glass.x=-999; glass.y=-999;
     }
   }
 
@@ -210,7 +220,7 @@
     // подсказка
     var tip=document.createElement('div');
     tip.style.cssText='position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:12px;color:#8a92a0;pointer-events:none;';
-    tip.textContent='Веди лупой по сцене. Тапни улику, что отблёскивает янтарём.';
+    tip.textContent='Веди лупу по тёмной сцене. Настоящая улика отблёскивает янтарём — тапни её.';
     wrap.appendChild(tip);
     container.appendChild(wrap);
     ctx=cv.getContext('2d');

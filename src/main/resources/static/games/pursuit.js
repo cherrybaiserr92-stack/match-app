@@ -99,6 +99,13 @@
     var g=ctx.createLinearGradient(0,0,0,H);
     g.addColorStop(0,'rgba(14,14,20,0.96)');g.addColorStop(1,'rgba(8,8,11,0.99)');
     ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    // тусклые пятна уличных фонарей
+    for(var li=0;li<3;li++){
+      var lx=W*(0.2+0.3*li), ly=H*(li%2?0.22:0.7);
+      var lg2=ctx.createRadialGradient(lx,ly,6,lx,ly,H*0.22);
+      lg2.addColorStop(0,'rgba(255,214,150,0.05)'); lg2.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=lg2; ctx.fillRect(0,0,W,H);
+    }
 
     // толпа (серые силуэты-приманки)
     for(var i=0;i<crowd.length;i++){ drawFigure(crowd[i].x,crowd[i].y,'rgba(120,120,135,0.5)',18,false); }
@@ -111,9 +118,14 @@
     ctx.moveTo(target.x,target.y-34);ctx.lineTo(target.x-6,target.y-44);ctx.lineTo(target.x+6,target.y-44);ctx.closePath();ctx.fill();
     ctx.restore();
 
-    // прицел наблюдения
+    // прицел наблюдения: сталь / зелёный в захвате / багровый при тревоге
     ctx.save();
-    ctx.strokeStyle='rgba(200,160,90,0.55)';ctx.lineWidth=2;
+    var locked=Math.hypot(target.x-aim.x,target.y-aim.y)<46;
+    var danger=lost/maxLost;
+    var aimCol = locked?'rgba(70,216,155,0.8)'
+      : danger>0.6?('rgba(224,84,110,'+(0.55+0.35*Math.sin(survived*9))+')')
+      : 'rgba(207,216,227,0.55)';
+    ctx.strokeStyle=aimCol;ctx.lineWidth=2;
     ctx.beginPath();ctx.arc(aim.x,aim.y,46,0,6.28);ctx.stroke();
     ctx.beginPath();ctx.moveTo(aim.x-56,aim.y);ctx.lineTo(aim.x-36,aim.y);
     ctx.moveTo(aim.x+36,aim.y);ctx.lineTo(aim.x+56,aim.y);
@@ -125,10 +137,11 @@
     ctx.save();
     ctx.fillStyle='rgba(255,255,255,0.08)';ctx.fillRect(14,14,W-28,7);
     ctx.fillStyle='#46d89b';ctx.fillRect(14,14,(W-28)*(progress/need),7);
-    ctx.fillStyle='rgba(255,255,255,0.08)';ctx.fillRect(14,26,W-28,5);
-    ctx.fillStyle='#d84646';ctx.fillRect(14,26,(W-28)*(lost/maxLost),5);
-    ctx.font='600 12px Inter,sans-serif';ctx.fillStyle='#8a92a0';ctx.textBaseline='top';
-    ctx.fillText('Слежка: '+Math.round(progress)+'%',14,38);
+    ctx.fillStyle='rgba(255,255,255,0.08)';ctx.fillRect(14,30,W-28,5);
+    ctx.fillStyle='#e0546e';ctx.fillRect(14,30,(W-28)*(lost/maxLost),5);
+    ctx.font='700 10px Manrope,sans-serif';ctx.textBaseline='top';
+    ctx.fillStyle='#46d89b';ctx.fillText('СЛЕЖКА '+Math.round(progress)+'%',14,42);
+    ctx.fillStyle=lost/maxLost>0.5?'#ff8fa8':'#93a1b3';ctx.fillText('ТРЕВОГА '+Math.round(lost)+'%',110,42);
     ctx.restore();
 
     raf=requestAnimationFrame(loop);

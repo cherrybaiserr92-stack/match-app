@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════════════════ */
 (function(){
   var root,opts=null,running=false;
-  var LEN=3, DIGITS=6, code=[], guesses=[], cur=[], movesLeft=0, maxMoves=8;
+  var LEN=3, DIGITS=6, code=[], guesses=[], cur=[], movesLeft=0, maxMoves=8, dialRot=0;
 
   function rnd(n){return (Math.random()*n)|0;}
 
@@ -53,8 +53,17 @@
     var pad='';
     for(var d=1;d<=DIGITS;d++) pad+='<button class="lp-key" data-d="'+d+'">'+d+'</button>';
 
+    var ticks='';
+    for(var t=0;t<24;t++){ var ta=t*15; ticks+='<line x1="50" y1="6" x2="50" y2="'+(t%6===0?14:10)+'" transform="rotate('+ta+' 50 50)"/>'; }
     root.innerHTML=
       '<div class="lp-wrap">'+
+        '<div class="lp-dialwrap"><svg class="lp-dial" viewBox="0 0 100 100" style="transform:rotate('+dialRot+'deg)">'+
+          '<circle cx="50" cy="50" r="46" class="ld-rim"/>'+
+          '<circle cx="50" cy="50" r="34" class="ld-face"/>'+
+          '<g class="ld-ticks">'+ticks+'</g>'+
+          '<polygon points="50,10 46,20 54,20" class="ld-arrow"/>'+
+          '<circle cx="50" cy="50" r="7" class="ld-hub"/>'+
+        '</svg></div>'+
         '<div class="lp-head"><span class="lp-title">ВЗЛОМ ЗАМКА</span>'+
           '<span class="lp-moves">Ходов: <b>'+movesLeft+'</b></span></div>'+
         '<div class="lp-board">'+rows+
@@ -78,7 +87,10 @@
 
   function addDigit(d){
     if(cur.length>=LEN){ cur=[]; }
-    cur.push(d); render();
+    cur.push(d);
+    dialRot += (d%2? -1:1) * (30+d*15); // диск крутится, как будто щупаешь код
+    try{navigator.vibrate&&navigator.vibrate(6);}catch(_){}
+    render();
   }
 
   function tryGuess(){
@@ -98,7 +110,7 @@
     if(a){ a.style.animation='lpShake .3s'; setTimeout(function(){a.style.animation='';},300); }
   }
 
-  function win(){ running=false; flash('#46d89b','ЗАМОК ОТКРЫТ'); setTimeout(function(){opts&&opts.onWin&&opts.onWin();},800); }
+  function win(){ running=false; dialRot+=360; var dl=root.querySelector('.lp-dial'); if(dl){dl.style.transform='rotate('+dialRot+'deg)';} flash('#46d89b','ЗАМОК ОТКРЫТ'); setTimeout(function(){opts&&opts.onWin&&opts.onWin();},800); }
   function lose(){ running=false; flash('#d84646','ЗАКЛИНИЛО'); setTimeout(function(){opts&&opts.onLose&&opts.onLose();},800); }
 
   function flash(col,msg){
@@ -113,32 +125,32 @@
     if(document.getElementById('lp-css')) return;
     var s=document.createElement('style'); s.id='lp-css';
     s.textContent=
-    '.lp-wrap{position:relative;width:100%;max-width:380px;margin:0 auto;color:#e8e2d4;font-family:Inter,sans-serif;padding:8px;}'+
+    '.lp-wrap{position:relative;width:100%;max-width:380px;margin:0 auto;color:#e8e2d4;font-family:Manrope,sans-serif;padding:8px;}'+'.lp-dialwrap{display:flex;justify-content:center;margin-bottom:10px;}'+'.lp-dial{width:110px;height:110px;transition:transform .5s cubic-bezier(.3,1.4,.4,1);filter:drop-shadow(0 8px 18px rgba(0,0,0,.6));}'+'.ld-rim{fill:#141218;stroke:#000;stroke-width:3;}'+'.ld-face{fill:#1d1a22;stroke:rgba(255,255,255,.08);stroke-width:1;}'+'.ld-ticks line{stroke:#93a1b3;stroke-width:1.6;opacity:.7;}'+'.ld-arrow{fill:#e0546e;}'+'.ld-hub{fill:#0c0a10;stroke:#93a1b3;stroke-width:1.4;}'+
     '.lp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}'+
-    '.lp-title{font:800 14px Unbounded,sans-serif;letter-spacing:.12em;color:#ffcf6b;}'+
+    '.lp-title{font:800 14px Unbounded,sans-serif;letter-spacing:.12em;color:#cfd8e3;}'+
     '.lp-moves{font-size:13px;color:#9aa8b8;}.lp-moves b{color:#fff;}'+
     '.lp-board{display:flex;flex-direction:column;gap:7px;margin-bottom:12px;min-height:40px;}'+
     '.lp-row{display:flex;align-items:center;gap:8px;}'+
     '.lp-cell{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;'+
       'font:700 20px "Playfair Display",serif;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);}'+
-    '.lp-past{background:rgba(200,134,10,.12);border-color:rgba(200,134,10,.25);color:#e0b057;}'+
-    '.lp-cur{border-color:rgba(200,134,10,.4);background:rgba(0,0,0,.4);}'+
+    '.lp-past{background:rgba(207,216,227,.07);border-color:rgba(207,216,227,.2);color:#cfd8e3;}'+
+    '.lp-cur{border-color:rgba(224,84,110,.45);background:rgba(0,0,0,.45);}'+
     '.lp-empty{color:#46506080;}'+
-    '.lp-active .lp-cell{border-color:rgba(200,134,10,.5);}'+
+    '.lp-active .lp-cell{border-color:rgba(224,84,110,.55);}'+
     '.lp-pins{display:flex;flex-wrap:wrap;gap:3px;width:34px;margin-left:4px;}'+
     '.lp-pin{width:9px;height:9px;border-radius:50%;}'+
     '.lp-exact{background:#46d89b;}.lp-present{background:#ffcf6b;}'+
     '.lp-miss{background:rgba(255,255,255,.12);}'+
     '.lp-legend{font-size:11px;color:#7a8494;text-align:center;margin-bottom:14px;}'+
     '.lp-pad{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:12px;}'+
-    '.lp-key{aspect-ratio:1;border:none;border-radius:10px;background:linear-gradient(135deg,#2a2620,#1a1714);'+
-      'color:#e0b057;font:700 18px "Playfair Display",serif;cursor:pointer;border:1px solid rgba(200,134,10,.2);'+
+    '.lp-key{aspect-ratio:1;border:none;border-radius:10px;background:linear-gradient(165deg,#211d26,#0f0d12);'+
+      'color:#cfd8e3;font:700 18px "Playfair Display",serif;cursor:pointer;border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 3px 8px rgba(0,0,0,.4);'+
       'transition:transform .1s;}'+
-    '.lp-key:active{transform:scale(.92);background:rgba(200,134,10,.25);}'+
+    '.lp-key:active{transform:scale(.92);background:rgba(224,84,110,.2);}'+
     '.lp-actions{display:flex;gap:10px;}'+
     '.lp-clear,.lp-try{flex:1;padding:13px;border:none;border-radius:12px;font:700 14px Inter,sans-serif;cursor:pointer;}'+
     '.lp-clear{background:rgba(255,255,255,.06);color:#9aa8b8;}'+
-    '.lp-try{background:linear-gradient(135deg,#c8860a,#a06d08);color:#fff;}'+
+    '.lp-try{background:linear-gradient(135deg,#e0546e,#8e1e36);color:#fff;box-shadow:0 6px 16px rgba(142,30,54,.4);}'+
     '.lp-try:active,.lp-clear:active{transform:scale(.97);}'+
     '@keyframes lpShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}'+
     '@keyframes lpFade{from{opacity:0}to{opacity:1}}';

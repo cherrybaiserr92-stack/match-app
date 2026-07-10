@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R124';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R125';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -1995,7 +1995,13 @@ function renderInvestBar(){
 
 function startMiniGame(gameId, card, mission, modal){
   const vp=$('#hint-vp');
-  $('#hint-footer').textContent=mission.label;
+  // подпись цели — у каждой игры своя (mission.label относится только к «Уликам дела»)
+  const GOAL={
+    examine:'Осмотр места: найди улики, что отблёскивают янтарём',
+    pursuit:'Слежка: держи цель в прицеле, не поднимай тревогу',
+    lockpick:'Взлом: подбери код по подсказкам замка'
+  };
+  $('#hint-footer').textContent=GOAL[gameId]||mission.label;
   const onWin=()=>{
     var inv=window._invest||{need:1,done:0};
     inv.done++;

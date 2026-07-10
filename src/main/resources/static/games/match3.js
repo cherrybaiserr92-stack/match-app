@@ -20,19 +20,19 @@
   const NC=GEMS.length, N=8;
   const SP={NONE:0,LINEH:1,LINEV:2,BOMB:3,RAINBOW:4};
   const EMBLEM={
-    trace:'<path d="M12 3C12 3 19 12 19 16a7 7 0 0 1-14 0c0-4 7-13 7-13z" fill="#fff"/>',
-    witness:'<ellipse cx="12" cy="12" rx="9" ry="6" fill="none" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3.4" fill="#fff"/>',
-    exhibit:'<circle cx="8" cy="12" r="4.5" fill="none" stroke="#fff" stroke-width="2.2"/><path d="M12 12h8M17 12v4" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>',
-    alibi:'<circle cx="12" cy="12" r="8.5" fill="none" stroke="#fff" stroke-width="2"/><path d="M12 12V6.5M12 12l4.5 2.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>',
-    link:'<path d="M5 9c0 7 5 11 7 11s7-4 7-11" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><circle cx="5" cy="8.5" r="2.4" fill="#fff"/><circle cx="19" cy="8.5" r="2.4" fill="#fff"/>'
+    trace:'<path d="M12 3C12 3 19 12 19 16a7 7 0 0 1-14 0c0-4 7-13 7-13z" fill="currentColor"/>',
+    witness:'<ellipse cx="12" cy="12" rx="9" ry="6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.4" fill="currentColor"/>',
+    exhibit:'<circle cx="8" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 12h8M17 12v4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+    alibi:'<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 12V6.5M12 12l4.5 2.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+    link:'<path d="M5 9c0 7 5 11 7 11s7-4 7-11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="5" cy="8.5" r="2.4" fill="currentColor"/><circle cx="19" cy="8.5" r="2.4" fill="currentColor"/>'
   };
   const SPMARK={1:'↔',2:'↕',3:'✸',4:'★'};
 
   // усилители: восстанавливаются по времени (как в Jewels Planet)
   const BOOST_DEF=[
-    {k:'ashtray', field:'boosters', ico:'🪨', name:'Пепельница', regenMs:6*60*1000,  max:3, price:100},
-    {k:'siren',   field:'bSiren',   ico:'🚨', name:'Мигалка',    regenMs:10*60*1000, max:2, price:150},
-    {k:'shuffle', field:'bShuffle', ico:'📼', name:'Плёнка',     regenMs:8*60*1000,  max:3, price:150}
+    {k:'ashtray', field:'boosters', ico:'🚬', name:'Окурок',    hint:'прижечь одну ячейку',      regenMs:6*60*1000,  max:3, price:100},
+    {k:'siren',   field:'bSiren',   ico:'🚨', name:'Мигалка',   hint:'снять ряд и колонку',       regenMs:10*60*1000, max:2, price:150},
+    {k:'shuffle', field:'bShuffle', ico:'📼', name:'Перемотка', hint:'перемешать доску',          regenMs:8*60*1000,  max:3, price:150}
   ];
 
   let opts=null, mission=null, moves=0, score=0, progress=0, combo=0, comboMax=0;
@@ -81,26 +81,27 @@
     if(document.getElementById('m3v10-css')) return;
     const s=document.createElement('style'); s.id='m3v10-css';
     s.textContent=`
-    .m3root{position:absolute;inset:0;display:flex;flex-direction:column;background:linear-gradient(180deg,#15110c,#0a0806);overflow:hidden;}
+    .m3root{position:absolute;inset:0;display:flex;flex-direction:column;background:radial-gradient(circle at 50% 20%,#16141a,#050507);overflow:hidden;}
     .m3top{flex:0 0 auto;padding:8px 14px 4px;display:flex;align-items:center;gap:10px;font-family:Unbounded,sans-serif;}
     .m3moves{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:54px;height:48px;border-radius:12px;
-      background:linear-gradient(180deg,rgba(40,32,22,.9),rgba(20,16,11,.9));border:1px solid rgba(200,134,10,.4);}
-    .m3moves .l{font-size:8px;color:#c8a05a;letter-spacing:.08em;}
+      background:linear-gradient(165deg,rgba(26,22,28,.95),rgba(14,10,16,.98));border:1px solid #000;
+      box-shadow:0 6px 16px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);}
+    .m3moves .l{font-size:8px;color:#93a1b3;letter-spacing:.08em;}
     .m3moves .n{font-size:20px;font-weight:900;line-height:1;color:#fff;}
     .m3moves .n.low{color:#ff6470;}
     .m3goalwrap{flex:1;display:flex;flex-direction:column;gap:4px;}
-    .m3goaltxt{font-size:9px;letter-spacing:.06em;color:#c8a05a;}
+    .m3goaltxt{font-size:9px;letter-spacing:.06em;color:#93a1b3;}
     .m3stars{display:flex;gap:5px;}
     .m3star{width:18px;height:18px;color:#3a342a;transition:color .3s,transform .3s;}
-    .m3star.on{color:#ffcf6b;transform:scale(1.1);filter:drop-shadow(0 0 5px rgba(255,207,107,.7));}
+    .m3star.on{color:#46d89b;transform:scale(1.1);filter:drop-shadow(0 0 5px rgba(70,216,155,.7));}
     .m3star svg{width:100%;height:100%;display:block;fill:currentColor;}
     .m3track{height:6px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;}
-    .m3fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#b3741c,#ffcf6b);transition:width .35s cubic-bezier(.3,1,.4,1);}
+    .m3fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#2a9d6f,#46d89b);transition:width .35s cubic-bezier(.3,1,.4,1);}
     .m3stage{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:0;position:relative;}
-    .m3board{position:relative;touch-action:none;border-radius:12px;
-      background:linear-gradient(160deg,rgba(40,30,18,.55),rgba(18,14,9,.6));padding:3px;
-      box-shadow:inset 0 0 30px rgba(0,0,0,.5),0 0 0 1px rgba(200,134,10,.25);}
-    .m3cellbg{position:absolute;border-radius:8px;background:rgba(0,0,0,.16);}
+    .m3board{position:relative;touch-action:none;border-radius:14px;
+      background:linear-gradient(160deg,#232227,#0a0a0c 60%,#000);padding:3px;border:1px solid #000;
+      box-shadow:inset 0 0 34px rgba(0,0,0,.6),0 14px 34px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.05);}
+    .m3cellbg{position:absolute;border-radius:8px;background:rgba(255,255,255,.025);box-shadow:inset 0 1px 2px rgba(0,0,0,.5);}
     /* фишка: ТОЛЬКО transform/opacity анимируются (GPU) */
     .m3gem{position:absolute;will-change:transform;cursor:pointer;
       transition:transform .15s cubic-bezier(.34,1.4,.6,1);}
@@ -111,37 +112,36 @@
     @keyframes m3pop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(0);opacity:0}}
     .m3gem.sel{z-index:3;animation:m3sel .55s ease-in-out infinite;}
     @keyframes m3sel{0%,100%{transform:translate3d(var(--tx),var(--ty),0) scale(1)}50%{transform:translate3d(var(--tx),var(--ty),0) scale(1.1)}}
-    .m3gem.hint .gembody{outline:3px solid rgba(255,207,107,.85);outline-offset:-2px;}
-    .gembody{position:absolute;inset:7%;border-radius:28%;overflow:hidden;
-      box-shadow:inset 0 -20% 26% rgba(0,0,0,.38),inset 0 14% 20% rgba(255,255,255,.30);}
-    .gembody::after{content:'';position:absolute;top:-30%;left:-70%;width:55%;height:160%;
-      background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
-      transform:rotate(18deg) translateZ(0);animation:m3shine 3.4s linear infinite;}
-    @keyframes m3shine{0%{left:-70%}50%{left:150%}100%{left:150%}}
-    .gemhi{position:absolute;top:13%;left:17%;width:40%;height:32%;border-radius:50%;
-      background:radial-gradient(ellipse at 35% 35%,rgba(255,255,255,.85),rgba(255,255,255,0) 70%);}
-    .gememb{position:absolute;inset:24%;}
+    .m3gem.hint .gembody{outline:2px solid rgba(255,255,255,.75);outline-offset:-2px;}
+    /* вещдок: тёмное стекло, неоновая иконка улики */
+    .gembody{position:absolute;inset:6%;border-radius:26%;overflow:hidden;border:1px solid;
+      background:linear-gradient(165deg,#211d26,#0d0b10 70%);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -8px 14px rgba(0,0,0,.5),0 3px 8px rgba(0,0,0,.45);}
+    .gembody::after{content:'';position:absolute;top:0;left:0;right:0;height:42%;
+      background:linear-gradient(180deg,rgba(255,255,255,.07),transparent);}
+    .gememb{position:absolute;inset:22%;}
     .gememb svg{width:100%;height:100%;display:block;}
     .gemmark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;text-shadow:0 0 8px rgba(255,255,255,.9);}
     .gemspring{position:absolute;inset:3%;border-radius:28%;border:2.5px solid rgba(255,255,255,.9);}
     /* панель усилителей снизу (Jewels Planet style) */
     .m3bar{flex:0 0 auto;display:flex;gap:10px;justify-content:center;padding:8px 10px max(10px,env(safe-area-inset-bottom));}
     .m3boost{position:relative;width:62px;height:58px;border-radius:14px;cursor:pointer;
-      background:linear-gradient(160deg,rgba(48,36,22,.95),rgba(24,18,11,.95));
-      border:1px solid rgba(200,134,10,.4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
-      transition:transform .1s,border-color .15s;}
-    .m3boost.on{border-color:#ffcf6b;background:linear-gradient(160deg,rgba(90,64,30,.95),rgba(40,28,14,.95));}
+      background:linear-gradient(165deg,rgba(26,22,28,.95),rgba(14,10,16,.98));
+      border:1px solid #000;box-shadow:0 6px 16px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.07);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+      transition:transform .1s,border-color .15s,box-shadow .15s;}
+    .m3boost.on{border-color:#e0546e;box-shadow:0 0 14px rgba(224,84,110,.45),inset 0 1px 0 rgba(255,255,255,.07);}
     .m3boost:active{transform:scale(.93);}
     .m3boost .bi{font-size:22px;line-height:1;}
     .m3boost .bn{font-size:16px;font-weight:900;color:#fff;line-height:1;}
-    .m3boost .btimer{font-size:8px;color:#c8a05a;line-height:1;}
+    .m3boost .btimer{font-size:8px;color:#93a1b3;line-height:1;}
     .m3boost .bplus{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;
       background:linear-gradient(180deg,#5fd16a,#2e9b3a);border:2px solid #173;color:#fff;font-weight:900;font-size:13px;
       display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 2px 4px rgba(0,0,0,.4);}
     .m3boost.empty .bn{color:#ff6470;}
     .m3burst{position:absolute;width:7px;height:7px;border-radius:50%;pointer-events:none;will-change:transform,opacity;}
     .m3combo{position:absolute;top:36%;left:0;right:0;text-align:center;pointer-events:none;
-      font-family:Unbounded,sans-serif;font-weight:900;font-size:30px;color:#ffcf6b;text-shadow:0 0 22px #c8860a;
+      font-family:Unbounded,sans-serif;font-weight:900;font-size:30px;color:#ff8fa8;text-shadow:0 0 22px #8e1e36;
       animation:m3combo 1s ease forwards;}
     @keyframes m3combo{0%{opacity:0;transform:translateY(10px) scale(.8)}25%{opacity:1;transform:translateY(0) scale(1.1)}100%{opacity:0;transform:translateY(-26px)}}
     .m3ring{position:absolute;border-radius:50%;pointer-events:none;will-change:transform,opacity;border:3px solid #fff;}
@@ -200,8 +200,8 @@
   function makeGem(c,sp){
     const g=GEMS[c]||GEMS[0];
     const el=document.createElement('div'); el.className='m3gem';
-    el.innerHTML='<div class="gembody" style="background:radial-gradient(circle at 38% 30%,'+g.c1+','+g.c2+')"></div>'+
-      '<div class="gemhi"></div><div class="gememb"><svg viewBox="0 0 24 24">'+(EMBLEM[g.id]||'')+'</svg></div>'+
+    el.innerHTML='<div class="gembody" style="border-color:'+g.c2+'66"></div>'+
+      '<div class="gememb" style="color:'+g.glow+';filter:drop-shadow(0 0 5px '+g.glow+'aa)"><svg viewBox="0 0 24 24">'+(EMBLEM[g.id]||'')+'</svg></div>'+
       (sp?'<div class="gemspring"></div><div class="gemmark" style="font-size:'+(_cellPx*0.4)+'px">'+(SPMARK[sp]||'')+'</div>':'');
     return el;
   }
@@ -356,7 +356,8 @@
       if(grid[k].el&&grid[k].el.parentNode) grid[k].el.parentNode.removeChild(grid[k].el);
       grid[k]={c,sp:SP.NONE,el:makeGem(c,SP.NONE)}; _board.appendChild(grid[k].el); place(grid[k].el,k,'spawn'); }
     let guard=0; while(findMatches().length&&guard++<100){ findMatches().forEach(g=>g.forEach(k=>{ grid[k].c=rnd();
-      grid[k].el.querySelector('.gembody').style.background='radial-gradient(circle at 38% 30%,'+GEMS[grid[k].c].c1+','+GEMS[grid[k].c].c2+')'; })); }
+      const gg=GEMS[grid[k].c]; grid[k].el.querySelector('.gembody').style.borderColor=gg.c2+'66';
+      const em=grid[k].el.querySelector('.gememb'); if(em){ em.style.color=gg.glow; em.style.filter='drop-shadow(0 0 5px '+gg.glow+'aa)'; } })); }
     Sound.transition&&Sound.transition(); setTimeout(()=>{ busy=false; checkEnd(); },340); }
   function saveP(){ try{ window.saveProfile&&saveProfile(); }catch(e){} }
 
