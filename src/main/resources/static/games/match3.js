@@ -37,6 +37,7 @@
 
   let opts=null, mission=null, moves=0, score=0, progress=0, combo=0, comboMax=0;
   let grid=[], ice=[], invMode=null, running=false, busy=false, sel=null, idleT=0, hintTimer=null;
+  let timeLeft=0, timeUp=false, _timerIv=null, _lastMoves=-1;
   let _root,_board,_hud,_bar,_stage,_cellPx=40,_resize,_cellBgs=null;
   const HINT_DELAY=6000;
   const STARS=[0.4,0.7,1.0]; // пороги «улик»-звёзд от target
@@ -108,16 +109,16 @@
     start(container,o){
       opts=o||{}; mission=opts.mission||{type:'score',target:600,moves:14};
       moves=mission.moves||14; score=0; progress=0; combo=0; comboMax=0;
-      invMode=null; sel=null; busy=false; running=true; idleT=0;
+      invMode=null; sel=null; busy=false; running=true; idleT=0; _lastMoves=-1;
       try{ if(window.BgFx&&BgFx.pause) BgFx.pause(); }catch(e){}
       regenAll();
-      injectGemDefs(); injectCSS(); buildDOM(container); initGrid(); renderBar(); hud(); scheduleHint();
+      injectGemDefs(); injectCSS(); buildDOM(container); initGrid(); renderBar(); hud(); startTimer(); scheduleHint();
     },
     _dbg:{ getIce:function(){return ice.slice();},
       clearAt:function(k){ clearSet(new Set([k])); },
       setIce:function(k,v){ice[k]=v; if(typeof renderIce==='function')renderIce();},
       getGrid:function(){return grid.map(function(g){return g?g.c:-9;});} },
-    stop(){ running=false; clearTimeout(hintTimer);
+    stop(){ running=false; clearTimeout(hintTimer); clearInterval(_timerIv);
       try{ window.removeEventListener('resize',_resize); }catch(e){}
       if(_root&&_root.parentNode) _root.parentNode.innerHTML=''; _cellBgs=null; _iceEls=null; }
   };
@@ -149,14 +150,30 @@
     const s=document.createElement('style'); s.id='m3v10-css';
     s.textContent=`
     .m3root{position:absolute;inset:0;display:flex;flex-direction:column;background:radial-gradient(circle at 50% 20%,#16141a,#050507);overflow:hidden;}
-    .m3top{flex:0 0 auto;padding:8px 14px 4px;display:flex;align-items:center;gap:10px;font-family:Unbounded,sans-serif;}
-    .m3moves{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:54px;height:48px;border-radius:12px;
-      background:linear-gradient(165deg,rgba(26,22,28,.95),rgba(14,10,16,.98));border:1px solid #000;
-      box-shadow:0 6px 16px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);}
-    .m3moves .l{font-size:8px;color:#93a1b3;letter-spacing:.08em;}
-    .m3moves .n{font-size:20px;font-weight:900;line-height:1;color:#fff;}
-    .m3moves .n.low{color:#ff6470;}
-    .m3goalwrap{flex:1;display:flex;flex-direction:column;gap:8px;}
+    /* фон главы: место действия сюжета за доской (Jewels Planet style) */
+    .m3bg{position:absolute;inset:-26px;background-size:cover;background-position:center 32%;
+      filter:blur(2px) brightness(.62) saturate(.9);transform:scale(1.05);}
+    .m3vig{position:absolute;inset:0;background:
+      radial-gradient(135% 100% at 50% 34%, transparent 46%, rgba(3,4,7,.7) 100%),
+      linear-gradient(180deg,rgba(4,5,8,.5),rgba(4,5,8,.08) 30%,rgba(4,5,8,.1) 62%,rgba(4,5,8,.6));}
+    .m3top,.m3stage,.m3bar{position:relative;z-index:1;}
+    .m3top{flex:0 0 auto;padding:10px 12px 6px;display:flex;align-items:stretch;gap:8px;font-family:Unbounded,sans-serif;}
+    /* чипы ХОДЫ / ВРЕМЯ — крупные, как в Jewels Planet */
+    .m3chip{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+      min-width:62px;padding:5px 8px;border-radius:14px;
+      background:linear-gradient(165deg,rgba(26,22,28,.93),rgba(10,8,12,.97));border:1px solid #000;
+      box-shadow:0 8px 18px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.09),0 0 0 1px rgba(255,255,255,.05);}
+    .m3chip .l{font-size:8px;color:#93a1b3;letter-spacing:.12em;white-space:nowrap;}
+    .m3chip .n{font-size:25px;font-weight:900;line-height:1.02;color:#fff;font-variant-numeric:tabular-nums;}
+    .m3chip .n.bump{animation:m3bump .32s cubic-bezier(.2,1.6,.4,1);}
+    @keyframes m3bump{0%{transform:scale(1)}40%{transform:scale(1.4)}100%{transform:scale(1)}}
+    .m3chip .n.low{color:#ff6470;text-shadow:0 0 14px rgba(255,80,100,.7);animation:m3lowPulse 1s ease-in-out infinite;}
+    @keyframes m3lowPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+    .m3timer .n{font-size:18px;letter-spacing:.02em;}
+    .m3goalwrap{flex:1;display:flex;flex-direction:column;gap:7px;justify-content:center;
+      padding:6px 10px;border-radius:14px;
+      background:linear-gradient(165deg,rgba(26,22,28,.93),rgba(10,8,12,.97));border:1px solid #000;
+      box-shadow:0 8px 18px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.09),0 0 0 1px rgba(255,255,255,.05);}
     .m3goalrow{display:flex;align-items:center;gap:8px;}
     .m3goalico{width:26px;height:26px;flex:0 0 auto;display:inline-flex;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));}
     .m3goalemoji{font-size:20px;align-items:center;justify-content:center;}
@@ -170,9 +187,9 @@
     .m3fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#2a9d6f,#46d89b);transition:width .35s cubic-bezier(.3,1,.4,1);box-shadow:0 0 8px rgba(70,216,155,.45);}
     .m3stage{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:0;position:relative;}
     .m3board{position:relative;touch-action:none;border-radius:14px;
-      background:linear-gradient(160deg,#232227,#0a0a0c 60%,#000);padding:3px;border:1px solid #000;
-      box-shadow:inset 0 0 34px rgba(0,0,0,.6),0 14px 34px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.05);}
-    .m3cellbg{position:absolute;border-radius:8px;background:rgba(255,255,255,.025);box-shadow:inset 0 1px 2px rgba(0,0,0,.5);}
+      background:linear-gradient(160deg,rgba(33,32,38,.93),rgba(9,9,12,.95) 60%,rgba(0,0,0,.97));padding:3px;border:1px solid #000;
+      box-shadow:inset 0 0 34px rgba(0,0,0,.6),0 16px 38px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.06);}
+    .m3cellbg{position:absolute;border-radius:8px;background:rgba(255,255,255,.03);box-shadow:inset 0 1px 2px rgba(0,0,0,.5);}
     /* фишка: ТОЛЬКО transform/opacity анимируются (GPU) */
     .m3gem{position:absolute;will-change:transform;cursor:pointer;
       transition:transform .15s cubic-bezier(.34,1.4,.6,1);}
@@ -258,7 +275,23 @@
   function buildDOM(container){
     container.innerHTML='';
     _root=document.createElement('div'); _root.className='m3root';
+    // фон главы — место действия сюжета за доской
+    const bgUrl=mission.bg||(window.CHAPTER_BGS&&window.CHAPTER_BGS[mission.chapter||1])||null;
+    if(bgUrl){
+      const bg=document.createElement('div'); bg.className='m3bg';
+      bg.style.backgroundImage='url("'+bgUrl+'")'; _root.appendChild(bg);
+      const vig=document.createElement('div'); vig.className='m3vig'; _root.appendChild(vig);
+    }
     _hud=document.createElement('div'); _hud.className='m3top';
+    _hud.innerHTML=
+      '<div class="m3chip m3moves"><span class="l">ХОДЫ</span><span class="n" id="m3mv"></span></div>'+
+      '<div class="m3goalwrap">'+
+        '<div class="m3goalrow" id="m3goalrow"></div>'+
+        '<div class="m3track" id="m3track"><div class="m3fill" id="m3fill" style="width:0%"></div>'+
+          [0,1,2].map(i=>'<span class="m3star ontrack" data-st="'+i+'" style="left:'+(STARS[i]*100)+'%">'+STAR_SVG+'</span>').join('')+
+        '</div>'+
+      '</div>'+
+      ((mission.time|0)>0?'<div class="m3chip m3timer"><span class="l">ВРЕМЯ</span><span class="n" id="m3tm"></span></div>':'');
     _stage=document.createElement('div'); _stage.className='m3stage';
     _board=document.createElement('div'); _board.className='m3board';
     _stage.appendChild(_board);
@@ -539,16 +572,17 @@
     _stage.appendChild(d); setTimeout(()=>{ if(d.parentNode)d.parentNode.removeChild(d); },1000); Sound.approve&&Sound.approve(); }
 
   /* ── конец ── */
-  function checkEnd(){ const target=mission.target||600; if(progress>=target){ win(); return; } if(moves<=0) lose(); }
-  function win(){ running=false; clearTimeout(hintTimer); Sound.win&&Sound.win(); vibrate([10,40,10,40]); end(true); setTimeout(()=>opts.onWin&&opts.onWin(),1100); }
-  function lose(){ running=false; clearTimeout(hintTimer); Sound.deny&&Sound.deny(); end(false); setTimeout(()=>opts.onLose&&opts.onLose(),1500); }
+  function checkEnd(){ const target=mission.target||600; if(progress>=target){ win(); return; } if(timeUp){ lose(); return; } if(moves<=0) lose(); }
+  function win(){ running=false; clearTimeout(hintTimer); clearInterval(_timerIv); Sound.win&&Sound.win(); vibrate([10,40,10,40]); end(true); setTimeout(()=>opts.onWin&&opts.onWin(),1100); }
+  function lose(){ running=false; clearTimeout(hintTimer); clearInterval(_timerIv); Sound.deny&&Sound.deny(); end(false); setTimeout(()=>opts.onLose&&opts.onLose(),1500); }
   function end(won){ const stars=starsEarned();
     const o=document.createElement('div'); o.className='m3end';
     o.innerHTML='<div class="m3endstars">'+[0,1,2].map(i=>
         '<span class="m3endstar'+(i<stars&&won?' earn':'')+'" style="animation-delay:'+(0.25+i*0.3)+'s">'+STAR_SVG+'</span>').join('')+'</div>'+
       '<div class="v" style="color:'+(won?'#46d89b':'#ff6470')+';text-shadow:0 0 24px '+(won?'#46d89b':'#ff6470')+'">'+
       (won?'УЛИКА ПОЛУЧЕНА':'УЛИКА УТЕРЯНА')+'</div>'+
-      '<div class="s">'+(won?('Точность сыска: '+stars+' из 3'):'Сдвиг недоволен. Попробуй ещё.')+'</div>';
+      '<div class="s">'+(won?('Точность сыска: '+stars+' из 3')
+        :((timeUp||((mission.time|0)>0&&timeLeft<=0))?'Время вышло. Сдвиг недоволен.':'Ходы кончились. Попробуй ещё.'))+'</div>';
     _root.appendChild(o);
     if(won&&stars>0){ let si=0; const tick=()=>{ if(si++<stars){ try{Sound.approve&&Sound.approve();}catch(_){ } setTimeout(tick,300);} }; setTimeout(tick,250); } }
 
@@ -570,19 +604,44 @@
     return left>0 ? ('осталось '+left) : 'готово!';
   }
   function hud(){
+    if(!_hud) return;
     const target=mission.target||600, pct=Math.min(100,Math.round(progress/target*100)), st=starsEarned();
-    _hud.innerHTML=
-      '<div class="m3moves"><span class="l">ХОДЫ</span><span class="n'+(moves<=3?' low':'')+'">'+moves+'</span></div>'+
-      '<div class="m3goalwrap">'+
-        '<div class="m3goalrow">'+goalIconHtml()+
-          '<span class="m3goaltxt">'+goalLeftTxt()+'</span>'+
-        '</div>'+
-        '<div class="m3track">'+
-          '<div class="m3fill" style="width:'+pct+'%"></div>'+
-          [0,1,2].map(i=>{ const pos=STARS[i]*100;
-            return '<span class="m3star ontrack'+(i<st?' on':'')+'" style="left:'+pos+'%">'+STAR_SVG+'</span>'; }).join('')+
-        '</div>'+
-      '</div>';
+    const mv=_hud.querySelector('#m3mv');
+    if(mv){
+      mv.textContent=moves;
+      mv.classList.toggle('low',moves<=3);
+      if(_lastMoves>=0&&moves<_lastMoves){ mv.classList.remove('bump'); void mv.offsetWidth; mv.classList.add('bump'); }
+      _lastMoves=moves;
+    }
+    const gr=_hud.querySelector('#m3goalrow');
+    if(gr) gr.innerHTML=goalIconHtml()+'<span class="m3goaltxt">'+goalLeftTxt()+'</span>';
+    const fill=_hud.querySelector('#m3fill');
+    if(fill) fill.style.width=pct+'%';
+    _hud.querySelectorAll('.m3star.ontrack').forEach(el=>{
+      el.classList.toggle('on', (+el.dataset.st)<st);
+    });
+  }
+
+  /* ── таймер партии ── */
+  function startTimer(){
+    clearInterval(_timerIv); timeUp=false;
+    timeLeft=(mission.time|0); if(timeLeft<=0){ return; }
+    updateTimer();
+    _timerIv=setInterval(()=>{
+      if(!running){ clearInterval(_timerIv); return; }
+      timeLeft--; updateTimer();
+      if(timeLeft<=5&&timeLeft>0){ try{Sound.tap&&Sound.tap();}catch(_){}}
+      if(timeLeft<=0){
+        clearInterval(_timerIv);
+        if(busy){ timeUp=true; } else { lose(); }
+      }
+    },1000);
+  }
+  function updateTimer(){
+    const el=_hud&&_hud.querySelector('#m3tm'); if(!el)return;
+    const s=Math.max(0,timeLeft);
+    el.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+    el.classList.toggle('low', s<=15);
   }
 
   /* ── панель усилителей (Jewels Planet) ── */

@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R127';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R128';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -635,6 +635,7 @@ function missionFor(ev){
   const ch=Math.max(1,Math.min(5, (typeof chapterOfIndex==='function')?chapterOfIndex(_caseIdx):1));
   const MOVES=[0,20,18,16,15,13][ch];
   const ICE  =[0, 0, 4, 6, 8,10][ch];   // замороженные клетки на поле
+  const TIME =[0,150,140,125,110,95][ch]; // секунд на партию
   const t=(ev&&ev.t)||'evidence';
   const M={
     crime:    {type:'score', target:500+ch*120, label:'Очков: набери — осмотри сцену'},
@@ -645,7 +646,7 @@ function missionFor(ev){
     final:    {type:'score', target:900+ch*160, label:'Очков: назови имя'}
   };
   const m=Object.assign({}, M[t]||M.evidence);
-  m.moves=MOVES; m.ice=ICE; m.chapter=ch;
+  m.moves=MOVES; m.ice=ICE; m.chapter=ch; m.time=TIME;
   return m;
 }
 function addLockOverlay(cardEl){
@@ -1548,6 +1549,7 @@ const CHAPTER_BGS={
   4:'/img/bg/bg-forest.jpg',       // Остров (туманный лес/сад)
   5:'/img/bg/bg-mansion-int.jpg'   // Усадьба
 };
+window.CHAPTER_BGS=CHAPTER_BGS;
 function bgForCase(cid){
   if(!cid) return null;
   // определяем главу по id уровня
