@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R123';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R124';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -21,7 +21,7 @@ const App = {
 };
 
 const DEFAULT_PROFILE = {
-  level:1, xp:0, energy:5, maxEnergy:5, credits:0, bucks:0,
+  level:1, xp:0, energy:6, maxEnergy:6, credits:0, bucks:0,
   casesSolved:0, streak:0, prestige:0, mapNode:0, mapStars:{},
   skills:{ insight:1, tech:1, charisma:1, nerve:1 },
   achievements:[], dailyStreak:0, lastDaily:null, sound:true,
@@ -410,13 +410,16 @@ function addXP(n){
   while(p.xp>=need){ p.xp-=need; p.level++; leveled=true; need=xpNeeded(p.level); }
   if(leveled){ Sound.levelUp(); vibrate([10,40,10]);
     toast('Новый уровень','Уровень '+p.level,'⬆️');
-    p.maxEnergy=5+Math.floor((p.level-1)/3); p.energy=p.maxEnergy; }
+    p.maxEnergy=6+Math.floor((p.level-1)/2); p.energy=p.maxEnergy; }
   renderHUD(); saveProfile();
 }
 function addCredits(n){ App.profile.credits=Math.max(0,App.profile.credits+n); if(n>0)Sound.coin(); renderHUD(); saveProfile(); }
 const ENERGY_MS=30*60*1000; /* 30 мин на 1 кофе */
 function regenEnergy(){
   const p=App.profile; if(!p) return;
+  // миграция запаса чутья (R124): база 6, +1 за каждые 2 уровня
+  var _cap=6+Math.floor(((p.level||1)-1)/2);
+  if((p.maxEnergy||0)<_cap){ p.maxEnergy=_cap; p.energy=Math.max(p.energy||0,_cap); saveProfile(); }
   if(!p.lastEnergyTs){ p.lastEnergyTs=Date.now(); return; }
   if(p.energy>=p.maxEnergy){ p.lastEnergyTs=Date.now(); return; }
   const elapsed=Date.now()-p.lastEnergyTs;
@@ -517,6 +520,10 @@ function computeEnding(f){
       if(s.cap_fate==='informant') threads.push('Капитан, ставший твоими глазами в порту, ещё пригодится.');
       if(s.curator==='law') threads.push('Куратор предстанет перед судом — ты не стал палачом, и Сдвиг бы это одобрил.');
       else if(s.curator==='fire') threads.push('Куратор сгорел в своём доме — справедливость это или твоя тьма, рассудит время.');
+      if(s.stance==='soft') threads.push('Той ночью у пирса ты был честен со Сдвигом — эта честность держала вас двоих до самого конца.');
+      else if(s.stance==='hard') threads.push('Ты ответил Сдвигу жёстко той ночью у пирса. Он запомнил — и всё равно остался рядом. Такое не забывают.');
+      if(s.aesthetic==='artist') threads.push('Ты разгадал Куратора первым: не жажда власти — безумие художника. Это знание стало крючком, на который вы его поймали.');
+      else if(s.aesthetic==='power') threads.push('Ты искал в Кураторе жажду власти — а им двигало безумие художника. Эта ошибка едва не стоила вам всего.');
       if(threads.length){ base.threads=threads; }
     }
   }catch(_){}
@@ -673,6 +680,8 @@ function showNoEnergy(){
 }
 function unlockSwipe(){
   App.swipeUnlocked=true;
+  // осмотр завершён — кнопка «Найти улику» в ленте больше не нужна
+  try{ document.querySelectorAll('.feed2-find').forEach(function(b){ b.remove(); }); }catch(_){}
   vibrate(20); try{Sound.booster();}catch(_){}
   try{removeLockOverlay();}catch(_){}
   var _showDecisionCard=function(){
@@ -984,7 +993,7 @@ function addSkill(n){
   try{ updateScaleBars&&updateScaleBars(); scalePop&&scalePop('det',n); }catch(_){}
 }
 // сюжетные флаги, влияющие на дальнейшую историю и финал
-window.STORY_KEYS=['danny','vivien','cap_fate','stance','pact','choice','curator','arundel','aesthetic','shift'];
+window.STORY_KEYS=['danny','vivien','cap_fate','stance','pact','choice','curator','aesthetic'];
 function _saveStoryFlags(set){
   try{
     if(!App.profile.story) App.profile.story={};

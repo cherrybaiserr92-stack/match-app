@@ -14,7 +14,7 @@ ROOT = os.path.join(os.path.dirname(__file__), '..', 'src', 'main', 'resources',
 OUT  = os.path.join(os.path.dirname(__file__), '..', 'SDVIG-STORY-MAP.md')
 
 # сквозные флаги (STORY_KEYS из app.js) и кто их читает в финале (threads в computeEnding)
-STORY_KEYS = ['danny','vivien','cap_fate','stance','pact','choice','curator','arundel','aesthetic','shift']
+STORY_KEYS = ['danny','vivien','cap_fate','stance','pact','choice','curator','aesthetic']
 FINALE_READS = {
     'danny':   {'ally':'Дэнни жив и держит твою сторону', 'jail':'Дэнни сгинул в системе'},
     'choice':  {'rescue':'Спасённые на причале живы', 'track':'Неспасённые — на твоей совести'},
@@ -22,6 +22,8 @@ FINALE_READS = {
     'vivien':  {'vendetta':'Месть Вивьен сошлась с делом'},
     'cap_fate':{'informant':'Капитан — твои глаза в порту'},
     'curator': {'law':'Куратор перед судом', 'fire':'Куратор сгорел в доме'},
+    'stance':  {'soft':'Честность у пирса держала вас до конца', 'hard':'Жёсткий ответ у пирса — Сдвиг запомнил, но остался'},
+    'aesthetic':{'artist':'Разгадал безумие художника — крючок для поимки', 'power':'Ошибся, ища жажду власти — едва не стоило всего'},
 }
 
 def load(fid):

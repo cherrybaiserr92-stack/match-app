@@ -361,7 +361,7 @@
     // добавляем в историю (не дублируя)
     if(_history.indexOf(evId)<0) _history.push(evId);
     // убираем прошлую кнопку/подсказку, но НЕ стираем ленту (история копится)
-    var oldc=_wrap.querySelector('.feed2-next,.feed2-find'); if(oldc)oldc.remove();
+    _wrap.querySelectorAll('.feed2-next,.feed2-find').forEach(function(b){b.remove();});
     _wrap.onclick=null;
     // прошлые сообщения тускнеют
     _wrap.querySelectorAll('.msg2').forEach(function(m){ m.classList.add('m2-past'); m.classList.remove('active'); });
@@ -538,7 +538,7 @@
   /* кнопка/подсказка продолжения после всех реплик события */
   function showContinue(ev, evId, nextMsg, allShown){
     // убираем старую кнопку
-    const old=_wrap.querySelector('.feed2-next,.feed2-find'); if(old)old.remove();
+    _wrap.querySelectorAll('.feed2-next,.feed2-find').forEach(function(b){b.remove();});
     if(!allShown){
       const hint=document.createElement('div'); hint.className='feed2-next';
       hint.textContent='далее ▸';
@@ -892,7 +892,7 @@
     return out;
   }
   function afterChoiceBeat(opt, done){
-    var oldc=_wrap.querySelector('.feed2-next,.feed2-find'); if(oldc)oldc.remove();
+    _wrap.querySelectorAll('.feed2-next,.feed2-find').forEach(function(b){b.remove();});
     _wrap.querySelectorAll('.msg2').forEach(function(m){ m.classList.add('m2-past'); });
     var el=document.createElement('div'); el.className='feed2-aftermath';
     var dl=_choiceDeltas(opt);
