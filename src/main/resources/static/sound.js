@@ -220,6 +220,19 @@
     gemFall(){ voice({type:'sine',freq:280,to:180,dur:.08,gain:.05,a:.002,d:.02,s:.4,r:.05,reverb:.06}); },
     booster(){ [523,698,880,1047].forEach((f,i)=>setTimeout(()=>voice(
       {type:'triangle',freq:f,dur:.2,gain:.1,a:.002,d:.05,s:.5,r:.14,voices:2,spread:5,reverb:.2}),i*55)); },
+    /* спецфишки match-3 */
+    lineBlast(){ noise({dur:.28,gain:.15,freq:900,to:5200,type:'bandpass',q:.8,reverb:.18,a:.005,r:.15});
+      voice({type:'sawtooth',freq:300,to:900,dur:.22,gain:.09,a:.003,d:.05,s:.5,r:.12,voices:2,spread:9,reverb:.2,filter:{type:'lowpass',freq:4000}}); },
+    bombBlast(){ voice({type:'sine',freq:140,to:48,dur:.5,gain:.2,a:.004,d:.1,s:.4,r:.3,reverb:.3,filter:{type:'lowpass',freq:600,to:140}});
+      noise({dur:.35,gain:.11,freq:300,type:'lowpass',reverb:.25,a:.004,r:.25});
+      noise({dur:.12,gain:.05,freq:3800,type:'highpass',reverb:.15}); },
+    rainbowBlast(){ [660,880,1175,1568].forEach((f,i)=>setTimeout(()=>voice(
+      {type:'sine',freq:f,dur:.22,gain:.08,a:.003,d:.05,s:.4,r:.16,voices:2,spread:6,reverb:.28}),i*70));
+      noise({dur:.5,gain:.05,freq:2000,to:8000,type:'bandpass',q:.6,reverb:.3,a:.05,r:.3}); },
+    starChime(){ voice({type:'triangle',freq:1319,dur:.25,gain:.1,a:.002,d:.06,s:.4,r:.2,voices:2,spread:5,reverb:.3});
+      setTimeout(()=>voice({type:'triangle',freq:1760,dur:.3,gain:.08,a:.002,d:.06,s:.4,r:.24,reverb:.32}),80); },
+    shot(){ noise({dur:.09,gain:.19,freq:900,to:200,type:'bandpass',q:.7,reverb:.2,a:.001,r:.08});
+      voice({type:'square',freq:220,to:80,dur:.08,gain:.09,a:.001,d:.03,s:.3,r:.06,reverb:.15,filter:{type:'lowpass',freq:1200}}); },
 
     /* экономика / прогресс */
     coin(){ noise({dur:.04,gain:.06,freq:5200,type:'bandpass',q:2,reverb:.05});

@@ -214,7 +214,7 @@
 
 /* ── HINT GAME bottom-sheet ── */
 .hint-modal{
-  position:fixed; left:0; right:0; bottom:0; z-index:300;
+  position:fixed; left:0; right:0; bottom:0; z-index:470; /* выше .modal-bg(450): дейлик не должен глушить тапы по мини-игре */
   height:92vh; border-radius:var(--r2xl) var(--r2xl) 0 0;
   background:linear-gradient(180deg,#0c0f16,#070910);
   border:1px solid var(--glass-line); box-shadow:0 -10px 50px rgba(0,0,0,.6);

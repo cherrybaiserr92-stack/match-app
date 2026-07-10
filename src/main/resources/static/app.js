@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R128';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R129';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -19,6 +19,7 @@ const App = {
   flags:{},
   tab:'cases'
 };
+window.App=App; // top-level const не попадает в window — а мини-игры проверяют window.App
 
 const DEFAULT_PROFILE = {
   level:1, xp:0, energy:6, maxEnergy:6, credits:0, bucks:0,
