@@ -67,65 +67,115 @@
   const STARS=[0.4,0.7,1.0]; // пороги «улик»-звёзд от target
 
 
-  // дефы градиентов самоцветов (один раз в DOM)
+  // формы огранки (общие для clipPath и тела)
+  const GEM_PATHS={
+    trace:'M24 3 C24 3 40 21 40 30.5 A16 16 0 0 1 8 30.5 C8 21 24 3 24 3 Z',
+    witness:'M24 5 A19 19 0 1 1 23.99 5 Z',
+    exhibit:'M15.5 5.5 L32.5 5.5 L42.5 15.5 L42.5 32.5 L32.5 42.5 L15.5 42.5 L5.5 32.5 L5.5 15.5 Z',
+    alibi:'M24 2.5 L45 24 L24 45.5 L3 24 Z',
+    link:'M24 3 L42.5 13.5 L42.5 34.5 L24 45 L5.5 34.5 L5.5 13.5 Z'
+  };
+  // дефы: богатые градиенты (4 стопа), стол, перелив, свечение, клипы огранки
   function injectGemDefs(){
-    if(document.getElementById('m3gem-defs')) return;
+    var old=document.getElementById('m3gem-defs'); if(old&&old.parentNode) old.parentNode.removeChild(old);
     var NS='http://www.w3.org/2000/svg';
-    var hues={red:['#ff9aa0','#e23b4e','#7d1020'], blue:['#9fe0ff','#2f9fe0','#0d4a75'],
-      green:['#8ff0c0','#22c07a','#0b5c3a'], amber:['#ffe3a0','#f0a52e','#8a5408'],
-      violet:['#d9c2ff','#8f5fe8','#45247e']};
+    var HUES={
+      red:   ['#ffd4d8','#ff6d7c','#d92739','#6e0a16'],
+      blue:  ['#dff5ff','#5fc6ff','#1f7fc4','#083a5e'],
+      green: ['#d8ffe9','#5ce8ab','#17a86c','#064a2e'],
+      amber: ['#fff3d0','#ffd06a','#e8981f','#6e4004'],
+      violet:['#f0e4ff','#c09aff','#7a48d8','#2e1560']
+    };
     var svg=document.createElementNS(NS,'svg'); svg.id='m3gem-defs';
-    svg.setAttribute('width','0'); svg.setAttribute('height','0');
-    svg.style.position='absolute';
-    var defs=document.createElementNS(NS,'defs'); var html='';
-    Object.keys(hues).forEach(function(k){ var h=hues[k];
-      html+='<radialGradient id="m3g-'+k+'" cx="38%" cy="30%" r="80%">'+
-        '<stop offset="0%" stop-color="'+h[0]+'"/><stop offset="55%" stop-color="'+h[1]+'"/>'+
-        '<stop offset="100%" stop-color="'+h[2]+'"/></radialGradient>'+
-        '<linearGradient id="m3f-'+k+'" x1="0" y1="0" x2="1" y2="1">'+
-        '<stop offset="0%" stop-color="#ffffff" stop-opacity=".55"/>'+
-        '<stop offset="45%" stop-color="#ffffff" stop-opacity=".08"/>'+
-        '<stop offset="100%" stop-color="#000000" stop-opacity=".30"/></linearGradient>';
+    svg.setAttribute('width','0'); svg.setAttribute('height','0'); svg.style.position='absolute';
+    var html='';
+    Object.keys(HUES).forEach(function(k){ var h=HUES[k];
+      html+='<radialGradient id="m3g-'+k+'" cx="36%" cy="26%" r="85%">'+
+        '<stop offset="0%" stop-color="'+h[0]+'"/><stop offset="30%" stop-color="'+h[1]+'"/>'+
+        '<stop offset="68%" stop-color="'+h[2]+'"/><stop offset="100%" stop-color="'+h[3]+'"/></radialGradient>'+
+        '<linearGradient id="m3t-'+k+'" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0%" stop-color="'+h[0]+'" stop-opacity=".8"/>'+
+        '<stop offset="55%" stop-color="'+h[1]+'" stop-opacity=".28"/>'+
+        '<stop offset="100%" stop-color="'+h[2]+'" stop-opacity=".5"/></linearGradient>';
     });
-    defs.innerHTML=html; svg.appendChild(defs); document.body.appendChild(svg);
+    html+='<linearGradient id="m3sheenG" x1="0" y1="0" x2="1" y2="0">'+
+      '<stop offset="0%" stop-color="#fff" stop-opacity="0"/>'+
+      '<stop offset="35%" stop-color="#bfe8ff" stop-opacity=".25"/>'+
+      '<stop offset="50%" stop-color="#ffffff" stop-opacity=".6"/>'+
+      '<stop offset="65%" stop-color="#ffc8e0" stop-opacity=".25"/>'+
+      '<stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient>'+
+     '<radialGradient id="m3glow" cx="50%" cy="50%" r="50%">'+
+      '<stop offset="0%" stop-color="#fff" stop-opacity=".9"/>'+
+      '<stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient>';
+    Object.keys(GEM_PATHS).forEach(function(id){
+      html+='<clipPath id="m3clip-'+id+'"><path d="'+GEM_PATHS[id]+'"/></clipPath>'; });
+    var defs=document.createElementNS(NS,'defs'); defs.innerHTML=html;
+    svg.appendChild(defs); document.body.appendChild(svg);
   }
 
-  // гранёный самоцвет: форма+фасетки+блик, у каждого типа своя огранка
+  // острый 4-лучевой блик (вместо мутного пятна)
+  function glintAt(x,y,s,o){
+    return '<path d="M0 -5.2 L1.3 -1.3 L5.2 0 L1.3 1.3 L0 5.2 L-1.3 1.3 L-5.2 0 L-1.3 -1.3 Z" fill="#fff" opacity="'+(o||.95)+'" transform="translate('+x+' '+y+') scale('+(s||1)+')"/>';
+  }
+
+  /* премиум-самоцвет: огранка с фасетами, стол, внутренний ободок,
+     отражённый свет снизу, острые блики и бегущий радужный перелив */
   function gemSVG(gid){
     var G={
-      trace:{hue:'red',   // капля-рубин
-        body:'M24 4 C24 4 40 22 40 31 A16 16 0 0 1 8 31 C8 22 24 4 24 4 Z',
-        facets:'<path d="M24 4 L15 24 L24 44 Z" fill="url(#m3f-red)" opacity=".7"/>'+
-               '<path d="M24 4 L33 24 L24 44 Z" fill="#000" opacity=".14"/>'+
-               '<path d="M15 24 L24 16 L33 24 L24 44 Z" fill="#fff" opacity=".10"/>'},
-      witness:{hue:'blue', // кабошон-сапфир
-        body:'M24 5 A19 19 0 1 1 23.9 5 Z',
-        facets:'<circle cx="24" cy="24" r="12.5" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1.6"/>'+
-               '<path d="M24 5 A19 19 0 0 1 43 24 L31 24 A7.5 7.5 0 0 0 24 16.5 Z" fill="url(#m3f-blue)" opacity=".6"/>'+
-               '<circle cx="24" cy="24" r="6" fill="#0d4a75" opacity=".5"/>'},
-      exhibit:{hue:'green', // изумруд-восьмиугольник
-        body:'M15 6 L33 6 L42 15 L42 33 L33 42 L15 42 L6 33 L6 15 Z',
-        facets:'<path d="M15 6 L33 6 L42 15 L6 15 Z" fill="#fff" opacity=".18"/>'+
-               '<path d="M6 33 L42 33 L33 42 L15 42 Z" fill="#000" opacity=".22"/>'+
-               '<rect x="14" y="14" width="20" height="20" fill="url(#m3f-green)" opacity=".55"/>'+
-               '<rect x="18" y="18" width="12" height="12" fill="#0b5c3a" opacity=".35"/>'},
-      alibi:{hue:'amber', // ромб-топаз
-        body:'M24 3 L44 24 L24 45 L4 24 Z',
-        facets:'<path d="M24 3 L44 24 L24 24 Z" fill="#fff" opacity=".20"/>'+
-               '<path d="M24 45 L4 24 L24 24 Z" fill="#000" opacity=".20"/>'+
-               '<path d="M24 12 L36 24 L24 36 L12 24 Z" fill="url(#m3f-amber)" opacity=".6"/>'},
-      link:{hue:'violet', // шестиугольник-аметист
-        body:'M24 3 L42 13.5 L42 34.5 L24 45 L6 34.5 L6 13.5 Z',
-        facets:'<path d="M24 3 L42 13.5 L24 24 Z" fill="#fff" opacity=".18"/>'+
-               '<path d="M24 45 L6 34.5 L24 24 Z" fill="#000" opacity=".20"/>'+
-               '<path d="M24 11 L35 17.5 L35 30.5 L24 37 L13 30.5 L13 17.5 Z" fill="url(#m3f-violet)" opacity=".55"/>'}
+      trace:{hue:'red', facets:
+        '<path d="M24 3 L13.5 26.5 L24 33.5 Z" fill="#fff" opacity=".16"/>'+
+        '<path d="M24 3 L34.5 26.5 L24 33.5 Z" fill="#000" opacity=".18"/>'+
+        '<path d="M24 3 L8.5 28 L13.5 26.5 Z" fill="#fff" opacity=".07"/>'+
+        '<path d="M24 3 L39.5 28 L34.5 26.5 Z" fill="#000" opacity=".1"/>'+
+        '<path d="M10 28 Q24 34.5 38 28" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1.1"/>'+
+        '<ellipse cx="24" cy="36" rx="9" ry="5" fill="url(#m3glow)" opacity=".45"/>'+
+        glintAt(19,14,.9)+glintAt(29,25,.45,.6)},
+      witness:{hue:'blue', facets:
+        '<rect x="12" y="8" width="7" height="11" rx="3.4" transform="rotate(-28 15.5 13.5)" fill="#fff" opacity=".5"/>'+
+        '<rect x="20.5" y="6.5" width="3.2" height="6.5" rx="1.6" transform="rotate(-28 22 9.5)" fill="#fff" opacity=".38"/>'+
+        '<circle cx="24" cy="24" r="12.8" fill="none" stroke="#fff" stroke-opacity=".15" stroke-width="1.4"/>'+
+        '<circle cx="25.5" cy="26" r="7" fill="#083a5e" opacity=".45"/>'+
+        '<circle cx="25.5" cy="26" r="7" fill="none" stroke="#9fdcff" stroke-opacity=".35" stroke-width="1"/>'+
+        '<ellipse cx="24" cy="36" rx="10" ry="4.5" fill="url(#m3glow)" opacity=".35"/>'+
+        glintAt(31,13,.55,.75)},
+      exhibit:{hue:'green', facets:
+        '<path d="M15.5 5.5 L32.5 5.5 L29.5 11.5 L18.5 11.5 Z" fill="#fff" opacity=".18"/>'+
+        '<path d="M5.5 15.5 L15.5 5.5 L18.5 11.5 L11.5 18.5 Z" fill="#fff" opacity=".12"/>'+
+        '<path d="M15.5 42.5 L32.5 42.5 L29.5 36.5 L18.5 36.5 Z" fill="#000" opacity=".22"/>'+
+        '<path d="M42.5 32.5 L32.5 42.5 L29.5 36.5 L36.5 29.5 Z" fill="#000" opacity=".16"/>'+
+        '<path d="M17 8.5 L31 8.5 L39.5 17 L39.5 31 L31 39.5 L17 39.5 L8.5 31 L8.5 17 Z" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="1.2"/>'+
+        '<rect x="15" y="15" width="18" height="18" rx="2.5" fill="url(#m3t-green)" stroke="#fff" stroke-opacity=".18"/>'+
+        '<ellipse cx="24" cy="33" rx="8" ry="3.5" fill="url(#m3glow)" opacity=".3"/>'+
+        glintAt(14,13,.8)+glintAt(33,32,.4,.5)},
+      alibi:{hue:'amber', facets:
+        '<path d="M24 2.5 L33 15 L24 24 L15 15 Z" fill="#fff" opacity=".18"/>'+
+        '<path d="M45 24 L33 33 L24 24 L33 15 Z" fill="#000" opacity=".1"/>'+
+        '<path d="M24 45.5 L15 33 L24 24 L33 33 Z" fill="#000" opacity=".22"/>'+
+        '<path d="M3 24 L15 15 L24 24 L15 33 Z" fill="#fff" opacity=".08"/>'+
+        '<path d="M24 13.5 L34.5 24 L24 34.5 L13.5 24 Z" fill="url(#m3t-amber)" stroke="#fff" stroke-opacity=".2"/>'+
+        '<ellipse cx="24" cy="33" rx="7" ry="3.5" fill="url(#m3glow)" opacity=".35"/>'+
+        glintAt(24,11,.85)+glintAt(13,24,.4,.55)},
+      link:{hue:'violet', facets:
+        '<path d="M24 3 L42.5 13.5 L24 24 Z" fill="#fff" opacity=".17"/>'+
+        '<path d="M42.5 13.5 L42.5 34.5 L24 24 Z" fill="#000" opacity=".08"/>'+
+        '<path d="M42.5 34.5 L24 45 L24 24 Z" fill="#000" opacity=".2"/>'+
+        '<path d="M24 45 L5.5 34.5 L24 24 Z" fill="#000" opacity=".14"/>'+
+        '<path d="M5.5 34.5 L5.5 13.5 L24 24 Z" fill="#fff" opacity=".06"/>'+
+        '<path d="M5.5 13.5 L24 3 L24 24 Z" fill="#fff" opacity=".12"/>'+
+        '<path d="M24 12 L34.5 18 L34.5 30 L24 36 L13.5 30 L13.5 18 Z" fill="url(#m3t-violet)" stroke="#fff" stroke-opacity=".18"/>'+
+        '<ellipse cx="24" cy="32" rx="8" ry="3.5" fill="url(#m3glow)" opacity=".3"/>'+
+        glintAt(18,11,.85)+glintAt(31,30,.4,.5)}
     };
     var g=G[gid]||G.trace;
-    return '<svg viewBox="0 0 48 48" style="width:100%;height:100%;display:block">'+
-      '<path d="'+g.body+'" fill="url(#m3g-'+g.hue+')" stroke="#000" stroke-opacity=".55" stroke-width="1.4"/>'+
+    var body=GEM_PATHS[gid]||GEM_PATHS.trace;
+    var delay=(Math.random()*4.6).toFixed(2);
+    return '<svg viewBox="0 0 48 48" style="width:100%;height:100%;display:block;overflow:visible">'+
+      '<path d="'+body+'" fill="url(#m3g-'+g.hue+')" stroke="#000" stroke-opacity=".5" stroke-width="1.3"/>'+
       g.facets+
-      '<ellipse cx="17" cy="13" rx="6.5" ry="4" fill="#fff" opacity=".55" transform="rotate(-24 17 13)"/>'+
-      '<ellipse cx="30" cy="36" rx="4" ry="2.2" fill="#fff" opacity=".14" transform="rotate(-24 30 36)"/>'+
+      '<path d="'+body+'" fill="none" stroke="#fff" stroke-opacity=".26" stroke-width="1.2" transform="translate(24 24) scale(.93) translate(-24 -24)"/>'+
+      '<g clip-path="url(#m3clip-'+gid+')">'+
+        '<rect class="gsheen" style="animation-delay:-'+delay+'s" x="-30" y="-8" width="20" height="64" fill="url(#m3sheenG)"/>'+
+      '</g>'+
     '</svg>';
   }
 
@@ -230,14 +280,22 @@
     .m3gem.fall{transition:transform .3s cubic-bezier(.3,1.45,.45,1);}
     .m3gem.spawn{animation:m3spawn .26s ease forwards;}
     @keyframes m3spawn{from{opacity:0}to{opacity:1}}
-    .m3gem.pop{animation:m3pop .24s ease forwards;}
-    @keyframes m3pop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(0);opacity:0}}
+    .m3gem.pop{animation:m3pop .26s ease forwards;}
+    @keyframes m3pop{
+      0%{transform:translate3d(var(--tx),var(--ty),0) scale(1);filter:brightness(1)}
+      35%{transform:translate3d(var(--tx),var(--ty),0) scale(1.28);filter:brightness(2.1)}
+      100%{transform:translate3d(var(--tx),var(--ty),0) scale(0);opacity:0;filter:brightness(2.4)}}
     .m3gem.sel{z-index:3;animation:m3sel .55s ease-in-out infinite;}
     @keyframes m3sel{0%,100%{transform:translate3d(var(--tx),var(--ty),0) scale(1)}50%{transform:translate3d(var(--tx),var(--ty),0) scale(1.1)}}
     .m3gem.hint .gemstone{animation:m3hintPulse .8s ease-in-out infinite;}
     @keyframes m3hintPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
-    .gemstone{position:absolute;inset:6%;animation:m3idleGlow 6s ease-in-out infinite;}
-    @keyframes m3idleGlow{0%,86%,100%{filter:brightness(1)}92%{filter:brightness(1.22)}}
+    .gemstone{position:absolute;inset:5%;}
+    /* бегущий радужный перелив внутри каждого самоцвета */
+    .gsheen{animation:gemSheen 4.6s cubic-bezier(.45,.1,.35,1) infinite;transform:rotate(16deg);}
+    @keyframes gemSheen{
+      0%{transform:rotate(16deg) translateX(-6px)}
+      48%{transform:rotate(16deg) translateX(84px)}
+      100%{transform:rotate(16deg) translateX(84px)}}
     /* лёд: вмороженная клетка */
     .m3ice{position:absolute;border-radius:8px;z-index:4;pointer-events:none;
       background:linear-gradient(158deg,rgba(168,214,255,.34),rgba(96,146,208,.20));
@@ -258,14 +316,14 @@
     @keyframes m3fl{from{opacity:.9;transform:translate(-50%,-50%) scale(.6)}to{opacity:0;transform:translate(-50%,-50%) scale(2.2)}}
     .m3stage.bigshake{animation:m3bigshake .34s ease;}
     @keyframes m3bigshake{0%,100%{transform:none}20%{transform:translate(-5px,2px)}45%{transform:translate(5px,-3px)}70%{transform:translate(-3px,-2px)}}
-    /* спецфишка-линия: бегущий блик + стрелки */
+    /* спецфишка-линия: бегущий блик + стрелки-наконечники */
     .spline{position:absolute;inset:0;pointer-events:none;z-index:2;}
-    .spline i{position:absolute;font-style:normal;font-size:10px;font-weight:900;color:#fff;
-      text-shadow:0 0 6px rgba(255,255,255,.95),0 1px 2px #000;}
-    .spline.h i{top:50%;transform:translateY(-50%);left:4%;}
-    .spline.h i.r{left:auto;right:4%;}
-    .spline.v i{left:50%;transform:translateX(-50%);top:2%;}
-    .spline.v i.r{top:auto;bottom:2%;}
+    .spline b{position:absolute;width:19%;height:19%;background:#fff;
+      filter:drop-shadow(0 0 4px rgba(255,255,255,.95)) drop-shadow(0 1px 1px rgba(0,0,0,.6));}
+    .spline.h b.l{left:2%;top:50%;transform:translateY(-50%);clip-path:polygon(100% 0,0 50%,100% 100%);}
+    .spline.h b.r{right:2%;top:50%;transform:translateY(-50%);clip-path:polygon(0 0,100% 50%,0 100%);}
+    .spline.v b.u{top:2%;left:50%;transform:translateX(-50%);clip-path:polygon(0 100%,50% 0,100% 100%);}
+    .spline.v b.d{bottom:2%;left:50%;transform:translateX(-50%);clip-path:polygon(0 0,50% 100%,100% 0);}
     .spline.h::before{content:'';position:absolute;left:12%;right:12%;top:44%;height:12%;border-radius:6px;
       background:linear-gradient(90deg,transparent,rgba(255,255,255,.95),transparent);
       animation:spStreak 1s ease-in-out infinite alternate;}
@@ -278,6 +336,8 @@
       border:2.5px solid rgba(255,255,255,.95);
       box-shadow:0 0 10px rgba(255,255,255,.8),inset 0 0 8px rgba(255,255,255,.55);
       animation:spBomb .9s ease-in-out infinite;}
+    .spbomb::after{content:'';position:absolute;inset:28%;border-radius:50%;
+      background:radial-gradient(circle,#fff 20%,rgba(255,255,255,0) 72%);opacity:.85;}
     @keyframes spBomb{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.18);opacity:.6}}
     /* радужная сфера (цветобомба) */
     .m3orb{position:absolute;inset:9%;border-radius:50%;
@@ -290,12 +350,17 @@
       font-size:13px;color:#fff;text-shadow:0 0 8px #fff;animation:orbSpark 1.4s ease-in-out infinite;}
     @keyframes orbHue{to{filter:hue-rotate(360deg)}}
     @keyframes orbSpark{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.35)}}
-    /* луч спецфишки через доску */
-    .m3beam{position:absolute;pointer-events:none;z-index:6;border-radius:10px;
-      background:linear-gradient(90deg,transparent,rgba(255,255,255,.95) 30%,#fff 50%,rgba(255,255,255,.95) 70%,transparent);
-      box-shadow:0 0 22px 6px rgba(255,255,255,.5);animation:m3beamGo .42s ease-out forwards;}
-    .m3beam.v{background:linear-gradient(180deg,transparent,rgba(255,255,255,.95) 30%,#fff 50%,rgba(255,255,255,.95) 70%,transparent);}
-    @keyframes m3beamGo{0%{opacity:1;transform:scale(.35)}60%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
+    /* комета спецфишки: белое ядро + карминовый хвост, летит по ряду */
+    .m3comet{position:absolute;pointer-events:none;z-index:6;width:46px;height:9px;border-radius:5px;
+      background:linear-gradient(90deg,rgba(255,110,140,0),rgba(255,120,150,.75) 55%,#fff 90%);
+      box-shadow:0 0 16px 4px rgba(255,100,130,.55);}
+    .m3comet::after{content:'';position:absolute;right:-3px;top:50%;width:13px;height:13px;border-radius:50%;
+      transform:translateY(-50%);background:radial-gradient(circle,#fff 30%,rgba(255,150,175,.65) 60%,transparent 75%);}
+    /* след кометы: мягкое свечение ряда */
+    .m3rowglow{position:absolute;pointer-events:none;z-index:5;border-radius:8px;
+      background:linear-gradient(90deg,transparent,rgba(255,110,140,.22),transparent);
+      animation:m3rowGl .45s ease-out forwards;}
+    @keyframes m3rowGl{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
     /* всплывающие очки */
     .m3pts{position:absolute;z-index:7;pointer-events:none;transform:translate(-50%,0);
       font-family:Unbounded,sans-serif;font-weight:900;font-size:14px;color:#fff;
@@ -325,7 +390,9 @@
       background:linear-gradient(180deg,#ff8fa8,#8e1e36);border:2px solid #14060a;color:#fff;font-weight:900;font-size:12px;
       display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,.5);}
     .m3boost.empty .bcount{background:linear-gradient(180deg,#5fd16a,#2e9b3a);border-color:#0d2712;}
-    .m3burst{position:absolute;width:7px;height:7px;border-radius:50%;pointer-events:none;will-change:transform,opacity;}
+    .m3burst{position:absolute;border-radius:50%;pointer-events:none;will-change:transform,opacity;}
+    .m3spark{position:absolute;pointer-events:none;will-change:transform,opacity;line-height:1;
+      font-family:sans-serif;color:#fff;}
     .m3combo{position:absolute;top:36%;left:0;right:0;text-align:center;pointer-events:none;
       font-family:Unbounded,sans-serif;font-weight:900;font-size:30px;color:#ff8fa8;text-shadow:0 0 22px #8e1e36;
       animation:m3combo 1s ease forwards;}
@@ -457,8 +524,8 @@
       return el;
     }
     let ov='';
-    if(sp===SP.LINEH) ov='<div class="spline h"><i>◄</i><i class="r">►</i></div>';
-    else if(sp===SP.LINEV) ov='<div class="spline v"><i>▲</i><i class="r">▼</i></div>';
+    if(sp===SP.LINEH) ov='<div class="spline h"><b class="l"></b><b class="r"></b></div>';
+    else if(sp===SP.LINEV) ov='<div class="spline v"><b class="u"></b><b class="d"></b></div>';
     else if(sp===SP.BOMB) ov='<div class="spbomb"></div>';
     el.innerHTML='<div class="gemstone" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,.55)) drop-shadow(0 0 7px '+g.glow+'55)">'+gemSVG(g.id)+'</div>'+ov;
     return el;
@@ -579,8 +646,8 @@
     matches.forEach(g=>{ const h=(g[1]-g[0]===1); g.forEach(k=>{(h?inH:inV)[k]=true;}); });
     Object.keys(inH).forEach(k=>{ if(inV[k]){ const kk=+k; if(!specials.some(s=>s.k===kk)) specials.push({k:kk,sp:SP.BOMB,c:grid[kk].c}); } }); }
   function triggerSpecial(k,set){ const x=k%N,y=k/N|0,sp=grid[k].sp; ring(k);
-    if(sp===SP.LINEH){ for(let xx=0;xx<N;xx++)set.add(idx(xx,y)); beamFX(y,'h'); Sound.lineBlast&&Sound.lineBlast(); }
-    else if(sp===SP.LINEV){ for(let yy=0;yy<N;yy++)set.add(idx(x,yy)); beamFX(x,'v'); Sound.lineBlast&&Sound.lineBlast(); }
+    if(sp===SP.LINEH){ for(let xx=0;xx<N;xx++)set.add(idx(xx,y)); beamFX(y,'h',k); Sound.lineBlast&&Sound.lineBlast(); }
+    else if(sp===SP.LINEV){ for(let yy=0;yy<N;yy++)set.add(idx(x,yy)); beamFX(x,'v',k); Sound.lineBlast&&Sound.lineBlast(); }
     else if(sp===SP.BOMB){ for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)if(inb(x+dx,y+dy))set.add(idx(x+dx,y+dy));
       shockFX(k,1.6); Sound.bombBlast&&Sound.bombBlast(); }
     else if(sp===SP.RAINBOW){ const c=grid[k].c; for(let i=0;i<N*N;i++)if(grid[i].c===c)set.add(i);
@@ -607,8 +674,8 @@
         let flip=(other===SP.LINEV);
         for(let i=0;i<N*N;i++) if(grid[i].c===col&&!grid[i].sp){ set.add(i);
           const ix=i%N, iy=i/N|0;
-          if(flip){ for(let yy=0;yy<N;yy++)set.add(idx(ix,yy)); beamFX(ix,'v'); }
-          else{ for(let xx=0;xx<N;xx++)set.add(idx(xx,iy)); beamFX(iy,'h'); }
+          if(flip){ for(let yy=0;yy<N;yy++)set.add(idx(ix,yy)); beamFX(ix,'v',i); }
+          else{ for(let xx=0;xx<N;xx++)set.add(idx(xx,iy)); beamFX(iy,'h',i); }
           flip=!flip; }
       }
       Sound.rainbowBlast&&Sound.rainbowBlast(); vibrate([12,30,12]);
@@ -619,15 +686,15 @@
     }
     else if((s1===SP.BOMB&&isLine(s2))||(s2===SP.BOMB&&isLine(s1))){ // 3 ряда + 3 колонки
       for(let d=-1;d<=1;d++){
-        if(y+d>=0&&y+d<N){ for(let xx=0;xx<N;xx++)set.add(idx(xx,y+d)); beamFX(y+d,'h'); }
-        if(x+d>=0&&x+d<N){ for(let yy=0;yy<N;yy++)set.add(idx(x+d,yy)); beamFX(x+d,'v'); }
+        if(y+d>=0&&y+d<N){ for(let xx=0;xx<N;xx++)set.add(idx(xx,y+d)); beamFX(y+d,'h',pb); }
+        if(x+d>=0&&x+d<N){ for(let yy=0;yy<N;yy++)set.add(idx(x+d,yy)); beamFX(x+d,'v',pb); }
       }
       Sound.bombBlast&&Sound.bombBlast(); vibrate([15,50]);
     }
     else { // линия+линия = крест
       for(let xx=0;xx<N;xx++)set.add(idx(xx,y));
       for(let yy=0;yy<N;yy++)set.add(idx(x,yy));
-      beamFX(y,'h'); beamFX(x,'v'); Sound.lineBlast&&Sound.lineBlast(); vibrate([10,30]);
+      beamFX(y,'h',pb); beamFX(x,'v',pb); Sound.lineBlast&&Sound.lineBlast(); vibrate([10,30]);
     }
     grid[pa].sp=SP.NONE; grid[pb].sp=SP.NONE;
     clearSet(set);
@@ -668,7 +735,7 @@
     saveP();
     if(invMode==='shot'){ Sound.shot&&Sound.shot(); vibrate(20); clearSet(new Set([k])); }
     else if(invMode==='siren'){ const x=k%N,y=k/N|0,set=new Set(); for(let i=0;i<N;i++){set.add(idx(i,y));set.add(idx(x,i));}
-      beamFX(y,'h'); beamFX(x,'v'); Sound.lineBlast&&Sound.lineBlast(); clearSet(set); }
+      beamFX(y,'h',k); beamFX(x,'v',k); Sound.lineBlast&&Sound.lineBlast(); clearSet(set); }
     invMode=null; _board.classList.remove('aim'); tickBar();
   }
   function clearSet(set){ Sound.booster&&Sound.booster(); vibrate([10,30]); busy=true; let gained=0;
@@ -697,22 +764,61 @@
 
   /* ── эффекты ── */
   function burst(k){ const g=GEMS[grid[k].c]||GEMS[0]; const x=k%N,y=k/N|0;
+    const cx=x*_cellPx+_cellPx/2, cy=y*_cellPx+_cellPx/2;
     const fl=document.createElement('div'); fl.className='m3flash';
-    fl.style.left=(x*_cellPx+_cellPx/2)+'px'; fl.style.top=(y*_cellPx+_cellPx/2)+'px';
+    fl.style.left=cx+'px'; fl.style.top=cy+'px';
     _board.appendChild(fl); setTimeout(()=>{ if(fl.parentNode)fl.parentNode.removeChild(fl); },300);
-    for(let i=0;i<8;i++){ const p=document.createElement('div'); p.className='m3burst'; p.style.background=g.c1;
-      p.style.left=(x*_cellPx+_cellPx/2)+'px'; p.style.top=(y*_cellPx+_cellPx/2)+'px';
-      const a=Math.random()*6.28,d=10+Math.random()*22; _board.appendChild(p);
-      requestAnimationFrame(()=>{ p.style.transition='transform .45s ease-out,opacity .45s'; p.style.opacity='0';
-        p.style.transform='translate3d('+(Math.cos(a)*d)+'px,'+(Math.sin(a)*d-8)+'px,0) scale(.2)'; });
-      setTimeout(()=>{ if(p.parentNode)p.parentNode.removeChild(p); },480); } }
-  /* луч через всю доску (спецфишка-линия) */
-  function beamFX(i,axis){
+    for(let i=0;i<7;i++){
+      const isStar=i<2;
+      const p=document.createElement('div'); p.className=isStar?'m3spark':'m3burst';
+      p.style.left=cx+'px'; p.style.top=cy+'px';
+      if(isStar){ p.textContent='✦'; p.style.fontSize=(8+Math.random()*6)+'px';
+        p.style.textShadow='0 0 7px '+g.glow+', 0 0 3px #fff'; }
+      else{ const s=4+Math.random()*5; p.style.width=s+'px'; p.style.height=s+'px';
+        p.style.background='radial-gradient(circle at 35% 35%, #fff 15%, '+g.c1+' 55%, transparent 78%)';
+        p.style.boxShadow='0 0 6px '+g.glow; }
+      _board.appendChild(p);
+      const a=Math.random()*6.28, d=12+Math.random()*24;
+      const dx=Math.cos(a)*d, dy=Math.sin(a)*d;
+      p.animate(
+        [{transform:'translate(-50%,-50%) translate(0,0) scale(1) rotate(0deg)',opacity:1},
+         {transform:'translate(-50%,-50%) translate('+dx+'px,'+(dy-6)+'px) scale(.9) rotate('+(Math.random()*140-70)+'deg)',opacity:.95,offset:.55},
+         {transform:'translate(-50%,-50%) translate('+(dx*1.25)+'px,'+(dy+14)+'px) scale(.15) rotate('+(Math.random()*200-100)+'deg)',opacity:0}],
+        {duration:430+Math.random()*180,easing:'cubic-bezier(.2,.7,.35,1)'}
+      ).onfinish=()=>{ if(p.parentNode)p.parentNode.removeChild(p); };
+    } }
+  /* кометы спецфишки: из точки срабатывания в обе стороны ряда/колонки */
+  function beamFX(i,axis,fromK){
     if(!_board) return;
-    const d=document.createElement('div'); d.className='m3beam '+(axis==='v'?'v':'h');
-    if(axis==='v'){ d.style.left=(i*_cellPx+_cellPx*0.18)+'px'; d.style.width=(_cellPx*0.64)+'px'; d.style.top='0'; d.style.bottom='0'; }
-    else{ d.style.top=(i*_cellPx+_cellPx*0.18)+'px'; d.style.height=(_cellPx*0.64)+'px'; d.style.left='0'; d.style.right='0'; }
-    _board.appendChild(d); setTimeout(()=>{ if(d.parentNode)d.parentNode.removeChild(d); },450);
+    const total=N*_cellPx;
+    const lane=i*_cellPx+_cellPx/2;                    // центр ряда/колонки
+    const oc=(fromK!=null)
+      ? ((axis==='v') ? (Math.floor(fromK/N))*_cellPx+_cellPx/2 : (fromK%N)*_cellPx+_cellPx/2)
+      : total/2;                                       // точка старта вдоль оси
+    // мягкое свечение полосы
+    const gl=document.createElement('div'); gl.className='m3rowglow';
+    if(axis==='v'){ gl.style.left=(i*_cellPx+2)+'px'; gl.style.width=(_cellPx-4)+'px'; gl.style.top='0'; gl.style.bottom='0';
+      gl.style.background='linear-gradient(180deg,transparent,rgba(255,110,140,.22),transparent)'; }
+    else{ gl.style.top=(i*_cellPx+2)+'px'; gl.style.height=(_cellPx-4)+'px'; gl.style.left='0'; gl.style.right='0'; }
+    _board.appendChild(gl); setTimeout(()=>{ if(gl.parentNode)gl.parentNode.removeChild(gl); },470);
+    // две кометы в противоположные стороны
+    [1,-1].forEach(dir=>{
+      const d=document.createElement('div'); d.className='m3comet';
+      const dist=(dir>0? total-oc : oc)+26;
+      if(dist<30) return;
+      if(axis==='v'){ d.style.left=(lane-23)+'px'; d.style.top=(oc-4.5)+'px';
+        d.style.transform='rotate('+(dir>0?90:-90)+'deg)'; }
+      else{ d.style.left=(oc-23)+'px'; d.style.top=(lane-4.5)+'px';
+        d.style.transform='rotate('+(dir>0?0:180)+'deg)'; }
+      _board.appendChild(d);
+      const rot=d.style.transform;
+      d.animate(
+        [{transform:rot+' translateX(0)',opacity:1},
+         {transform:rot+' translateX('+(dist*0.8)+'px)',opacity:1,offset:.75},
+         {transform:rot+' translateX('+dist+'px)',opacity:0}],
+        {duration:200+dist/total*160,easing:'cubic-bezier(.25,.6,.35,1)'}
+      ).onfinish=()=>{ if(d.parentNode)d.parentNode.removeChild(d); };
+    });
   }
   /* ударная волна бомбы */
   function shockFX(k,mult){
@@ -758,8 +864,8 @@
     const k=alive[Math.random()*alive.length|0];
     const axis=Math.random()<.5?'h':'v'; const x=k%N,y=k/N|0;
     const set=new Set();
-    if(axis==='h'){ for(let xx=0;xx<N;xx++)set.add(idx(xx,y)); beamFX(y,'h'); }
-    else{ for(let yy=0;yy<N;yy++)set.add(idx(x,yy)); beamFX(x,'v'); }
+    if(axis==='h'){ for(let xx=0;xx<N;xx++)set.add(idx(xx,y)); beamFX(y,'h',k); }
+    else{ for(let yy=0;yy<N;yy++)set.add(idx(x,yy)); beamFX(x,'v',k); }
     Sound.lineBlast&&Sound.lineBlast();
     let gained=0;
     set.forEach(kk=>{ if(grid[kk].c<0)return; gained+=15; burst(kk); if(hitIce(kk))return; removeGem(kk); });
@@ -786,9 +892,22 @@
   function goalIconHtml(){
     if(mission.type==='color'){ const g=GEMS[mission.color||0];
       return '<span class="m3goalico">'+gemSVG(g.id)+'</span>'; }
-    if(mission.type==='clear') return '<span class="m3goalico m3goalemoji">🧹</span>';
-    if(mission.type==='combo') return '<span class="m3goalico m3goalemoji">⚡</span>';
-    return '<span class="m3goalico m3goalemoji">💯</span>';
+    if(mission.type==='clear') return '<span class="m3goalico">'+
+      '<svg viewBox="0 0 24 24" style="width:100%;height:100%">'+
+      '<rect x="2.5" y="2.5" width="8.5" height="8.5" rx="2.2" fill="#93a1b3"/>'+
+      '<rect x="13" y="2.5" width="8.5" height="8.5" rx="2.2" fill="#cfd8e3"/>'+
+      '<rect x="2.5" y="13" width="8.5" height="8.5" rx="2.2" fill="#cfd8e3"/>'+
+      '<rect x="13" y="13" width="8.5" height="8.5" rx="2.2" fill="#e0546e"/>'+
+      '<path d="M15 15.6 L19.5 17.2 L15.6 19 L17.2 15.2z" fill="#fff" opacity=".7"/></svg></span>';
+    if(mission.type==='combo') return '<span class="m3goalico">'+
+      '<svg viewBox="0 0 24 24" style="width:100%;height:100%">'+
+      '<path d="M13.5 1.5 L4.5 13.5 h5.5 l-2.5 9 L19.5 9.5 h-6 l2.5-8z" fill="#ffcf6b" stroke="#7d4a06" stroke-width=".9"/>'+
+      '<path d="M13.5 1.5 L4.5 13.5 h5.5 l-1 3.6 L17 9.5 h-3.5 l2.5-8z" fill="#fff3d0" opacity=".55"/></svg></span>';
+    return '<span class="m3goalico">'+
+      '<svg viewBox="0 0 24 24" style="width:100%;height:100%">'+
+      '<circle cx="12" cy="12" r="9.2" fill="none" stroke="#cfd8e3" stroke-width="2.2"/>'+
+      '<circle cx="12" cy="12" r="5" fill="none" stroke="#e0546e" stroke-width="2.2"/>'+
+      '<circle cx="12" cy="12" r="1.8" fill="#fff"/></svg></span>';
   }
   function goalLeftTxt(){
     const target=mission.target||600;
