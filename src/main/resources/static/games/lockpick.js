@@ -174,8 +174,13 @@
   function start(container,o){
     opts=o||{}; running=true;
     LEN=3; DIGITS=6; maxMoves=8;
-    // сложность от миссии
-    if(opts.mission&&opts.mission.target){
+    // сложность: аркадный уровень (mission.lvl) или сюжетная миссия (target)
+    if(opts.mission&&opts.mission.lvl){
+      var L=opts.mission.lvl;
+      LEN=3+Math.min(2,Math.floor((L-1)/4));          // 3 цифры → 4 (ур.5) → 5 (ур.9)
+      maxMoves=(LEN===3)?8:((LEN===4)?9:10);          // длиннее код — больше попыток
+      if(L>=13) maxMoves--;                            // поздние уровни жёстче
+    } else if(opts.mission&&opts.mission.target){
       if(opts.mission.target>=16){ LEN=4; maxMoves=9; }
     }
     movesLeft=maxMoves; guesses=[]; cur=[];
