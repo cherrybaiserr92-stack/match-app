@@ -233,6 +233,13 @@
       setTimeout(()=>voice({type:'triangle',freq:1760,dur:.3,gain:.08,a:.002,d:.06,s:.4,r:.24,reverb:.32}),80); },
     shot(){ noise({dur:.09,gain:.19,freq:900,to:200,type:'bandpass',q:.7,reverb:.2,a:.001,r:.08});
       voice({type:'square',freq:220,to:80,dur:.08,gain:.09,a:.001,d:.03,s:.3,r:.06,reverb:.15,filter:{type:'lowpass',freq:1200}}); },
+    /* щелчок защёлки сейфа */
+    latch(){ noise({dur:.05,gain:.2,freq:2400,type:'bandpass',q:2.5,reverb:.08});
+      voice({type:'square',freq:340,to:210,dur:.06,gain:.07,a:.001,d:.02,s:.3,r:.05,reverb:.08,filter:{type:'lowpass',freq:1800}}); },
+    /* четыре частоты «прослушки» (Simon) */
+    simon(i){ const F=[392,494,587,740];
+      voice({type:'triangle',freq:F[(i||0)%4],dur:.24,gain:.12,a:.004,d:.06,s:.6,r:.14,voices:2,spread:6,reverb:.18,
+             filter:{type:'lowpass',freq:3800}}); },
 
     /* экономика / прогресс */
     coin(){ noise({dur:.04,gain:.06,freq:5200,type:'bandpass',q:2,reverb:.05});

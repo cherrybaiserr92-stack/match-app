@@ -1,4 +1,4 @@
-window.SDVIG_BUILD='R131';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
+window.SDVIG_BUILD='R132';console.log('%cСДВИГ '+window.SDVIG_BUILD,'color:#c8860a;font-weight:bold');
 /* ═══════════════════════════════════════════════
    СДВИГ · app.js  v5 · Dark Glass
 ═══════════════════════════════════════════════ */
@@ -1987,7 +1987,7 @@ function openHintGame(card){
   }
 
   $('#hint-close').onclick=()=>{ Sound.tap(); modal.classList.add('hidden'); window._invest=null; renderInvestBar(); if(window.BgFx)BgFx.resume();
-    try{Examine&&Examine.stop();}catch(_){} try{Pursuit&&Pursuit.stop();}catch(_){} try{Lockpick&&Lockpick.stop();}catch(_){} try{Match3&&Match3.stop();}catch(_){} try{MiniCube&&MiniCube.close();}catch(_){} };
+    try{window.Blocks&&Blocks.stop();}catch(_){} try{window.Merge2048&&Merge2048.stop();}catch(_){} try{window.Bubbles&&Bubbles.stop();}catch(_){} try{window.Match3&&Match3.stop();}catch(_){} try{window.MiniCube&&MiniCube.close();}catch(_){} };
 }
 // шкала осмотра в модалке мини-игры (пусто/1 раунд — скрыта)
 function renderInvestBar(){
@@ -2005,9 +2005,9 @@ function startMiniGame(gameId, card, mission, modal){
   const vp=$('#hint-vp');
   // подпись цели — у каждой игры своя (mission.label относится только к «Уликам дела»)
   const GOAL={
-    examine:'Осмотр места: найди улики, что отблёскивают янтарём',
-    pursuit:'Слежка: держи цель в прицеле, не поднимай тревогу',
-    lockpick:'Взлом: подбери код по подсказкам замка'
+    blocks:'Архив: укладывай папки — собирай полные линии',
+    merge2048:'Дедукция: свайпай и сливай одинаковые факты',
+    bubbles:'Доска связей: лопай грозди из 3+ зацепок одного цвета'
   };
   $('#hint-footer').textContent=GOAL[gameId]||mission.label;
   const onWin=()=>{
@@ -2029,12 +2029,12 @@ function startMiniGame(gameId, card, mission, modal){
     if(window.toast) toast('Улика ускользнула','Сдвиг недоволен. Попробуй снова.','\ud83d\udd0d');
   };
   // роутер мини-игр (расширяемый)
-  if(gameId==='examine' && window.Examine){
-    Examine.start(vp, { mission, onWin, onLose });
-  } else if(gameId==='pursuit' && window.Pursuit){
-    Pursuit.start(vp, { mission, onWin, onLose });
-  } else if(gameId==='lockpick' && window.Lockpick){
-    Lockpick.start(vp, { mission, onWin, onLose });
+  if(gameId==='blocks' && window.Blocks){
+    Blocks.start(vp, { mission, onWin, onLose });
+  } else if(gameId==='merge2048' && window.Merge2048){
+    Merge2048.start(vp, { mission, onWin, onLose });
+  } else if(gameId==='bubbles' && window.Bubbles){
+    Bubbles.start(vp, { mission, onWin, onLose });
   } else if(gameId==='match3' && window.Match3){
     Match3.start(vp, { mission, boosters:App.profile.boosters||0, onWin, onLose });
   } else if(window.Match3){

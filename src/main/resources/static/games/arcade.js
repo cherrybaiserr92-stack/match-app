@@ -3,10 +3,10 @@
    Сложность генерируется на лету: missionForLevel(key,lvl). */
 (function(){
   const GAMES = [
-    { key:'Match3',  name:'Улики дела',  desc:'Три в ряд: совпадения, лёд, спецфишки', icon:'💎' },
-    { key:'Examine', name:'Осмотр места',desc:'Лупа и темнота: найди улики',           icon:'🔍' },
-    { key:'Pursuit', name:'Слежка',      desc:'Не упусти цель в толпе',                icon:'👁' },
-    { key:'Lockpick',name:'Взлом сейфа', desc:'Подбери код по логике',                 icon:'🔓' }
+    { key:'Match3',    name:'Улики дела',   icon:'💎' },
+    { key:'Blocks',    name:'Архив',        icon:'🗄' },
+    { key:'Merge2048', name:'Дедукция',     icon:'🧠' },
+    { key:'Bubbles',   name:'Доска связей', icon:'🎯' }
   ];
 
   /* ── уровень игрока в конкретной аркаде ── */
@@ -38,18 +38,16 @@
       else { m.target=2+Math.ceil(lvl/3); }
       return m;
     }
-    if(key==='Examine') return { target: 8+lvl*2 };              // больше предметов
-    if(key==='Pursuit') return { target: Math.min(30,2+lvl*3) }; // дольше вести цель
-    return { target:12, lvl:lvl };                               // Lockpick: длина кода/попытки
+    return { lvl:lvl }; // Blocks / Merge2048 / Bubbles читают mission.lvl сами
   }
   function diffLabel(key,lvl){
     if(key==='Match3'){ const m=missionForLevel(key,lvl);
       const T={clear:'очисти '+m.target,color:'собери цвет ×'+m.target,score:m.target+' очков',combo:'каскад ×'+m.target};
       return T[m.type]+(m.ice?' · лёд':'')+' · '+m.moves+' ходов'; }
-    if(key==='Examine'){ const need=Math.max(2,Math.min(5,Math.round((8+lvl*2)/4))); return need+' улик в темноте'; }
-    if(key==='Pursuit'){ return 'слежка ~'+Math.round((80+Math.min(60,Math.min(30,2+lvl*3)*2))/10)+' сек'; }
-    const L=3+Math.min(2,Math.floor((lvl-1)/4));
-    return 'код из '+L+' цифр';
+    if(key==='Blocks'){ return 'цель '+(300+lvl*120)+' очков'+(lvl>=4?' · кляксы':''); }
+    if(key==='Merge2048'){ return 'собери плитку '+(64<<Math.min(3,((lvl-1)/2)|0)); }
+    const rows=4+Math.min(3,((lvl-1)/2)|0), cols=4+Math.min(2,(lvl/4)|0);
+    return 'рядов '+rows+' · цветов '+cols;
   }
 
   function cardHTML(g){
